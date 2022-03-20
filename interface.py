@@ -158,7 +158,7 @@ class StashInterface:
 		result = self.__callGraphQL(query)
 		return result['configuration']
 
-	def metadata_scan(self, paths=[]):
+	def metadata_scan(self, paths:list=[]):
 		query = """
 		mutation metadataScan($input:ScanMetadataInput!) {
 			metadataScan(input: $input)
@@ -208,7 +208,7 @@ class StashInterface:
 		variables = {'input': tag}
 		result = self.__callGraphQL(query, variables)
 		return result["tagCreate"]
-	#TODO update_tag
+	# TODO update_tag()
 	def destroy_tag(self, tag_id):
 		query = """
 			mutation tagDestroy($input: TagDestroyInput!) {
@@ -310,7 +310,7 @@ class StashInterface:
 
 		result = self.__callGraphQL(query, variables)
 		return result['performerUpdate']['id']
-	#TODO delete performer
+	# TODO delete_performer()
 
 	# Performers CRUD
 	def find_performers(self, q="", f={}):
@@ -484,7 +484,7 @@ class StashInterface:
 
 		result = self.__callGraphQL(query, variables)
 		return result['movieUpdate']['id']
-	#TODO delete movie
+	# TODO delete_movie()
 
 	# Movies CRUD
 	def find_movies(self, q="", f={}):
@@ -511,7 +511,9 @@ class StashInterface:
 		return result['findMovies']['movies']
 
 	#Gallery CRUD
-	# create_gallery() done by scan see metadata_scan()
+	def create_gallery(self, path:str=""):
+		if path:
+			return self.metadata_scan([path])
 	# TODO find_gallery()
 	def update_gallery(self, gallery_data):
 		query = """
@@ -525,7 +527,7 @@ class StashInterface:
 
 		result = self.__callGraphQL(query, variables)
 		return result["galleryUpdate"]["id"]
-	# TODO delete_gallery
+	# TODO delete_gallery()
 
 	# BULK Gallery
 	def find_galleries(self, q="", f={}):
@@ -554,7 +556,9 @@ class StashInterface:
 
 
 	# Scene CRUD
-	# create_scene() done by scan see metadata_scan()
+	def create_scene(self, path:str=""):
+		if path:
+			return self.metadata_scan([path])
 	def find_scene(self, id:int):
 		query = """
 		query FindScene($scene_id: ID) {
@@ -597,7 +601,8 @@ class StashInterface:
 		return result['sceneDestroy']
 	
 	# BULK Scenes
-	# scenes created by scan see metadata_scan()
+	def create_scenes(self, paths:list=[]):
+		return self.metadata_scan(paths)
 	def find_scenes(self, f={}):
 		query = """
 		query FindScenes($filter: FindFilterType, $scene_filter: SceneFilterType, $scene_ids: [Int!]) {
