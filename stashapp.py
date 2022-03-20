@@ -1,13 +1,12 @@
 import re, sys
-from collections import defaultdict
-
-import requests
-from requests.structures import CaseInsensitiveDict 
-
 from enum import IntEnum
 
-from . import stash_fragments
+from requests.structures import CaseInsensitiveDict
+
+from . import gql_fragments
 from . import log as stash_logger
+
+from .classes import GQLWrapper
 
 class PhashDistance(IntEnum):
 	EXACT = 0
@@ -15,7 +14,7 @@ class PhashDistance(IntEnum):
 	MEDIUM = 8
 	LOW = 10
 
-class StashInterface:
+class StashInterface(GQLWrapper):
 	port = ""
 	url = ""
 	headers = {
@@ -51,66 +50,14 @@ class StashInterface:
 		try:
 			# test query to ensure good connection
 			self.call_gql("query Configuration {configuration{general{stashes{path}}}}")
-		except Exception:
+		except Exception as e:
 			log.error(f"Could not connect to Stash at {self.url}")
+			log.error(e)
 			sys.exit()
 
 		self.fragments = fragments
-		self.fragments.update(stash_fragments.GQL_FRAGMENTS)
+		self.fragments.update(gql_fragments.STASHAPP)
 
-		# create flags
-		self.create_on_missing_tag = False
-		self.create_on_missing_performer = False
-
-	def __resolveFragments(self, query):
-
-		fragmentReferences = list(set(re.findall(r'(?<=\.\.\.)\w+', query)))
-		fragments = []
-		for ref in fragmentReferences:
-			fragments.append({
-				"fragment": ref,
-				"defined": bool(re.search("fragment {}".format(ref), query))
-			})
-
-		if all([f["defined"] for f in fragments]):
-			return query
-		else:
-			for fragment in [f["fragment"] for f in fragments if not f["defined"]]:
-				if fragment not in self.fragments:
-					raise Exception(f'GraphQL error: fragment "{fragment}" not defined')
-				query += self.fragments[fragment]
-			return self.__resolveFragments(query)
-
-	def __callGraphQL(self, query, variables=None):
-
-		query = self.__resolveFragments(query)
-
-		json_request = {'query': query}
-		if variables is not None:
-			json_request['variables'] = variables
-
-		response = requests.post(self.url, json=json_request, headers=self.headers, cookies=self.cookies)
-		
-		if response.status_code == 200:
-			result = response.json()
-
-			if result.get("errors"):
-				for error in result["errors"]:
-					log.error(f"GraphQL error: {error}")
-			if result.get("error"):
-				for error in result["error"]["errors"]:
-					log.error(f"GraphQL error: {error}")
-			if result.get("data"):
-				scraped_markers = defaultdict(lambda: None)
-				scraped_markers.update(result)
-				return scraped_markers['data']
-		elif response.status_code == 401:
-			sys.exit("HTTP Error 401, Unauthorized. Cookie authentication most likely failed")
-		else:
-			raise ConnectionError(
-				"GraphQL query failed:{} - {}. Query: {}. Variables: {}".format(
-					response.status_code, response.content, query, variables)
-			)
 
 	def __match_alias_item(self, search, items):
 		item_matches = {}
@@ -144,7 +91,7 @@ class StashInterface:
 		return list(item_matches.values())
 
 	def call_gql(self, query, variables={}):
-		return self.__callGraphQL(query, variables)
+		return self._callGraphQL(query, variables)
 
 	def graphql_configuration(self):
 		query = """
@@ -155,7 +102,7 @@ class StashInterface:
 			}
 		"""
 		
-		result = self.__callGraphQL(query)
+		result = self._callGraphQL(query)
 		return result['configuration']
 
 	def metadata_scan(self, paths:list=[]):
@@ -175,7 +122,7 @@ class StashInterface:
 				'scanGeneratePhashes': True
 			}
 		}
-		result = self.__callGraphQL(query, variables)
+		result = self._callGraphQL(query, variables)
 		return result
 
 	# Tag CRUD
@@ -206,7 +153,7 @@ class StashInterface:
 			}
 		"""
 		variables = {'input': tag}
-		result = self.__callGraphQL(query, variables)
+		result = self._callGraphQL(query, variables)
 		return result["tagCreate"]
 	# TODO update_tag()
 	def destroy_tag(self, tag_id):
@@ -219,7 +166,7 @@ class StashInterface:
 			'id': tag_id
 		}}
 
-		self.__callGraphQL(query, variables)
+		self._callGraphQL(query, variables)
 
 	# Tags CRUD
 	def find_tags(self, q="", f={}):
@@ -244,7 +191,7 @@ class StashInterface:
 		"tag_filter": f
 		}
 		
-		result = self.__callGraphQL(query, variables)
+		result = self._callGraphQL(query, variables)
 		return result["findTags"]["tags"]
 
 	# Performer CRUD
@@ -296,7 +243,7 @@ class StashInterface:
 
 		variables = {'input': performer_data}
 
-		result = self.__callGraphQL(query, variables)
+		result = self._callGraphQL(query, variables)
 		return result['performerCreate']['id']
 	def update_performer(self, performer_data):
 		query = """
@@ -308,7 +255,7 @@ class StashInterface:
 		"""
 		variables = {'input': performer_data}
 
-		result = self.__callGraphQL(query, variables)
+		result = self._callGraphQL(query, variables)
 		return result['performerUpdate']['id']
 	# TODO delete_performer()
 
@@ -335,7 +282,7 @@ class StashInterface:
 			"performer_filter": f
 		}
 
-		result = self.__callGraphQL(query, variables)
+		result = self._callGraphQL(query, variables)
 		return result['findPerformers']['performers']
 
 	# Studio CRUD
@@ -379,7 +326,7 @@ class StashInterface:
 			'name': studio['name']
 		}
 
-		result = self.__callGraphQL(query, variables)
+		result = self._callGraphQL(query, variables)
 		studio['id'] = result['studioCreate']['id']
 
 		return self.update_studio(studio)
@@ -393,7 +340,7 @@ class StashInterface:
 		"""
 		variables = {'input': studio}
 
-		result = self.__callGraphQL(query, variables)
+		result = self._callGraphQL(query, variables)
 		return result["studioUpdate"]["id"]
 	# TODO delete_studio()
 
@@ -408,7 +355,7 @@ class StashInterface:
 		variables = {
 			"studio_id": studio.get("id")
 		}
-		result = self.__callGraphQL(query, variables)
+		result = self._callGraphQL(query, variables)
 		studio = result['findStudio']
 
 		if get_root_parent and studio and studio.get("parent_studio"):
@@ -438,7 +385,7 @@ class StashInterface:
 			"studio_filter": f
 		}
 
-		result = self.__callGraphQL(query, variables)
+		result = self._callGraphQL(query, variables)
 		return result['findStudios']['studios']
 
 	# Movie CRUD
@@ -469,7 +416,7 @@ class StashInterface:
 			}
 		"""
 		variables = {'name': name}
-		result = self.__callGraphQL(query, variables)
+		result = self._callGraphQL(query, variables)
 		movie['id'] = result['movieCreate']['id']
 		return self.update_movie(movie)
 	def update_movie(self, movie):
@@ -482,7 +429,7 @@ class StashInterface:
 		"""
 		variables = {'input': movie}
 
-		result = self.__callGraphQL(query, variables)
+		result = self._callGraphQL(query, variables)
 		return result['movieUpdate']['id']
 	# TODO delete_movie()
 
@@ -507,7 +454,7 @@ class StashInterface:
 			"movie_filter": f
 		}
 		
-		result = self.__callGraphQL(query, variables)
+		result = self._callGraphQL(query, variables)
 		return result['findMovies']['movies']
 
 	#Gallery CRUD
@@ -525,7 +472,7 @@ class StashInterface:
 		"""
 		variables = {'input': gallery_data}
 
-		result = self.__callGraphQL(query, variables)
+		result = self._callGraphQL(query, variables)
 		return result["galleryUpdate"]["id"]
 	# TODO delete_gallery()
 
@@ -551,7 +498,7 @@ class StashInterface:
 			"gallery_filter": f
 		}
 
-		result = self.__callGraphQL(query, variables)
+		result = self._callGraphQL(query, variables)
 		return result['findGalleries']['galleries']
 
 
@@ -569,7 +516,7 @@ class StashInterface:
 		"""
 		variables = {"scene_id": id}
 
-		result = self.__callGraphQL(query, variables)
+		result = self._callGraphQL(query, variables)
 		return result['findScene']
 	def update_scene(self, update_input):
 		query = """
@@ -581,7 +528,7 @@ class StashInterface:
 		"""
 		variables = {'input': update_input}
 
-		result = self.__callGraphQL(query, variables)
+		result = self._callGraphQL(query, variables)
 		return result["sceneUpdate"]["id"]
 	def destroy_scene(self, scene_id, delete_file=False):
 		query = """
@@ -597,7 +544,7 @@ class StashInterface:
 			}
 		}
 			
-		result = self.__callGraphQL(query, variables)
+		result = self._callGraphQL(query, variables)
 		return result['sceneDestroy']
 	
 	# BULK Scenes
@@ -619,7 +566,7 @@ class StashInterface:
 			"scene_filter": f
 		}
 			
-		result = self.__callGraphQL(query, variables)
+		result = self._callGraphQL(query, variables)
 		return result['findScenes']['scenes']
 	def update_scenes(self, updates_input):
 		query = """
@@ -631,7 +578,7 @@ class StashInterface:
 		"""
 		variables = {'input': updates_input}
 
-		result = self.__callGraphQL(query, variables)
+		result = self._callGraphQL(query, variables)
 		return result["bulkSceneUpdate"]
 	def destroy_scenes(self, scene_ids, delete_file=False):
 		query = """
@@ -647,7 +594,7 @@ class StashInterface:
 			}
 		}
 			
-		result = self.__callGraphQL(query, variables)
+		result = self._callGraphQL(query, variables)
 		return result['scenesDestroy']
 
 	def merge_scene_markers(self, target_scene_id: int, source_scene_ids: list):
@@ -666,7 +613,7 @@ class StashInterface:
 				}
 			"""
 			variables = { "scene_id": scene_id }
-			return self.__callGraphQL(query, variables)["findScene"]["scene_markers"]
+			return self._callGraphQL(query, variables)["findScene"]["scene_markers"]
 
 		def create_scene_marker(marker_create_input:dict):
 			query = """
@@ -677,7 +624,7 @@ class StashInterface:
 				}
 			"""
 			variables = { "marker_input": marker_create_input }
-			return self.__callGraphQL(query, variables)["sceneMarkerCreate"]
+			return self._callGraphQL(query, variables)["sceneMarkerCreate"]
 
 
 		existing_marker_timestamps = [marker["seconds"] for marker in get_scene_markers(target_scene_id)]
@@ -721,7 +668,7 @@ class StashInterface:
 				}
 			"""
 			variables = { "scene_id": source_id }
-			return self.__callGraphQL(query, variables)["findScene"]
+			return self._callGraphQL(query, variables)["findScene"]
 
 		merged_markers = self.merge_scene_markers(target_scene_id, source_scene_ids)
 		log.info(f"Merged {len(merged_markers)} markers from {source_scene_ids} to {target_scene_id}")
@@ -768,7 +715,7 @@ class StashInterface:
 			}
 		"""
 		
-		result = self.__callGraphQL(query)
+		result = self._callGraphQL(query)
 		return result["reloadScrapers"]
 	
 	def list_performer_scrapers(self, type):
@@ -784,7 +731,7 @@ class StashInterface:
 		  }
 		"""
 		ret = []
-		result = self.__callGraphQL(query)
+		result = self._callGraphQL(query)
 		for r in result["listPerformerScrapers"]:
 			if type in r["performer"]["supported_scrapes"]:
 				ret.append(r["id"])
@@ -802,7 +749,7 @@ class StashInterface:
 		  }
 		"""
 		ret = []
-		result = self.__callGraphQL(query)
+		result = self._callGraphQL(query)
 		for r in result["listSceneScrapers"]:
 			if type in r["scene"]["supported_scrapes"]:
 				ret.append(r["id"])
@@ -820,7 +767,7 @@ class StashInterface:
 		  }
 		"""
 		ret = []
-		result = self.__callGraphQL(query)
+		result = self._callGraphQL(query)
 		for r in result["listGalleryScrapers"]:
 			if type in r["gallery"]["supported_scrapes"]:
 				ret.append(r["id"])
@@ -838,7 +785,7 @@ class StashInterface:
 		  }
 		"""
 		ret = []
-		result = self.__callGraphQL(query)
+		result = self._callGraphQL(query)
 		for r in result["listMovieScrapers"]:
 			if type in r["movie"]["supported_scrapes"]:
 				ret.append(r["id"])
@@ -875,7 +822,7 @@ class StashInterface:
 				}
 			}
 		}
-		result = self.__callGraphQL(query, variables)
+		result = self._callGraphQL(query, variables)
 		if not result:
 			return None
 		scraped_scene_list = result["scrapeSingleScene"]
@@ -906,7 +853,7 @@ class StashInterface:
 			}
 		}
 
-		result = self.__callGraphQL(query, variables)
+		result = self._callGraphQL(query, variables)
 		return result["scrapeGallery"]
 	def scrape_performer(self, scraper_id:int, performer):
 		query = """query ScrapePerformer($scraper_id: ID!, $performer: ScrapedPerformerInput!) {
@@ -942,7 +889,7 @@ class StashInterface:
 			"weight": None,
 		}
 		}
-		result = self.__callGraphQL(query, variables)
+		result = self._callGraphQL(query, variables)
 		return result["scrapePerformer"]
 
 	# URL Scrape
@@ -955,7 +902,7 @@ class StashInterface:
 			}
 		"""
 		variables = { 'url': url }
-		scraped_scene = self.__callGraphQL(query, variables)['scrapeSceneURL']
+		scraped_scene = self._callGraphQL(query, variables)['scrapeSceneURL']
 
 		if not scraped_scene:
 			return None
@@ -982,7 +929,7 @@ class StashInterface:
 			}
 		"""
 		variables = { 'url': url }
-		result = self.__callGraphQL(query, variables)
+		result = self._callGraphQL(query, variables)
 
 		return result['scrapeMovieURL']
 	def scrape_gallery_url(self, url):
@@ -994,7 +941,7 @@ class StashInterface:
 			}
 		"""
 		variables = { 'url': url }
-		result = self.__callGraphQL(query, variables)
+		result = self._callGraphQL(query, variables)
 		return result['scrapeGalleryURL']        
 	def scrape_performer_url(self, url):
 		query = """
@@ -1005,10 +952,28 @@ class StashInterface:
 			}
 		"""
 		variables = { 'url': url }
-		result = self.__callGraphQL(query, variables)
+		result = self._callGraphQL(query, variables)
 		return result['scrapePerformerURL']
 
 	# Stash Box
+	def get_stashbox_connection(self, sbox_name):
+		query = """
+		query configuration{
+			configuration {
+				general {
+					stashBoxes {
+						name
+						endpoint
+						api_key
+					} 
+				}
+			}
+		}"""
+		result = self._callGraphQL(query)
+		for sbox_cfg in result["configuration"]["general"]["stashBoxes"]:
+			if sbox_cfg["name"] == sbox_name:
+				return sbox_cfg
+		return {}
 	def stashbox_scene_scraper(self, scene_ids, stashbox_index:int=0):
 		query = """
 			query QueryStashBoxScene($input: StashBoxSceneQueryInput!) {
@@ -1024,7 +989,7 @@ class StashInterface:
 			}
 		}
 
-		result = self.__callGraphQL(query, variables)
+		result = self._callGraphQL(query, variables)
 
 		return result["queryStashBoxScene"]
 	def stashbox_submit_scene_fingerprints(self, scene_ids, stashbox_index:int=0):
@@ -1040,7 +1005,7 @@ class StashInterface:
 			}
 		}
 
-		result = self.__callGraphQL(query, variables)
+		result = self._callGraphQL(query, variables)
 		return result['submitStashBoxFingerprints']
 
 
@@ -1073,5 +1038,5 @@ class StashInterface:
 		"""
 
 		variables = { "distance": distance }
-		result = self.__callGraphQL(query, variables)
+		result = self._callGraphQL(query, variables)
 		return result['findDuplicateScenes']
