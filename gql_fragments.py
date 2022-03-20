@@ -1,5 +1,5 @@
 
-GQL_FRAGMENTS = {
+STASHAPP = {
 	"scrapedScene":"""
 		fragment scrapedScene on ScrapedScene {
 		  title
@@ -407,4 +407,115 @@ GQL_FRAGMENTS = {
 			interfaces
 		}
 	""",
+}
+
+STASHBOX = {
+	"URLFragment":"""fragment URLFragment on URL {
+		url
+		type
+	}""",
+	"ImageFragment":"""fragment ImageFragment on Image {
+		id
+		url
+		width
+		height
+	}""",
+	"StudioFragment":"""fragment StudioFragment on Studio {
+		name
+		id
+		urls {
+			...URLFragment
+		}
+		images {
+			...ImageFragment
+		}
+	}""",
+	"TagFragment":"""fragment TagFragment on Tag {
+		name
+		id
+	}""",
+	"FuzzyDateFragment":"""fragment FuzzyDateFragment on FuzzyDate {
+		date
+		accuracy
+	}""",
+	"MeasurementsFragment":"""fragment MeasurementsFragment on Measurements {
+		band_size
+		cup_size
+		waist
+		hip
+	}""",
+	"BodyModificationFragment":"""fragment BodyModificationFragment on BodyModification {
+		location
+		description
+	}""",
+	"PerformerFragment":"""fragment PerformerFragment on Performer {
+		id
+		name
+		disambiguation
+		aliases
+		gender
+		merged_ids
+		urls {
+			...URLFragment
+		}
+		images {
+			...ImageFragment
+		}
+		birthdate {
+			...FuzzyDateFragment
+		}
+		ethnicity
+		country
+		eye_color
+		hair_color
+		height
+		measurements {
+			...MeasurementsFragment
+		}
+		breast_type
+		career_start_year
+		career_end_year
+		tattoos {
+			...BodyModificationFragment
+		}
+		piercings {
+			...BodyModificationFragment
+		}
+	}""",
+	"PerformerAppearanceFragment":"""fragment PerformerAppearanceFragment on PerformerAppearance {
+		as
+		performer {
+			...PerformerFragment
+		}
+	}""",
+	"FingerprintFragment":"""fragment FingerprintFragment on Fingerprint {
+		algorithm
+		hash
+		duration
+	}""",
+	"SceneFragment":"""fragment SceneFragment on Scene {
+		id
+		title
+		details
+		duration
+		date
+		urls {
+			...URLFragment
+		}
+		images {
+			...ImageFragment
+		}
+		studio {
+			...StudioFragment
+		}
+		tags {
+			...TagFragment
+		}
+		performers {
+			...PerformerAppearanceFragment
+		}
+		fingerprints {
+			...FingerprintFragment
+		}
+	}"""
 }
