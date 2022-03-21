@@ -3,9 +3,7 @@ from collections import defaultdict
 
 import requests
 
-import logging as log
-log.basicConfig(level=log.DEBUG, format='%(levelname)8s: %(message)s')
-
+from . import log
 
 class GQLWrapper:
 	port = ""
