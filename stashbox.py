@@ -24,7 +24,7 @@ class StashBoxInterface(GQLWrapper):
 		global log
 
 		conn = CaseInsensitiveDict(conn)
-		
+
 		log = conn.get("logger", None)
 		if not log:
 			raise Exception("No Logger Provided")
@@ -35,8 +35,9 @@ class StashBoxInterface(GQLWrapper):
 			# test query to check connection
 			r = self._callGraphQL("query Me{me {name email}}")
 			log.info(f'Connected to "{self.endpoint}" as {r["me"]["name"]} ({r["me"]["email"]})')
-		except Exception:
+		except Exception as e:
 			log.error(f"Could not connect to Stash-Box at {self.endpoint}")
+			log.error(e)
 			sys.exit()
 
 		self.fragments = fragments
