@@ -126,15 +126,26 @@ class StashInterface(GQLWrapper):
 		return result
 
 	# Tag CRUD
-	def find_tag(self, name_in, create=False):
-		name = name_in
-		if isinstance(name, dict):
-			if not name.get("name"):
-				return
-			name = name["name"]
+	def find_tag(self, tag_in, create=False):
 
-		if not isinstance(name, str):
-			log.warning(f'find_tag expects str or dict not {type(name_in)} "{name_in}"')
+		# assume input is a tag ID if int
+		if isinstance(tag_in, int):
+			query = "query FindTag($id: id) { findTag(id: $id) { ...stashTag } }"
+			variables = {"id": tag_in }
+			result = self._callGraphQL(query, variables)
+			return result["findTag"]
+
+		name = None
+		if isinstance(tag_in, dict):
+			if tag_in.get("stored_id"):
+				return self.find_tag(int(tag_in["stored_id"]))
+			if tag_in.get("name"):
+				name = tag_in["name"]
+		if isinstance(tag_in, str):
+			name = tag_in
+
+		if not name:
+			log.warning(f'find_tag expects int, str, or dict not {type(tag_in)} "{tag_in}"')
 			return
 
 		for tag in self.find_tags(q=name):
