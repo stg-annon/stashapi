@@ -4,6 +4,7 @@ from requests.structures import CaseInsensitiveDict
 
 from .classes import GQLWrapper
 from . import gql_fragments
+from . import log
 
 class StashBoxInterface(GQLWrapper):
 	port = None
@@ -22,11 +23,11 @@ class StashBoxInterface(GQLWrapper):
 
 		conn = CaseInsensitiveDict(conn)
 
-		log = conn.get("logger", None)
+		log = conn.get("logger", log)
 		if not log:
 			raise Exception("No Logger Provided")
 
-		self.endpoint = conn.get('endpoint', "https://stashdb.org/graphql")
+		self.url = conn.get('endpoint', "https://stashdb.org/graphql")
 
 		api_key = conn.get('api_key', None)
 		if not api_key:
@@ -35,14 +36,14 @@ class StashBoxInterface(GQLWrapper):
 		try:
 			# test query to check connection
 			r = self._callGraphQL("query Me{me {name email}}")
-			log.info(f'Connected to "{self.endpoint}" as {r["me"]["name"]} ({r["me"]["email"]})')
+			log.info(f'Connected to "{self.url}" as {r["me"]["name"]} ({r["me"]["email"]})')
 		except Exception as e:
-			log.error(f"Could not connect to Stash-Box at {self.endpoint}")
+			log.error(f"Could not connect to Stash-Box at {self.url}")
 			log.error(e)
 			sys.exit()
 
 		self.fragments = fragments
-		self.fragments.update(gql_fragments)
+		self.fragments.update(gql_fragments.STASHBOX)
 
 	def get_scene_last_updated(self, scene_id):
 		query = """query sceneLastUpdated($id: ID!) {
