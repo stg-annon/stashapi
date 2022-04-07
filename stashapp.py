@@ -1,18 +1,12 @@
 import re, sys
-from enum import IntEnum
 
 from requests.structures import CaseInsensitiveDict
 
 from . import gql_fragments
 from . import log as stash_logger
 
+from .types import PhashDistance
 from .classes import GQLWrapper
-
-class PhashDistance(IntEnum):
-	EXACT = 0
-	HIGH = 4
-	MEDIUM = 8
-	LOW = 10
 
 class StashInterface(GQLWrapper):
 	port = ""
