@@ -5,9 +5,6 @@ from requests.structures import CaseInsensitiveDict
 from .classes import GQLWrapper
 from . import gql_fragments
 
-# add default fallback key here
-STASHDB_DEFAULT_KEY=""
-
 class StashBoxInterface(GQLWrapper):
 	port = None
 	url = None
@@ -30,7 +27,11 @@ class StashBoxInterface(GQLWrapper):
 			raise Exception("No Logger Provided")
 
 		self.endpoint = conn.get('endpoint', "https://stashdb.org/graphql")
-		self.headers['ApiKey'] = conn.get('api_key', STASHDB_DEFAULT_KEY)
+
+		api_key = conn.get('api_key', None)
+		if not api_key:
+			raise Exception("no api_key provided")
+		self.headers['ApiKey'] = api_key
 		try:
 			# test query to check connection
 			r = self._callGraphQL("query Me{me {name email}}")
