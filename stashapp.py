@@ -960,6 +960,63 @@ class StashInterface(GQLWrapper):
 		result = self._callGraphQL(query, variables)
 		return result['scrapePerformerURL']
 
+	#Identify
+	def get_identify_config(self):
+		query= """
+		query getIdentifyConfig{
+			configuration {
+				defaults {
+					identify {
+						options {
+							fieldOptions {
+								field
+								strategy
+								createMissing
+							}
+							setCoverImage
+							setOrganized
+							includeMalePerformers
+						}
+					}
+				}
+			}
+		}"""
+		result = self._callGraphQL(query)
+		return result['configuration']['defaults']['identify']['options']
+	def get_identify_source_config(self, source_identifier):
+		query= """
+		query getIdentifySourceConfig{
+			configuration {
+				defaults {
+					identify {
+						sources {
+							source {
+								stash_box_endpoint
+								scraper_id
+							}
+							options {
+								fieldOptions {
+									field
+									strategy
+									createMissing
+								}
+								setCoverImage
+								setOrganized
+								includeMalePerformers
+							}
+						}
+					}
+				}
+			}
+		}"""
+		configs = self._callGraphQL(query)['configuration']['defaults']['identify']['sources']
+		for c in configs:
+			if c['source']['stash_box_endpoint'] == source_identifier:
+				return c['options']
+			if c['source']['scraper_id'] == source_identifier:
+				return c['options']
+		return None
+
 	# Stash Box
 	def get_stashbox_connection(self, sbox_name):
 		query = """
@@ -1012,7 +1069,26 @@ class StashInterface(GQLWrapper):
 
 		result = self._callGraphQL(query, variables)
 		return result['submitStashBoxFingerprints']
-
+	def stashbox_identify_task(self, scene_ids, stashbox_endpoint="https://stashdb.org/graphql"):
+		query = """
+			mutation MetadataIdentify($input: IdentifyMetadataInput!) {
+			metadataIdentify(input: $input)
+			}
+		"""
+		variables = {}
+		variables["input"] = {
+			"options": self.get_identify_config(),
+			"sceneIDs": scene_ids,
+			"sources": [
+				{
+					"options": self.get_identify_source_config(stashbox_endpoint),
+					"source": {
+						"stash_box_endpoint": stashbox_endpoint
+					}
+				}
+			]
+		}
+		return self._callGraphQL(query, variables)
 
 	def find_duplacate_scenes(self, distance: PhashDistance=PhashDistance.EXACT):
 		query = """
