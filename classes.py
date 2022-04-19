@@ -1,8 +1,8 @@
 import re, sys
-from collections import defaultdict
 
 import requests
 
+from .tools import defaultify
 from . import log
 
 class GQLWrapper:
@@ -58,9 +58,8 @@ class GQLWrapper:
 				for error in result["error"]["errors"]:
 					log.error(f"GraphQL error: {error}")
 			if result.get("data"):
-				scraped_markers = defaultdict(lambda: None)
-				scraped_markers.update(result)
-				return scraped_markers['data']
+				result_data = defaultify(result)
+				return result_data['data']
 		elif response.status_code == 401:
 			sys.exit("HTTP Error 401, Unauthorized. Cookie authentication most likely failed")
 		else:
