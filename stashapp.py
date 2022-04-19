@@ -1090,7 +1090,7 @@ class StashInterface(GQLWrapper):
 		}
 		return self._callGraphQL(query, variables)
 
-	def find_duplacate_scenes(self, distance: PhashDistance=PhashDistance.EXACT):
+	def find_duplicate_scenes(self, distance: PhashDistance=PhashDistance.EXACT):
 		query = """
 			query FindDuplicateScenes($distance: Int) {
 				  findDuplicateScenes(distance: $distance) {
