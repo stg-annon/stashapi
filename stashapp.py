@@ -2,6 +2,8 @@ import re, sys
 
 from requests.structures import CaseInsensitiveDict
 
+from .stashbox import StashBoxInterface
+
 from . import gql_fragments
 from . import log as stash_logger
 
@@ -48,6 +50,8 @@ class StashInterface(GQLWrapper):
 			log.error(f"Could not connect to Stash at {self.url}")
 			log.error(e)
 			sys.exit()
+
+		self.sbox_endpoints = {}
 
 		self.fragments = fragments
 		self.fragments.update(gql_fragments.STASHAPP)
@@ -1018,7 +1022,22 @@ class StashInterface(GQLWrapper):
 		return None
 
 	# Stash Box
+	def get_stashbox_interface(self, stashbox_target) -> StashBoxInterface:
+		for endpoint, interface in self.sbox_endpoints.items():
+			if stashbox_target in endpoint:
+				return interface
+		sbox_config = {"logger": log}
+		sbox_config.update(self.get_stashbox_connection(stashbox_target))
+		sbox = StashBoxInterface(sbox_config)
+		self.sbox_endpoints[sbox.url] = sbox
+		return sbox
 	def get_stashbox_connection(self, sbox_name):
+		stash_boxes = self.get_stashbox_connections()
+		for sbox_cfg in stash_boxes:
+			if sbox_cfg["name"] == sbox_name:
+				return sbox_cfg
+		return {}
+	def get_stashbox_connections(self):
 		query = """
 		query configuration{
 			configuration {
@@ -1032,10 +1051,7 @@ class StashInterface(GQLWrapper):
 			}
 		}"""
 		result = self._callGraphQL(query)
-		for sbox_cfg in result["configuration"]["general"]["stashBoxes"]:
-			if sbox_cfg["name"] == sbox_name:
-				return sbox_cfg
-		return {}
+		return result["configuration"]["general"]["stashBoxes"]
 	def stashbox_scene_scraper(self, scene_ids, stashbox_index:int=0):
 		query = """
 			query QueryStashBoxScene($input: StashBoxSceneQueryInput!) {
