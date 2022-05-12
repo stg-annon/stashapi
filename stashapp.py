@@ -178,7 +178,7 @@ class StashInterface(GQLWrapper):
 		self._callGraphQL(query, variables)
 
 	# Tags CRUD
-	def find_tags(self, q="", f={}):
+	def find_tags(self, q="", f={}, tag_fragment=None):
 		query = """
 			query FindTags($filter: FindFilterType, $tag_filter: TagFilterType) {
 				findTags(filter: $filter, tag_filter: $tag_filter) {
@@ -189,6 +189,8 @@ class StashInterface(GQLWrapper):
 				}
 			}
 		"""
+		if tag_fragment:
+			query = re.sub(r'\.\.\.stashTag', tag_fragment, query)
 
 		variables = {
 		"filter": {
@@ -269,7 +271,7 @@ class StashInterface(GQLWrapper):
 	# TODO delete_performer()
 
 	# Performers CRUD
-	def find_performers(self, q="", f={}):
+	def find_performers(self, q="", f={}, performer_fragment=None):
 		query =  """
 			query FindPerformers($filter: FindFilterType, $performer_filter: PerformerFilterType) {
 				findPerformers(filter: $filter, performer_filter: $performer_filter) {
@@ -280,6 +282,8 @@ class StashInterface(GQLWrapper):
 				}
 			}
 		"""
+		if performer_fragment:
+			query = re.sub(r'\.\.\.stashPerformer', performer_fragment, query)
 
 		variables = {
 			"filter": {
@@ -372,7 +376,7 @@ class StashInterface(GQLWrapper):
 		return studio
 		
 
-	def find_studios(self, q="", f={}):
+	def find_studios(self, q="", f={}, studio_fragment=None):
 		query =  """
 		query FindStudios($filter: FindFilterType, $studio_filter: StudioFilterType) {
 			findStudios(filter: $filter, studio_filter: $studio_filter) {
@@ -383,6 +387,8 @@ class StashInterface(GQLWrapper):
 			}
 		}
 		"""
+		if studio_fragment:
+			query = re.sub(r'\.\.\.stashStudio', studio_fragment, query)
 
 		variables = {
 			"filter": {
@@ -443,7 +449,7 @@ class StashInterface(GQLWrapper):
 	# TODO delete_movie()
 
 	# Movies CRUD
-	def find_movies(self, q="", f={}):
+	def find_movies(self, q="", f={}, movie_fragment=None):
 		query = """
 			query FindMovies($filter: FindFilterType, $movie_filter: MovieFilterType) {
 				findMovies(filter: $filter, movie_filter: $movie_filter) {
@@ -454,6 +460,8 @@ class StashInterface(GQLWrapper):
 				}
 			}
 		"""
+		if movie_fragment:
+			query = re.sub(r'\.\.\.stashMovie', movie_fragment, query)
 
 		variables = {
 			"filter": {
@@ -486,7 +494,7 @@ class StashInterface(GQLWrapper):
 	# TODO delete_gallery()
 
 	# BULK Gallery
-	def find_galleries(self, q="", f={}):
+	def find_galleries(self, q="", f={}, gallery_fragment=None):
 		query = """
 			query FindGalleries($filter: FindFilterType, $gallery_filter: GalleryFilterType) {
 				findGalleries(gallery_filter: $gallery_filter, filter: $filter) {
@@ -497,6 +505,9 @@ class StashInterface(GQLWrapper):
 				}
 			}
 		"""
+		if gallery_fragment:
+			query = re.sub(r'\.\.\.stashGallery', gallery_fragment, query)
+
 		variables = {
 			"filter": {
 				"q": q,
@@ -559,7 +570,7 @@ class StashInterface(GQLWrapper):
 	# BULK Scenes
 	def create_scenes(self, paths:list=[]):
 		return self.metadata_scan(paths)
-	def find_scenes(self, f={}):
+	def find_scenes(self, f={}, scene_fragment=None):
 		query = """
 		query FindScenes($filter: FindFilterType, $scene_filter: SceneFilterType, $scene_ids: [Int!]) {
 			findScenes(filter: $filter, scene_filter: $scene_filter, scene_ids: $scene_ids) {
@@ -570,6 +581,9 @@ class StashInterface(GQLWrapper):
 			}
 		}
 		"""
+		if scene_fragment:
+			query = re.sub(r'\.\.\.stashScene', scene_fragment, query)
+
 		variables = {
 			"filter": { "per_page": -1 },
 			"scene_filter": f
@@ -1110,27 +1124,9 @@ class StashInterface(GQLWrapper):
 		query = """
 			query FindDuplicateScenes($distance: Int) {
 				  findDuplicateScenes(distance: $distance) {
-					...SlimSceneData
+					...stashSceneSlim
 					__typename
 				  }
-			}
-			fragment SlimSceneData on Scene {
-				id
-				title
-				path
-				oshash
-				phash
-				file {
-				size
-				duration
-				video_codec
-				width
-				height
-				framerate
-				bitrate
-				__typename
-				}
-				__typename
 			}
 		"""
 
