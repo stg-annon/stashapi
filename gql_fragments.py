@@ -186,6 +186,26 @@ STASHAPP = {
 		  __typename
 		}
 	""",
+	"stashSceneSlim":"""
+		fragment stashSceneSlim on Scene {
+			id
+			title
+			path
+			oshash
+			phash
+			file {
+			size
+			duration
+			video_codec
+			width
+			height
+			framerate
+			bitrate
+			__typename
+			}
+			__typename
+		}
+	""",
 	"stashGallery":"""
 		fragment stashGallery on Gallery {
 			id
