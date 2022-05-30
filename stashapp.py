@@ -816,8 +816,27 @@ class StashInterface(GQLWrapper):
 
 	# Fragment Scrape
 	def scrape_scene(self, scraper_id:int, scene):
-		
-		if not isinstance(scene, dict) or not scene.get("id"):
+
+		scene_id = None
+		scene_input = {}
+
+		try:
+			if isinstance(scene, str):
+				scene_id = int(scene)
+			if isinstance(scene, int):
+				scene_id = scene
+			if isinstance(scene, dict):
+				scene_id = int(scene.get("id"))
+				scene_input = {
+					"title": scene["title"],
+					"details": scene["details"],
+					"url": scene["url"],
+					"date": scene["date"],
+					"remote_site_id": None
+				}
+			if not isinstance(scene_id, int):
+				raise Exception("scene_id must be an int")
+		except:
 			log.warning('Unexpected Object passed to scrape_single_scene')
 			log.warning(f'Type: {type(scene)}')
 			log.warning(f'{scene}')
@@ -835,14 +854,8 @@ class StashInterface(GQLWrapper):
 			},
 			"input": {
 				"query": None,
-				"scene_id": scene["id"],
-				"scene_input": {
-					"title": scene["title"],
-					"details": scene["details"],
-					"url": scene["url"],
-					"date": scene["date"],
-					"remote_site_id": None
-				}
+				"scene_id": scene_id,
+				"scene_input": scene_input
 			}
 		}
 		result = self._callGraphQL(query, variables)
