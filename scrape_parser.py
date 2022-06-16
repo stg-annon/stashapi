@@ -2,20 +2,16 @@ import datetime
 
 from . import log as StashLogger
 
-from .stashapp import StashInterface
 from .types import Gender
-
-# returns dictionary where values are not None
-def clean_dict(to_clean):
-	return {k:v for k,v in to_clean.items() if v and "__" not in k}
+from .tools import clean_dict
 
 class ScrapeParser:
 
-	def __init__(self, stash:StashInterface, logger=StashLogger, create_missing_tags:bool=False, create_missing_studios:bool=False):
+	def __init__(self, stash_interface, logger=StashLogger, create_missing_tags:bool=False, create_missing_studios:bool=False):
 		global log
 		log = logger
 
-		self.stash = stash
+		self.stash = stash_interface
 		self.create_missing_tags = create_missing_tags
 		self.create_missing_studios = create_missing_studios
 
@@ -340,17 +336,57 @@ class ScrapeParser:
 			del scene["image"]
 
 		if scene.get("studio"):
-			scene["studio"] = self.studio_from_scrape(scene["studio"])
+			scene["studio_id"] = self.studio_from_scrape(scene["studio"]).get("id")
+			del scene["studio"]
 
 		if scene.get("tags"):
-			scene["tags_ids"] = [self.tag_from_scape(t)["id"] for t in scene["tags"]]
+			scene["tag_ids"] = [self.tag_from_scape(t)["id"] for t in scene["tags"]]
 			del scene["tags"]
 
 		if scene.get("performers"):
-			scene["performer_ids"] = [self.performer_from_scrape(p)["id"] for p in scene["performers"]]
+			scene["performer_ids"] = []
+			for p in scene["performers"]:
+				performer = self.performer_from_scrape(p)
+				if performer.get("id"):
+					scene["performer_ids"].append(performer["id"])
+				else:
+					log.debug(f"could not match {p}")
 			del scene["performers"]
 
 		if scene.get("movies"):
 			scene["movies"] = [self.movie_from_scrape(m) for m in scene["movies"]]
 
 		return clean_dict(scene)
+
+
+	def localize_scraped_scene(self, scraped_scene):
+		# casts ScrapedScene to ScrapedScene while resolving aliases
+
+		"""
+		v0.12.0-40
+		type ScrapedScene {
+			title: String
+			details: String
+			url: String
+			date: String
+			image: String
+			file: SceneFileType
+			studio: ScrapedStudio
+			tags: [ScrapedTag!]
+			performers: [ScrapedPerformer!]
+			movies: [ScrapedMovie!]
+			remote_site_id: String
+			duration: Int
+			fingerprints: [StashBoxFingerprint!]
+		}
+		"""
+		if not scraped_scene:
+			return
+
+		if scraped_scene.get("performers"):
+			for performer in scraped_scene["performers"]:
+				performer_match = self.stash.find_performer(performer)
+				if performer_match:
+					performer["stored_id"] = performer_match["id"]
+
+		return scraped_scene
