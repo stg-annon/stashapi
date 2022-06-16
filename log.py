@@ -24,7 +24,7 @@ def __log(level_char: bytes, s):
 		s = str(s)
 
 	# truncate any base64 data before logging
-	s = re.sub(r"data:image.+?;base64(.+?')","[...]",str(s))
+	s = re.sub(r'data:image.+?;base64(.+?")','[...]"',str(s))
 
 	for line in s.split("\n"):
 		print(level_char, line, file=sys.stderr, flush=True)
@@ -47,3 +47,12 @@ def error(s):
 def progress(p):
 	progress = min(max(0, p), 1)
 	__log(b'p', str(progress))
+
+def exit(msg=None, err=None):
+	if msg is None and err is None:
+		msg = "ok"
+	print(json.dumps({
+		"output": msg,
+		"error": err
+	}))
+	sys.exit()
