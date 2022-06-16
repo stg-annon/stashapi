@@ -63,6 +63,7 @@ class StashInterface(GQLWrapper):
 			if re.match(rf'{search}$', item["name"], re.IGNORECASE):
 				log.debug(f'matched "{search}" to "{item["name"]}" ({item["id"]}) using primary name')
 				item_matches[item["id"]] = item
+				break
 			if not item["aliases"]:
 				continue
 			for alias in item["aliases"]:
@@ -77,6 +78,7 @@ class StashInterface(GQLWrapper):
 			if re.match(rf'{search}$', item["name"], re.IGNORECASE):
 				log.info(f'matched "{search}" to "{item["name"]}" ({item["id"]}) using primary name')
 				item_matches[item["id"]] = item
+				break
 			if not item["aliases"]:
 				continue
 			for alias in item["aliases"]:
