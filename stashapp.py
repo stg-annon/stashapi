@@ -656,41 +656,42 @@ class StashInterface(GQLWrapper):
 		result = self._callGraphQL(query, variables)
 		return result['scenesDestroy']
 
+	def find_scene_markers(self, scene_id, fragment=None) -> list:
+		query = """
+			query FindSceneMarkers($scene_id: ID) {
+				findScene(id: $scene_id) {
+					scene_markers {
+						...stashSceneMarker
+					}
+				}
+			}
+		"""
+		if fragment:
+			query = re.sub(r'\.\.\.stashSceneMarker', fragment, query)
+
+		variables = { "scene_id": scene_id }
+		return self._callGraphQL(query, variables)["findScene"]["scene_markers"]
+
+	def create_scene_marker(self, marker_create_input:dict, fragment=None):
+		query = """
+			mutation SceneMarkerCreate($marker_input: SceneMarkerCreateInput!) {
+				sceneMarkerCreate(input: $marker_input) {
+					...stashSceneMarker
+				}
+			}
+		"""
+		if fragment:
+			query = re.sub(r'\.\.\.stashSceneMarker', fragment, query)
+			
+		variables = { "marker_input": marker_create_input }
+		return self._callGraphQL(query, variables)["sceneMarkerCreate"]
+
 	def merge_scene_markers(self, target_scene_id: int, source_scene_ids: list):
-
-		def get_scene_markers(scene_id) -> list:
-			query = """
-				query GetSceneMarkers($scene_id: ID) {
-					findScene(id: $scene_id) {
-						scene_markers {
-							title
-							seconds
-							primary_tag { id }
-							tags { id }
-						}
-					}
-				}
-			"""
-			variables = { "scene_id": scene_id }
-			return self._callGraphQL(query, variables)["findScene"]["scene_markers"]
-
-		def create_scene_marker(marker_create_input:dict):
-			query = """
-				mutation SceneMarkerCreate($marker_input: SceneMarkerCreateInput!) {
-					sceneMarkerCreate(input: $marker_input) {
-						id
-					}
-				}
-			"""
-			variables = { "marker_input": marker_create_input }
-			return self._callGraphQL(query, variables)["sceneMarkerCreate"]
-
-
-		existing_marker_timestamps = [marker["seconds"] for marker in get_scene_markers(target_scene_id)]
+		existing_marker_timestamps = [marker["seconds"] for marker in self.find_scene_markers(target_scene_id)]
 
 		markers_to_merge = []
 		for source_scene_id in source_scene_ids:
-			markers_to_merge.extend(get_scene_markers(source_scene_id))
+			markers_to_merge.extend(self.find_scene_markers(source_scene_id))
 
 		created_markers = []
 		for marker in markers_to_merge:
@@ -698,7 +699,7 @@ class StashInterface(GQLWrapper):
 				# skip existing marker
 				# TODO merge missing data between markers
 				continue
-			marker_id = create_scene_marker({
+			marker_id = self.create_scene_marker({
 				"title": marker["title"],
 				"seconds": marker["seconds"],
 				"scene_id": target_scene_id,
