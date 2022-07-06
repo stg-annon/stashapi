@@ -505,7 +505,26 @@ class StashInterface(GQLWrapper):
 
 		result = self._callGraphQL(query, variables)
 		return result["galleryUpdate"]["id"]
-	# TODO delete_gallery()
+	def destroy_gallery(self, gallery_ids, delete_file=False, delete_generated=True):
+		if isinstance(gallery_ids, int):
+			gallery_ids = [gallery_ids]
+		if not isinstance(gallery_ids, list):
+			raise Exception("destroy_gallery only accepts an int or list of ints")
+
+		query = """
+		mutation galleryDestroy($input:GalleryDestroyInput!) {
+			galleryDestroy(input: $input)
+		}
+		"""
+		variables = {
+			"input": {
+				"delete_file": delete_file,
+				"delete_generated": delete_generated,
+				"ids": gallery_ids
+			}
+		}
+		result = self._callGraphQL(query, variables)
+		return result['galleryDestroy']
 
 	# BULK Gallery
 	def find_galleries(self, q="", f={}, fragment=None):
