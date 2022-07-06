@@ -752,7 +752,13 @@ class StashInterface(GQLWrapper):
 			}
 			if source_data.get("studio"):
 				scene_update["studio_id"] = source_data["studio"]["id"]
-			if source_data.get("date") and target_meta.get("date", "9999-99-99") > source_data["date"]:
+
+
+			sdate = source_data.get("date")
+			tdate = target_meta.get("date", "9999-99-99")
+			if tdate == None:
+				tdate = "9999-99-99"
+			if sdate and tdate > sdate:
 				scene_update["date"] = source_data["date"]
 			if source_data.get("url"):
 				scene_update["url"] = source_data["url"]
