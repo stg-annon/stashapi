@@ -21,7 +21,7 @@ class ScrapeParser:
 			return None
 		
 		if scraped_item["__typename"] == "ScrapedTag":
-			return self.tag_from_scape(scraped_item)
+			return self.tag_from_scrape(scraped_item)
 		if scraped_item["__typename"] == "ScrapedGallery":
 			return self.gallery_from_scrape(scraped_item)
 		if scraped_item["__typename"] == "ScrapedStudio":
@@ -33,7 +33,7 @@ class ScrapeParser:
 		if scraped_item["__typename"] == "ScrapedScene":
 			return self.scene_from_scrape(scraped_item)
 
-	def tag_from_scape(self, tag):
+	def tag_from_scrape(self, tag):
 		"""
 		v0.12.0-40
 		type ScrapedTag {
@@ -50,12 +50,11 @@ class ScrapeParser:
 			child_ids: [ID!]
 		}
 		"""
-
 		if tag.get("stored_id"):
 			tag["id"] = tag["stored_id"]
 			del tag["stored_id"]
 		elif self.create_missing_tags:
-			return self.stash.create_tag(tag)
+			return self.stash.create_tag({"name":tag["name"]})
 
 		return clean_dict(tag)
 
@@ -89,7 +88,7 @@ class ScrapeParser:
 		"""
 
 		if gallery.get("tags"):
-			gallery["tag_ids"] = [self.tag_from_scape(t)["id"] for t in gallery["tags"]]
+			gallery["tag_ids"] = [self.tag_from_scrape(t)["id"] for t in gallery["tags"]]
 			del gallery["tags"]
 		if gallery.get("performers"):
 			gallery["performer_ids"] = [self.performer_from_scrape(p)["id"] for p in gallery["performers"]]
@@ -262,7 +261,7 @@ class ScrapeParser:
 			performer["image"] = performer["images"][0]
 			
 		if performer.get("tags"):
-			performer["tag_ids"] = [self.tag_from_scape(t)["id"] for t in performer.get("tags")]
+			performer["tag_ids"] = [self.tag_from_scrape(t)["id"] for t in performer.get("tags")]
 			del performer["tags"]
 
 		if performer.get("weight"):
@@ -340,7 +339,7 @@ class ScrapeParser:
 			del scene["studio"]
 
 		if scene.get("tags"):
-			scene["tag_ids"] = [self.tag_from_scape(t)["id"] for t in scene["tags"]]
+			scene["tag_ids"] = [self.tag_from_scrape(t).get("id") for t in scene["tags"]]
 			del scene["tags"]
 
 		if scene.get("performers"):
