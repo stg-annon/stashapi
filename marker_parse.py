@@ -111,7 +111,7 @@ def import_scene_markers(stash:StashInterface, scraped_markers, stash_scene_id, 
             log.debug(f'Skipped Tag: {scraped.primary_tag["name"]} {scraped.seconds} +/- {closest_allowed_common_marker}(s) of {within_limit}')
             continue
             
-        stash_marker = stash.create_scene_marker(stash, scraped.gql_input(), fragment=SCENE_MARKER_FRAGMENT)
+        stash_marker = stash.create_scene_marker(scraped.gql_input(), SCENE_MARKER_FRAGMENT)
 
         # log.debug(f'created marker {m.site_name} ({m.primary_tag["name"]}) @{scraped_timestamp}')
         new_marker_list.append(stash_marker)
