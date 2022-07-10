@@ -1090,7 +1090,7 @@ class StashInterface(GQLWrapper):
 		return sbox
 	def get_stashbox_connection(self, sbox_endpoint):
 		for sbox_cfg in self.get_stashbox_connections():
-			if sbox_cfg["enpoint"] == sbox_endpoint:
+			if sbox_endpoint in sbox_cfg["endpoint"]:
 				return sbox_cfg
 		return {}
 	def get_stashbox_connections(self):
