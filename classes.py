@@ -1,6 +1,6 @@
-import re, sys
-
+import re, sys, json, sqlite3
 import requests
+from pathlib import Path
 
 from .tools import defaultify
 from . import log
@@ -67,3 +67,17 @@ class GQLWrapper:
 				"GraphQL query failed:{} - {}. Query: {}. Variables: {}".format(
 					response.status_code, response.content, query, variables)
 			)
+
+class SQLiteWrapper:
+	conn = None
+
+	def __init__(self, db_filepath) -> None:
+		# generate uri for read-only connection, all write operations should be done from the API
+		db_uri = f"{Path(db_filepath).as_uri()}?mode=ro"
+		self.conn = sqlite3.connect(db_uri, uri=True)
+
+	def query(self, query, args=(), one=False):
+		cur = self.conn.cursor()
+		cur.execute(query, args)
+		r = [dict((cur.description[i][0], value) for i, value in enumerate(row)) for row in cur.fetchall()]
+		return (r[0] if r else None) if one else r

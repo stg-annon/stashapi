@@ -9,6 +9,7 @@ from . import log as stash_logger
 
 from .types import PhashDistance
 from .classes import GQLWrapper
+from .classes import SQLiteWrapper
 
 class StashInterface(GQLWrapper):
 	port = ""
@@ -51,6 +52,11 @@ class StashInterface(GQLWrapper):
 			log.error(e)
 			sys.exit()
 
+		self.sql = None
+		if domain in ['localhost', '127.0.0.1']:
+			sql_file = self.call_gql("query dbPath{configuration{general{databasePath}}}")
+			self.sql = SQLiteWrapper(sql_file["configuration"]["general"]["databasePath"])
+			
 		self.sbox_endpoints = {}
 
 		self.fragments = fragments
