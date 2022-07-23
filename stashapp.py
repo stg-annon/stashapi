@@ -1081,6 +1081,7 @@ class StashInterface(GQLWrapper):
 
 	# Stash Box
 	def get_stashbox_interface(self, sbox_target_endpoint) -> StashBoxInterface:
+		# intended for internal use for when this weapper wants to query one of many stashbox endpoints for a given stash_id
 		for endpoint, sbox in self.sbox_endpoints.items():
 			if sbox_target_endpoint == endpoint:
 				return sbox
@@ -1088,10 +1089,14 @@ class StashInterface(GQLWrapper):
 		sbox = StashBoxInterface(sbox_config)
 		self.sbox_endpoints[sbox.url] = sbox
 		return sbox
-	def get_stashbox_connection(self, sbox_endpoint):
-		for sbox_cfg in self.get_stashbox_connections():
+	def get_stashbox_connection(self, sbox_endpoint, return_index=False):
+		for sbox_idx, sbox_cfg in enumerate(self.get_stashbox_connections()):
 			if sbox_endpoint in sbox_cfg["endpoint"]:
-				return sbox_cfg
+				if return_index:
+					return sbox_idx
+				else:
+					return sbox_cfg			
+		log.error(f'could not find stash-box conection to "{sbox_endpoint}"')
 		return {}
 	def get_stashbox_connections(self):
 		query = """
@@ -1161,6 +1166,19 @@ class StashInterface(GQLWrapper):
 			]
 		}
 		return self._callGraphQL(query, variables)
+
+	def submit_scene_draft(self, scene_id, sbox_index=0):
+		query = """
+			mutation submitScenesToStashbox($input: StashBoxDraftSubmissionInput!) {
+				  submitStashBoxSceneDraft(input: $input)
+			}
+		"""
+		variables = { "input": {
+			"id": scene_id,
+			"stash_box_index": sbox_index
+		} }
+		result = self._callGraphQL(query, variables)
+		return result['submitStashBoxSceneDraft']
 
 	def find_duplicate_scenes(self, distance: PhashDistance=PhashDistance.EXACT, fragment=None):
 		query = """
