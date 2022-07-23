@@ -214,7 +214,7 @@ class StashInterface(GQLWrapper):
 		return result["findTags"]["tags"]
 
 	# Performer CRUD
-	def find_performer(self, performer_data, create_missing=False):
+	def find_performer(self, performer_data, create=False):
 
 		# assume input is a tag ID if int
 		if isinstance(performer_data, int):
@@ -260,7 +260,7 @@ class StashInterface(GQLWrapper):
 			return performer_matches[0] 
 
 
-		if create_missing:
+		if create:
 			log.info(f'Create missing performer: "{name}"')
 			return self.create_performer(performer_data)
 	def create_performer(self, performer_data):
@@ -319,7 +319,7 @@ class StashInterface(GQLWrapper):
 		return result['findPerformers']['performers']
 
 	# Studio CRUD
-	def find_studio(self, studio, create_missing=False, domain_pattern=r'[^.]*\.[^.]{2,3}(?:\.[^.]{2,3})?$'):
+	def find_studio(self, studio, create=False, domain_pattern=r'[^.]*\.[^.]{2,3}(?:\.[^.]{2,3})?$'):
 		if not studio.get("name"):
 			return None
 
@@ -344,7 +344,7 @@ class StashInterface(GQLWrapper):
 		elif len(studio_matches) > 0:
 			return studio_matches[0] 
 
-		if create_missing:
+		if create:
 			log.info(f'Create missing studio: "{name}"')
 			return self.create_studio(studio)
 	def create_studio(self, studio):
@@ -424,7 +424,7 @@ class StashInterface(GQLWrapper):
 		return result['findStudios']['studios']
 
 	# Movie CRUD
-	def find_movie(self, movie, create_missing=False):
+	def find_movie(self, movie, create=False):
 
 		name = movie["name"]
 		movies = self.find_movies(q=name)
@@ -438,7 +438,7 @@ class StashInterface(GQLWrapper):
 				log.warning(f'Too many matches for movie "{name}"')
 				return None
 
-		if create_missing:
+		if create:
 			log.info(f'Creating missing Movie "{name}"')
 			return self.create_movie(movie)
 	def create_movie(self, movie):
