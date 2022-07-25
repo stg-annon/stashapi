@@ -708,6 +708,15 @@ class StashInterface(GQLWrapper):
 			
 		variables = { "marker_input": marker_create_input }
 		return self._callGraphQL(query, variables)["sceneMarkerCreate"]
+	def destroy_scene_markers(self, scene_id:int):
+		query = """
+			mutation DestroySceneMarkers($marker_id: ID!) {
+				sceneMarkerDestroy(id: $marker_id)
+			}
+		"""
+		scene_markers = self.find_scene_markers(scene_id, fragment="id")
+		for marker in scene_markers:
+			self._callGraphQL(query, {"marker_id": marker["id"]})
 
 	def merge_scene_markers(self, target_scene_id: int, source_scene_ids: list):
 		existing_marker_timestamps = [marker["seconds"] for marker in self.find_scene_markers(target_scene_id)]
