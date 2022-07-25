@@ -38,7 +38,7 @@ class GQLWrapper:
 					else:
 						end = i
 						break
-			fragments[fagment_match.group(1)] = fragments_in[start-1:end+1]
+			fragments[fagment_match.group(1)] = fragments_in[fagment_match.start():end+1]
 		self.fragments.update(fragments)
 		return fragments
 
