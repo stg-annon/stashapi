@@ -179,7 +179,17 @@ class StashInterface(GQLWrapper):
 		variables = {'input': tag}
 		result = self._callGraphQL(query, variables)
 		return result["tagCreate"]
-	# TODO update_tag()
+	def update_tag(self, tag_update):
+		query = """
+		mutation TagUpdate($input: TagUpdateInput!) {
+			tagUpdate(input: $input) {
+				id
+			}
+		}
+		"""
+		variables = {'input': tag_update}
+
+		self._callGraphQL(query, variables)
 	def destroy_tag(self, tag_id):
 		query = """
 			mutation tagDestroy($input: TagDestroyInput!) {
