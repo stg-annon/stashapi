@@ -23,7 +23,7 @@ class StashInterface(GQLWrapper):
 	}
 	cookies = {}
 
-	def __init__(self, conn:dict={}, fragments:dict={}):
+	def __init__(self, conn:dict={}, fragments:list=[]):
 		global log
 
 		conn = CaseInsensitiveDict(conn)
@@ -59,8 +59,15 @@ class StashInterface(GQLWrapper):
 			
 		self.sbox_endpoints = {}
 
-		self.fragments = fragments
-		self.fragments.update(gql_fragments.STASHAPP)
+		self.fragments = {}
+		if isinstance(fragments, str):
+			fragments = [fragments]
+		if isinstance(fragments, list):
+			for f in fragments:
+				if isinstance(f, str):
+					self.parse_fragments(f)
+
+		self.parse_fragments(gql_fragments.STASHAPP)
 
 
 	def __match_alias_item(self, search, items):

@@ -20,6 +20,28 @@ class GQLWrapper:
 	def __init__(self):
 		return
 
+	def parse_fragments(self, fragments_in):
+		fragments = {}
+		fragment_matches = re.finditer(r'fragment ([A-Za-z]+) on [A-Za-z]+ {', fragments_in)
+		for fagment_match in fragment_matches:
+			start = fagment_match.end()
+			end = start
+
+			depth = 0
+			for i in range(end, len(fragments_in)):
+				c = fragments_in[i]
+				if c == "{":
+					depth += 1
+				if c == "}":
+					if depth > 0:
+						depth -= 1
+					else:
+						end = i
+						break
+			fragments[fagment_match.group(1)] = fragments_in[start-1:end+1]
+		self.fragments.update(fragments)
+		return fragments
+
 	def __resolveFragments(self, query):
 		fragmentReferences = list(set(re.findall(r'(?<=\.\.\.)\w+', query)))
 		fragments = []
