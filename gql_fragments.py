@@ -5,34 +5,20 @@ fragment scrapedScene on ScrapedScene {
 	url
 	date
 	image
-	studio{
-	...scrapedStudio
-	}
-	tags{
-	...scrapedTag
-	}
-	performers{
-	...scrapedPerformer
-	}
-	movies{
-	...scrapedMovie
-	}
+	studio{ ...scrapedStudio }
+	tags{ ...scrapedTag }
+	performers{ ...scrapedPerformer }
+	movies{ ...scrapedMovie }
 	duration
-	__typename
 }
 fragment scrapedGallery on ScrapedGallery {
 	title
 	details
 	url
 	date
-	studio{
-	...scrapedStudio
-	}
+	studio{ ...scrapedStudio }
 	tags{ ...scrapedTag }
-	performers{
-	...scrapedPerformer
-	}
-	__typename
+	performers{ ...scrapedPerformer }
 }
 fragment scrapedPerformer on ScrapedPerformer {
 	stored_id
@@ -59,12 +45,10 @@ fragment scrapedPerformer on ScrapedPerformer {
 	hair_color
 	weight
 	remote_site_id
-	__typename
 }
 fragment scrapedTag on ScrapedTag {
 	stored_id
 	name
-	__typename
 }
 fragment scrapedMovie on ScrapedMovie {
 	stored_id
@@ -76,34 +60,15 @@ fragment scrapedMovie on ScrapedMovie {
 	director
 	synopsis
 	url
-	studio {
-		...scrapedStudio
-	}
+	studio { ...scrapedStudio }
 	front_image
 	back_image
-	__typename
 }
 fragment scrapedStudio on ScrapedStudio {
 	stored_id
 	name
 	url
 	remote_site_id
-	__typename
-}
-fragment stashSceneExit on Scene {
-	id
-	title
-	details
-	url
-	date
-	rating
-	gallery_ids
-	studio_id
-	performer_ids
-	movies
-	tag_ids
-	stash_ids
-	__typename
 }
 fragment stashScene on Scene {
 	id
