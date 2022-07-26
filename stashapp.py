@@ -1008,10 +1008,8 @@ class StashInterface(GQLWrapper):
 		"""
 		variables = { 'url': url }
 		scraped_scene = self._callGraphQL(query, variables)['scrapeSceneURL']
-
-		if not scraped_scene:
-			return None
-
+		if scraped_scene and not scraped_scene.get("url"):
+			scraped_scene["url"] = url
 		return scraped_scene
 	def scrape_movie_url(self, url):
 		query = """
@@ -1022,9 +1020,10 @@ class StashInterface(GQLWrapper):
 			}
 		"""
 		variables = { 'url': url }
-		result = self._callGraphQL(query, variables)
-
-		return result['scrapeMovieURL']
+		scraped_movie = self._callGraphQL(query, variables)['scrapeMovieURL']
+		if scraped_movie and not scraped_movie.get("url"):
+			scraped_movie["url"] = url
+		return scraped_movie
 	def scrape_gallery_url(self, url):
 		query = """
 			query($url: String!) {
@@ -1034,8 +1033,10 @@ class StashInterface(GQLWrapper):
 			}
 		"""
 		variables = { 'url': url }
-		result = self._callGraphQL(query, variables)
-		return result['scrapeGalleryURL']        
+		scraped_gallery = self._callGraphQL(query, variables)['scrapeGalleryURL']
+		if scraped_gallery and not scraped_gallery.get("url"):
+			scraped_gallery["url"] = url
+		return scraped_gallery
 	def scrape_performer_url(self, url):
 		query = """
 			query($url: String!) {
@@ -1045,8 +1046,10 @@ class StashInterface(GQLWrapper):
 			}
 		"""
 		variables = { 'url': url }
-		result = self._callGraphQL(query, variables)
-		return result['scrapePerformerURL']
+		scraped_performer = self._callGraphQL(query, variables)['scrapePerformerURL']
+		if scraped_performer and not scraped_performer.get("url"):
+			scraped_performer["url"] = url
+		return scraped_performer
 
 	#Identify
 	def get_identify_config(self):
