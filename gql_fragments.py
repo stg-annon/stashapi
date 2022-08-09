@@ -190,6 +190,19 @@ fragment stashGallery on Gallery {
 	}
 	__typename
 }
+fragment stashImage on Image {
+	id
+	checksum
+	title
+	rating
+	o_counter
+	organized
+	path
+	galleries { id }
+	studio { id name }
+	tags { ...stashTag }
+	performers { id name }
+}
 fragment stashPerformer on Performer {
 	id
 	checksum

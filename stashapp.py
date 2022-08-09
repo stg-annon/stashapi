@@ -42,15 +42,16 @@ class StashInterface(GQLWrapper):
 
 		# Stash GraphQL endpoint
 		self.url = f'{scheme}://{domain}:{self.port}/graphql'
-		log.debug(f"Using stash GraphQl endpoint at {self.url}")
 
 		try:
 			# test query to ensure good connection
-			self.call_gql("query Configuration {configuration{general{stashes{path}}}}")
+			version = self.stash_version()
 		except Exception as e:
 			log.error(f"Could not connect to Stash at {self.url}")
 			log.error(e)
 			sys.exit()
+			
+		log.debug(f'Using stash ({version["version"]}) endpoint at {self.url}')
 
 		self.sql = None
 		if domain in ['localhost', '127.0.0.1']:
@@ -105,6 +106,10 @@ class StashInterface(GQLWrapper):
 
 	def call_gql(self, query, variables={}):
 		return self._callGraphQL(query, variables)
+
+	def stash_version(self):
+		result = self._callGraphQL("query StashVersion{ version { build_time hash version } }")
+		return result['version']		
 
 	def graphql_configuration(self):
 		query = """
@@ -250,7 +255,7 @@ class StashInterface(GQLWrapper):
 			name = performer_data
 
 		if not name:
-			log.warning(f'find_tag expects int, str, or dict not {type(performer_data)} "{performer_data}"')
+			log.warning(f'find_performer() expects int, str, or dict not {type(performer_data)} "{performer_data}"')
 			return
 
 		name = name.strip()
@@ -515,7 +520,23 @@ class StashInterface(GQLWrapper):
 	def create_gallery(self, path:str=""):
 		if path:
 			return self.metadata_scan([path])
-	# TODO find_gallery()
+	def find_gallery(self, gallery_in, fragment=None):
+		if isinstance(gallery_in, int):
+			query= "query FindGallery($id: ID!) { findGallery(id: $id) { ...stashGallery } }"
+			if fragment:
+				query = re.sub(r'\.\.\.stashGallery', fragment, query)
+			result = self._callGraphQL(query, {"id": gallery_in })
+			return result["findGallery"]
+
+		if isinstance(gallery_in, dict):
+			if gallery_in.get("id"):
+				return self.find_tag(int(gallery_in["id"]))
+
+		if isinstance(gallery_in, str):
+			try:
+				return self.find_tag(int(gallery_in))
+			except:
+				log.warning(f"could not parse {gallery_in} to Gallery ID (int)")
 	def update_gallery(self, gallery_data):
 		query = """
 			mutation GalleryUpdate($input:GalleryUpdateInput!) {
@@ -528,6 +549,18 @@ class StashInterface(GQLWrapper):
 
 		result = self._callGraphQL(query, variables)
 		return result["galleryUpdate"]["id"]
+	def update_galleries(self, galleries_input):
+		query = """
+			mutation BulkGalleryUpdate($input:BulkGalleryUpdateInput!) {
+				bulkGalleryUpdate(input: $input) {
+					id
+				}
+			}
+		"""
+		variables = {'input': galleries_input}
+
+		result = self._callGraphQL(query, variables)
+		return result["bulkGalleryUpdate"]
 	def destroy_gallery(self, gallery_ids, delete_file=False, delete_generated=True):
 		if isinstance(gallery_ids, int):
 			gallery_ids = [gallery_ids]
@@ -577,6 +610,113 @@ class StashInterface(GQLWrapper):
 		result = self._callGraphQL(query, variables)
 		return result['findGalleries']['galleries']
 
+	# Image CRUD
+	def create_image(self, path:str=""):
+		if path:
+			return self.metadata_scan([path])
+	def find_image(self, image_in, fragment=None):
+		if isinstance(image_in, int):
+			query= "query FindImage($id: ID!) { findImage(id: $id) { ...stashImage } }"
+			if fragment:
+				query = re.sub(r'\.\.\.stashImage', fragment, query)
+			result = self._callGraphQL(query, {"id": image_in })
+			return result["findImage"]
+
+		if isinstance(image_in, dict):
+			if image_in.get("stored_id"):
+				return self.find_tag(int(image_in["stored_id"]))
+			if image_in.get("id"):
+				return self.find_tag(int(image_in["id"]))
+
+		if isinstance(image_in, str):
+			try:
+				return self.find_tag(int(image_in))
+			except:
+				log.warning(f"could not parse {image_in} to Image ID (int)")
+
+		log.warning(f'find_image expects int, str, or dict not {type(image_in)} "{image_in}"')
+	def find_images(self, q="", f={}, fragment=None):
+		query = """
+		query FindImages($filter: FindFilterType, $image_filter: ImageFilterType, $image_ids: [Int!]) {
+  			findImages(filter: $filter, image_filter: $image_filter, image_ids: $image_ids) {
+    			count
+    			images {
+      			...stashImage
+    			}
+  			}
+		}
+		"""
+		if fragment:
+			query = re.sub(r'\.\.\.stashImage', fragment, query)
+
+		variables = {
+			"filter": {
+				"q": q,
+				"per_page": -1,
+				"sort": "path",
+				"direction": "ASC"
+			},
+			"image_filter": f
+		}
+
+		result = self._callGraphQL(query, variables)
+		return result['findImages']['images']
+	def update_image(self, update_input):
+		query = """
+			mutation ImageUpdate($input:ImageUpdateInput!) {
+				imageUpdate(input: $input) {
+					id
+				}
+			}
+		"""
+		variables = {'input': update_input}
+
+		result = self._callGraphQL(query, variables)
+		return result["imageUpdate"]
+	def update_images(self, updates_input):
+		query = """
+			mutation BulkImageUpdate($input:BulkImageUpdateInput!) {
+				bulkImageUpdate(input: $input) {
+					id
+				}
+			}
+		"""
+		variables = {'input': updates_input}
+
+		result = self._callGraphQL(query, variables)
+		return result["bulkImageUpdate"]
+	def destroy_image(self, image_id, delete_file=False):
+		query = """
+		mutation ImageDestroy($input:ImageDestroyInput!) {
+			imageDestroy(input: $input)
+		}
+		"""
+		variables = {
+			"input": {
+				"delete_file": delete_file,
+				"delete_generated": True,
+				"id": image_id
+			}
+		}
+			
+		result = self._callGraphQL(query, variables)
+		return result['imageDestroy']
+	def destroy_images(self, image_ids:list, delete_file=False):
+		query = """
+		mutation ImagesDestroy($input:ImagesDestroyInput!) {
+			imagesDestroy(input: $input)
+		}
+		"""
+		variables = {
+			"input": {
+				"delete_file": delete_file,
+				"delete_generated": True,
+				"ids": image_ids
+			}
+		}
+			
+		result = self._callGraphQL(query, variables)
+		return result['imagesDestroy']
 
 	# Scene CRUD
 	def create_scene(self, path:str=""):
