@@ -24,7 +24,7 @@ def __log(level_char: bytes, s):
 		s = str(s)
 
 	# truncate any base64 data before logging
-	s = re.sub(r'data:image.+?;base64(.+?")','[...]"',str(s))
+	s = re.sub(r'data:image.+?;base64(.+?")','<b64img>"',str(s))
 
 	for line in s.split("\n"):
 		print(level_char, line, file=sys.stderr, flush=True)
