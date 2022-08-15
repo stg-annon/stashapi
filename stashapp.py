@@ -70,6 +70,13 @@ class StashInterface(GQLWrapper):
 
 		self.parse_fragments(gql_fragments.STASHAPP)
 
+	def __genric_find(self, query, item_id, fragment:tuple[str, str]=(None, None)):
+		pattern, substitution = fragment
+		if substitution:
+			query = re.sub(pattern, substitution, query)
+		result = self._callGraphQL(query,  {"id":item_id})
+		queryType = list(result.keys())[0]
+		return result[queryType]
 
 	def __match_alias_item(self, search, items):
 		item_matches = {}
@@ -146,12 +153,12 @@ class StashInterface(GQLWrapper):
 	# Tag CRUD
 	def find_tag(self, tag_in, create=False):
 
-		# assume input is a tag ID if int
+		# assume input is an ID if int
 		if isinstance(tag_in, int):
-			query = "query FindTag($id: ID!) { findTag(id: $id) { ...stashTag } }"
-			variables = {"id": tag_in }
-			result = self._callGraphQL(query, variables)
-			return result["findTag"]
+			return self.__genric_find(
+				"query FindTag($id: ID!) { findTag(id: $id) { ...stashTag } }",
+				tag_in
+			)
 
 		name = None
 		if isinstance(tag_in, dict):
@@ -236,30 +243,30 @@ class StashInterface(GQLWrapper):
 		return result["findTags"]["tags"]
 
 	# Performer CRUD
-	def find_performer(self, performer_data, create=False):
+	def find_performer(self, performer_in, create=False):
 
-		# assume input is a tag ID if int
-		if isinstance(performer_data, int):
-			query = "query FindPerformer($id: ID!) { findPerformer(id: $id) { ...stashPerformer } }"
-			variables = {"id": performer_data }
-			result = self._callGraphQL(query, variables)
-			return result["findPerformer"]
+		# assume input is an ID if int
+		if isinstance(performer_in, int):
+			return self.__genric_find(
+				"query FindPerformer($id: ID!) { findPerformer(id: $id) { ...stashPerformer } }",
+				performer_in,
+			)
 
 		name = None
-		if isinstance(performer_data, dict):
-			if performer_data.get("stored_id"):
-				return self.find_tag(int(performer_data["stored_id"]))
-			if performer_data.get("name"):
-				name = performer_data["name"]
-		if isinstance(performer_data, str):
-			name = performer_data
+		if isinstance(performer_in, dict):
+			if performer_in.get("stored_id"):
+				return self.find_tag(int(performer_in["stored_id"]))
+			if performer_in.get("name"):
+				name = performer_in["name"]
+		if isinstance(performer_in, str):
+			name = performer_in
 
 		if not name:
-			log.warning(f'find_performer() expects int, str, or dict not {type(performer_data)} "{performer_data}"')
+			log.warning(f'find_performer() expects int, str, or dict not {type(performer_in)} "{performer_in}"')
 			return
 
 		name = name.strip()
-		performer_data = {"name": name}
+		performer_in = {"name": name}
 
 		performers = self.find_performers(q=name)
 		for p in performers:
@@ -284,8 +291,8 @@ class StashInterface(GQLWrapper):
 
 		if create:
 			log.info(f'Create missing performer: "{name}"')
-			return self.create_performer(performer_data)
-	def create_performer(self, performer_data):
+			return self.create_performer(performer_in)
+	def create_performer(self, performer_in):
 		query = """
 			mutation($input: PerformerCreateInput!) {
 				performerCreate(input: $input) {
@@ -294,11 +301,11 @@ class StashInterface(GQLWrapper):
 			}
 		"""
 
-		variables = {'input': performer_data}
+		variables = {'input': performer_in}
 
 		result = self._callGraphQL(query, variables)
 		return result['performerCreate']['id']
-	def update_performer(self, performer_data):
+	def update_performer(self, performer_in):
 		query = """
 			mutation performerUpdate($input:PerformerUpdateInput!) {
 				performerUpdate(input: $input) {
@@ -306,7 +313,7 @@ class StashInterface(GQLWrapper):
 				}
 			}
 		"""
-		variables = {'input': performer_data}
+		variables = {'input': performer_in}
 
 		result = self._callGraphQL(query, variables)
 		return result['performerUpdate']['id']
@@ -446,9 +453,25 @@ class StashInterface(GQLWrapper):
 		return result['findStudios']['studios']
 
 	# Movie CRUD
-	def find_movie(self, movie, create=False):
+	def find_movie(self, movie_in, create=False):
+		# assume input is an ID if int
+		if isinstance(movie_in, int):
+			return self.__genric_find(
+				"query FindMovie($id: ID!) { findMovie(id: $id) { ...stashMovie } }",
+				movie_in
+			)
 
-		name = movie["name"]
+		name = None
+		if isinstance(movie_in, dict):
+			if movie_in.get("stored_id"):
+				return self.find_movie(int(movie_in["stored_id"]))
+			if movie_in.get("id"):
+				return self.find_movie(int(movie_in["id"]))
+			if movie_in.get("name"):
+				name = movie_in["name"]
+		if isinstance(movie_in, str):
+			name = movie_in
+
 		movies = self.find_movies(q=name)
 
 		movie_matches = self.__match_alias_item(name, movies)
@@ -462,7 +485,7 @@ class StashInterface(GQLWrapper):
 
 		if create:
 			log.info(f'Creating missing Movie "{name}"')
-			return self.create_movie(movie)
+			return self.create_movie(movie_in)
 	def create_movie(self, movie):
 		name = movie["name"]
 		query = """
@@ -522,11 +545,11 @@ class StashInterface(GQLWrapper):
 			return self.metadata_scan([path])
 	def find_gallery(self, gallery_in, fragment=None):
 		if isinstance(gallery_in, int):
-			query= "query FindGallery($id: ID!) { findGallery(id: $id) { ...stashGallery } }"
-			if fragment:
-				query = re.sub(r'\.\.\.stashGallery', fragment, query)
-			result = self._callGraphQL(query, {"id": gallery_in })
-			return result["findGallery"]
+			return self.__genric_find(
+				"query FindGallery($id: ID!) { findGallery(id: $id) { ...stashGallery } }",
+				gallery_in,
+				(r'\.\.\.stashGallery', fragment)
+			)
 
 		if isinstance(gallery_in, dict):
 			if gallery_in.get("id"):
@@ -616,11 +639,11 @@ class StashInterface(GQLWrapper):
 			return self.metadata_scan([path])
 	def find_image(self, image_in, fragment=None):
 		if isinstance(image_in, int):
-			query= "query FindImage($id: ID!) { findImage(id: $id) { ...stashImage } }"
-			if fragment:
-				query = re.sub(r'\.\.\.stashImage', fragment, query)
-			result = self._callGraphQL(query, {"id": image_in })
-			return result["findImage"]
+			return self.__genric_find(
+				"query FindImage($id: ID!) { findImage(id: $id) { ...stashImage } }",
+				image_in,
+				(r'\.\.\.stashImage', fragment),
+			)
 
 		if isinstance(image_in, dict):
 			if image_in.get("stored_id"):
