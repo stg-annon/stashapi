@@ -486,31 +486,34 @@ class StashInterface(GQLWrapper):
 		if create:
 			log.info(f'Creating missing Movie "{name}"')
 			return self.create_movie(movie_in)
-	def create_movie(self, movie):
-		name = movie["name"]
+	def create_movie(self, movie_in):
+		if isinstance(movie_in, str):
+			movie_in = {"name": movie_in}
+		if not isinstance(movie_in, dict):
+			log.warning(f"could not create movie from {movie_in}")
+			return
 		query = """
-			mutation($name: String!) {
-				movieCreate(input: { name: $name }) {
+			mutation($input: MovieCreateInput!) {
+				movieCreate(input: $input) {
 					id
 				}
 			}
 		"""
-		variables = {'name': name}
+		variables = {'input': movie_in}
 		result = self._callGraphQL(query, variables)
-		movie['id'] = result['movieCreate']['id']
-		return self.update_movie(movie)
-	def update_movie(self, movie):
+		return result['movieCreate']
+	def update_movie(self, movie_in):
 		query = """
 			mutation MovieUpdate($input:MovieUpdateInput!) {
 				movieUpdate(input: $input) {
-					id
+					...stashMovie
 				}
 			}
 		"""
-		variables = {'input': movie}
+		variables = {'input': movie_in}
 
 		result = self._callGraphQL(query, variables)
-		return result['movieUpdate']['id']
+		return result['movieUpdate']
 	# TODO delete_movie()
 
 	# Movies CRUD
