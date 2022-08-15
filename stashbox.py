@@ -3,8 +3,8 @@ import sys
 from requests.structures import CaseInsensitiveDict
 
 from .classes import GQLWrapper
-from . import gql_fragments
 from . import log
+from .gql_fragments import stashbox as stashbox_gql_fragments
 
 class StashBoxInterface(GQLWrapper):
 	port = None
@@ -18,7 +18,7 @@ class StashBoxInterface(GQLWrapper):
 	}
 	cookies = {}
 
-	def __init__(self, conn={}, fragments={}):
+	def __init__(self, conn={}, fragments:list[str]=[stashbox_gql_fragments.DEVELOP]):
 		global log
 
 		conn = CaseInsensitiveDict(conn)
@@ -42,8 +42,9 @@ class StashBoxInterface(GQLWrapper):
 			log.error(e)
 			sys.exit()
 
-		self.fragments = fragments
-		self.fragments.update(gql_fragments.STASHBOX)
+		self.fragments = {}
+		for fragment in fragments:
+			self.parse_fragments(fragment)
 
 	def get_scene_last_updated(self, scene_id):
 		query = """query sceneLastUpdated($id: ID!) {

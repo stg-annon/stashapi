@@ -4,7 +4,7 @@ from requests.structures import CaseInsensitiveDict
 
 from .stashbox import StashBoxInterface
 
-from . import gql_fragments
+from .gql_fragments import stashapp as stashapp_gql_fragments
 from . import log as stash_logger
 
 from .types import PhashDistance
@@ -23,7 +23,7 @@ class StashInterface(GQLWrapper):
 	}
 	cookies = {}
 
-	def __init__(self, conn:dict={}, fragments:list=[]):
+	def __init__(self, conn:dict={}, fragments:list[str]=[stashapp_gql_fragments.DEVELOP]):
 		global log
 
 		conn = CaseInsensitiveDict(conn)
@@ -61,14 +61,8 @@ class StashInterface(GQLWrapper):
 		self.sbox_endpoints = {}
 
 		self.fragments = {}
-		if isinstance(fragments, str):
-			fragments = [fragments]
-		if isinstance(fragments, list):
-			for f in fragments:
-				if isinstance(f, str):
-					self.parse_fragments(f)
-
-		self.parse_fragments(gql_fragments.STASHAPP)
+		for fragment in fragments:
+			self.parse_fragments(fragment)
 
 	def __genric_find(self, query, item_id, fragment:tuple[str, str]=(None, None)):
 		pattern, substitution = fragment
