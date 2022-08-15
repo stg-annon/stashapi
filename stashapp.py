@@ -1258,17 +1258,16 @@ class StashInterface(GQLWrapper):
 		for endpoint, sbox in self.sbox_endpoints.items():
 			if sbox_target_endpoint == endpoint:
 				return sbox
-		sbox_config = {"logger": log}.update(self.get_stashbox_connection(sbox_target_endpoint))
+		sbox_config = {"logger": log}
+		sbox_config.update(self.get_stashbox_connection(sbox_target_endpoint))
 		sbox = StashBoxInterface(sbox_config)
 		self.sbox_endpoints[sbox.url] = sbox
 		return sbox
-	def get_stashbox_connection(self, sbox_endpoint, return_index=False):
+	def get_stashbox_connection(self, sbox_endpoint):
 		for sbox_idx, sbox_cfg in enumerate(self.get_stashbox_connections()):
 			if sbox_endpoint in sbox_cfg["endpoint"]:
-				if return_index:
-					return sbox_idx
-				else:
-					return sbox_cfg			
+				sbox_cfg["index"] = sbox_idx
+				return sbox_cfg
 		log.error(f'could not find stash-box conection to "{sbox_endpoint}"')
 		return {}
 	def get_stashbox_connections(self):
