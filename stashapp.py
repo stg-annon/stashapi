@@ -854,7 +854,6 @@ class StashInterface(GQLWrapper):
 
 		variables = { "scene_id": scene_id }
 		return self._callGraphQL(query, variables)["findScene"]["scene_markers"]
-
 	def create_scene_marker(self, marker_create_input:dict, fragment=None):
 		query = """
 			mutation SceneMarkerCreate($marker_input: SceneMarkerCreateInput!) {
@@ -868,7 +867,6 @@ class StashInterface(GQLWrapper):
 			
 		variables = { "marker_input": marker_create_input }
 		return self._callGraphQL(query, variables)["sceneMarkerCreate"]
-
 	def destroy_scene_marker(self, marker_id:int):
 		query = """
 			mutation DestroySceneMarkers($marker_id: ID!) {
@@ -876,12 +874,10 @@ class StashInterface(GQLWrapper):
 			}
 		"""
 		self._callGraphQL(query, {"marker_id": marker_id})
-
 	def destroy_scene_markers(self, scene_id:int):
 		scene_markers = self.find_scene_markers(scene_id, fragment="id")
 		for marker in scene_markers:
 			self.destroy_scene_marker(marker["id"])
-
 	def merge_scene_markers(self, target_scene_id: int, source_scene_ids: list):
 		existing_marker_timestamps = [marker["seconds"] for marker in self.find_scene_markers(target_scene_id)]
 
@@ -904,6 +900,18 @@ class StashInterface(GQLWrapper):
 			})
 			created_markers.append(marker_id)
 		return created_markers
+
+	def destroy_scene_stash_id(self, stash_id):
+		scenes = self.find_scenes(f={
+			"stash_id": {
+				"value": stash_id,
+				"modifier": "EQUALS"
+			}
+		},fragment="id stash_ids {endpoint stash_id}")
+
+		for scene in scenes:
+			scene["stash_ids"] = [sid for sid in scene["stash_ids"] if sid["stash_id"] != stash_id ]
+			self.update_scene(scene)
 
 	def merge_scenes(self, target_scene_id:int, source_scene_ids:list, exclusions={}):
 
