@@ -216,7 +216,7 @@ class StashInterface(GQLWrapper):
 		self._callGraphQL(query, variables)
 
 	# Tags CRUD
-	def find_tags(self, f:dict={}, q="", filter:dict=FIND_FILTER_DEFAULT, fragment=None, get_count=False):
+	def find_tags(self, f:dict={}, filter:dict=FIND_FILTER_DEFAULT, q="", fragment=None, get_count=False):
 		query = """
 			query FindTags($filter: FindFilterType, $tag_filter: TagFilterType) {
 				findTags(filter: $filter, tag_filter: $tag_filter) {
@@ -320,7 +320,7 @@ class StashInterface(GQLWrapper):
 	# TODO delete_performer()
 
 	# Performers CRUD
-	def find_performers(self, f:dict={}, q="", filter:dict=FIND_FILTER_DEFAULT, fragment=None, get_count=False):
+	def find_performers(self, f:dict={}, filter:dict=FIND_FILTER_DEFAULT, q="", fragment=None, get_count=False):
 		query =  """
 			query FindPerformers($filter: FindFilterType, $performer_filter: PerformerFilterType) {
 				findPerformers(filter: $filter, performer_filter: $performer_filter) {
@@ -405,7 +405,7 @@ class StashInterface(GQLWrapper):
 		return result["studioUpdate"]["id"]
 	# TODO delete_studio()
 
-	def find_studios(self, f:dict={}, q="", filter:dict=FIND_FILTER_DEFAULT, fragment=None, get_count=False):
+	def find_studios(self, f:dict={}, filter:dict=FIND_FILTER_DEFAULT, q="", fragment=None, get_count=False):
 		query =  """
 		query FindStudios($filter: FindFilterType, $studio_filter: StudioFilterType) {
 			findStudios(filter: $filter, studio_filter: $studio_filter) {
@@ -496,7 +496,7 @@ class StashInterface(GQLWrapper):
 	# TODO delete_movie()
 
 	# Movies CRUD
-	def find_movies(self, f:dict={}, q="", filter:dict=FIND_FILTER_DEFAULT, fragment=None, get_count=False):
+	def find_movies(self, f:dict={}, filter:dict=FIND_FILTER_DEFAULT, q="", fragment=None, get_count=False):
 		query = """
 			query FindMovies($filter: FindFilterType, $movie_filter: MovieFilterType) {
 				findMovies(filter: $filter, movie_filter: $movie_filter) {
@@ -589,7 +589,7 @@ class StashInterface(GQLWrapper):
 		return result['galleryDestroy']
 
 	# BULK Gallery
-	def find_galleries(self, f:dict={}, q="", filter:dict=FIND_FILTER_DEFAULT, fragment=None, get_count=False):
+	def find_galleries(self, f:dict={}, filter:dict=FIND_FILTER_DEFAULT, q="", fragment=None, get_count=False):
 		query = """
 			query FindGalleries($filter: FindFilterType, $gallery_filter: GalleryFilterType) {
 				findGalleries(gallery_filter: $gallery_filter, filter: $filter) {
