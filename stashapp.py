@@ -13,9 +13,7 @@ from .classes import SQLiteWrapper
 
 FIND_FILTER_DEFAULT = {
 	"q": "",
-	"per_page": -1,
-	"sort": "name",
-	"direction": "ASC"
+	"per_page": -1
 }
 
 class StashInterface(GQLWrapper):
