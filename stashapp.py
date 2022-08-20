@@ -639,7 +639,7 @@ class StashInterface(GQLWrapper):
 				log.warning(f"could not parse {image_in} to Image ID (int)")
 
 		log.warning(f'find_image expects int, str, or dict not {type(image_in)} "{image_in}"')
-	def find_images(self, image_filter:dict, filter:dict=FIND_FILTER_DEFAULT, fragment=None, get_count=False):
+	def find_images(self, f:dict={}, filter:dict=FIND_FILTER_DEFAULT, q="", fragment=None, get_count=False):
 		query = """
 		query FindImages($filter: FindFilterType, $image_filter: ImageFilterType, $image_ids: [Int!]) {
   			findImages(filter: $filter, image_filter: $image_filter, image_ids: $image_ids) {
@@ -653,9 +653,10 @@ class StashInterface(GQLWrapper):
 		if fragment:
 			query = re.sub(r'\.\.\.stashImage', fragment, query)
 
+		filter["q"] = q
 		variables = {
 			"filter": filter,
-			"image_filter": image_filter
+			"image_filter": f
 		}
 
 		result = self._callGraphQL(query, variables)
