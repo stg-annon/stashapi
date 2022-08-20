@@ -95,7 +95,8 @@ class SQLiteWrapper:
 
 	def __init__(self, db_filepath) -> None:
 		# generate uri for read-only connection, all write operations should be done from the API
-		db_uri = f"{Path(db_filepath).as_uri()}?mode=ro"
+		p = Path(db_filepath).resolve()
+		db_uri = f"{p.as_uri()}?mode=ro"
 		self.conn = sqlite3.connect(db_uri, uri=True)
 
 	def query(self, query, args=(), one=False):

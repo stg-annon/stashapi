@@ -59,11 +59,6 @@ class StashInterface(GQLWrapper):
 			sys.exit()
 			
 		log.debug(f'Using stash ({version["version"]}) endpoint at {self.url}')
-
-		self.sql = None
-		if domain in ['localhost', '127.0.0.1']:
-			sql_file = self.call_gql("query dbPath{configuration{general{databasePath}}}")
-			self.sql = SQLiteWrapper(sql_file["configuration"]["general"]["databasePath"])
 			
 		self.sbox_endpoints = {}
 
@@ -118,6 +113,13 @@ class StashInterface(GQLWrapper):
 	def stash_version(self):
 		result = self._callGraphQL("query StashVersion{ version { build_time hash version } }")
 		return result['version']		
+
+	def get_sql_interface(self):
+		if "localhost" in self.url or "127.0.0.1" in self.url:
+			sql_file = self.call_gql("query dbPath{configuration{general{databasePath}}}")
+			return SQLiteWrapper(sql_file["configuration"]["general"]["databasePath"])
+		else:
+			raise Exception("not local stash instance cannot create sql interface")
 
 	def graphql_configuration(self):
 		query = """
