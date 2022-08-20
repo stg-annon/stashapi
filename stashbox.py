@@ -4,7 +4,7 @@ from enum import Enum
 from requests.structures import CaseInsensitiveDict
 
 from .classes import GQLWrapper
-from .gql_fragments import stashbox as stashbox_gql_fragments
+from . import stashbox_gql_fragments
 from . import log as StashLogger
 
 

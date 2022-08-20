@@ -4,7 +4,7 @@ from requests.structures import CaseInsensitiveDict
 
 from .stashbox import StashBoxInterface
 
-from .gql_fragments import stashapp as stashapp_gql_fragments
+from . import stashapp_gql_fragments
 from . import log as stash_logger
 
 from .types import PhashDistance
