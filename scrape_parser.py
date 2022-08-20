@@ -3,7 +3,6 @@ import datetime
 from . import log as StashLogger
 
 from .types import Gender
-from .tools import clean_dict
 
 class ScrapeParser:
 
@@ -130,6 +129,13 @@ class ScrapeParser:
 
 		return studio_update
 
+	def scene_movie_input_from_scrape(self, movie):
+		stash_movie = self.stash.find_movie(self.movie_from_scrape(movie), create=True)
+		scene_movie_input = {"movie_id": stash_movie["id"], "scene_index":None }
+		if movie.get("scene_index"):
+			scene_movie_input["scene_index"] = movie["scene_index"]
+		return scene_movie_input
+
 	def movie_from_scrape(self, movie):
 		"""
 		v0.12.0-40
@@ -189,8 +195,7 @@ class ScrapeParser:
 			if movie.get(attr):
 				movie_update[attr] = movie[attr]
 
-		m = self.stash.find_movie(movie_update, create=True)
-		return {"movie_id": m["id"], "scene_index": movie.get("scene_index", None) }
+		return movie_update
 
 	def performer_from_scrape(self, performer):
 		"""
@@ -344,8 +349,11 @@ class ScrapeParser:
 					log.debug(f"could not match {p}")
 
 		if scene.get("movies"):
-			movies = [self.movie_from_scrape(m) for m in scene["movies"]]
-			scene_update["movies"] = [{"stored_id": m["movie_id"]} for m in movies]
+			scene_update["movies"] = [self.scene_movie_input_from_scrape(m) for m in scene["movies"] if m]
+
+		for attr in ["title","details","url","date","url","synopsis"]:
+			if scene.get(attr):
+				scene_update[attr] = scene[attr]
 
 		return scene_update
 
@@ -375,6 +383,8 @@ class ScrapeParser:
 
 		if scraped_scene.get("performers"):
 			for performer in scraped_scene["performers"]:
+				if performer.get("stored_id"):
+					continue
 				performer_match = self.stash.find_performer(performer)
 				if performer_match:
 					performer["stored_id"] = performer_match["id"]
