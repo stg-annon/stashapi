@@ -11,11 +11,6 @@ from .types import PhashDistance
 from .classes import GQLWrapper
 from .classes import SQLiteWrapper
 
-FIND_FILTER_DEFAULT = {
-	"q": "",
-	"per_page": -1
-}
-
 class StashInterface(GQLWrapper):
 	port = ""
 	url = ""
@@ -64,7 +59,17 @@ class StashInterface(GQLWrapper):
 		for fragment in fragments:
 			self.parse_fragments(fragment)
 
-	def __genric_find(self, query, item_id, fragment:tuple[str, str]=(None, None)):
+	def __genric_find(self, query, item, fragment:tuple[str, str]=(None, None)):
+		item_id = None
+		if isinstance(item, dict):
+			if item.get("stored_id"):
+				item_id = int(item["stored_id"])
+			if item.get("id"):
+				item_id = int(item["id"])
+		if isinstance(item, int):
+			item_id = item
+		if not item_id:
+			return
 		pattern, substitution = fragment
 		if substitution:
 			query = re.sub(pattern, substitution, query)
@@ -78,7 +83,7 @@ class StashInterface(GQLWrapper):
 			if re.match(rf'{search}$', item["name"], re.IGNORECASE):
 				log.debug(f'matched "{search}" to "{item["name"]}" ({item["id"]}) using primary name')
 				item_matches[item["id"]] = item
-				break
+				return list(item_matches.values())
 			if not item["aliases"]:
 				continue
 			for alias in item["aliases"]:
@@ -93,7 +98,7 @@ class StashInterface(GQLWrapper):
 			if re.match(rf'{search}$', item["name"], re.IGNORECASE):
 				log.info(f'matched "{search}" to "{item["name"]}" ({item["id"]}) using primary name')
 				item_matches[item["id"]] = item
-				break
+				return list(item_matches.values())
 			if not item["aliases"]:
 				continue
 			for alias in item["aliases"]:
@@ -152,7 +157,16 @@ class StashInterface(GQLWrapper):
 		return result
 
 	# Tag CRUD
-	def find_tag(self, tag_in, create=False):
+	def find_tag(self, tag_in, create=False) -> dict:
+		"""looks for tag from stash matching aliases
+
+		Args:
+			 tag_in (int, str, dict): Tag ID, name, or dict to find.
+			 create (bool, optional): Creates the tag if it does not exist. Defaults to False.
+
+		Returns:
+			 dict: stash Tag dict
+		"""
 
 		# assume input is an ID if int
 		if isinstance(tag_in, int):
@@ -181,7 +195,17 @@ class StashInterface(GQLWrapper):
 				return tag
 		if create:
 			return self.create_tag({"name":name})
-	def create_tag(self, tag):
+	
+	def create_tag(self, tag_in:dict) -> dict:
+		"""creates tag in stash
+
+		Args:
+			 tag_in (dict): TagCreateInput to create a tag.
+
+		Returns:
+			 dict: stash Tag dict
+		"""
+
 		query = """
 			mutation tagCreate($input:TagCreateInput!) {
 				tagCreate(input: $input){
@@ -189,7 +213,7 @@ class StashInterface(GQLWrapper):
 				}
 			}
 		"""
-		variables = {'input': tag}
+		variables = {'input': tag_in}
 		result = self._callGraphQL(query, variables)
 		return result["tagCreate"]
 	def update_tag(self, tag_update):
@@ -203,7 +227,13 @@ class StashInterface(GQLWrapper):
 		variables = {'input': tag_update}
 
 		self._callGraphQL(query, variables)
-	def destroy_tag(self, tag_id):
+	def destroy_tag(self, tag_id:int):
+		"""deeltes tag from stash
+
+		Args:
+			 tag_id (int, str): tag ID from stash
+		"""
+
 		query = """
 			mutation tagDestroy($input: TagDestroyInput!) {
 				tagDestroy(input: $input)
@@ -216,7 +246,20 @@ class StashInterface(GQLWrapper):
 		self._callGraphQL(query, variables)
 
 	# Tags CRUD
-	def find_tags(self, f:dict={}, filter:dict=FIND_FILTER_DEFAULT, q="", fragment=None, get_count=False):
+	def find_tags(self, f:dict={}, filter:dict={"per_page": -1}, q:str="", fragment:str=None, get_count:bool=False) -> list[dict]:
+		"""gets tags matching filter/query
+
+		Args:
+			 f (TagFilterType, optional): See playground for details. Defaults to {}.
+			 filter (FindFilterType, optional): See playground for details. Defaults to {"per_page": -1}.
+			 q (str, optional): query string, same search bar in stash. Defaults to "".
+			 fragment (str, optional): override for gqlFragment. Defaults to "...stashTag". example override 'fargment="id name"'
+			 get_count (bool, optional): returns tuple (count, [tags]) where count is the number of results from the query, useful when pageing. Defaults to False.
+
+		Returns:
+			 _type_: list of tags, or tuple of (count, [tags])
+		"""		
+
 		query = """
 			query FindTags($filter: FindFilterType, $tag_filter: TagFilterType) {
 				findTags(filter: $filter, tag_filter: $tag_filter) {
@@ -243,7 +286,16 @@ class StashInterface(GQLWrapper):
 			return result["findTags"]["tags"]
 
 	# Performer CRUD
-	def find_performer(self, performer_in, create=False):
+	def find_performer(self, performer_in, create=False) -> dict:
+		"""looks for performer from stash matching aliases
+
+		Args:
+			 performer_in (int, str, dict): int of performer id, str of performer name/alias, dict of performer oject 
+			 create (bool, optional): create performer if not found. Defaults to False.
+
+		Returns:
+			 dict: performer from stash
+		"""		
 
 		# assume input is an ID if int
 		if isinstance(performer_in, int):
@@ -255,7 +307,7 @@ class StashInterface(GQLWrapper):
 		name = None
 		if isinstance(performer_in, dict):
 			if performer_in.get("stored_id"):
-				return self.find_tag(int(performer_in["stored_id"]))
+				return self.find_performer(int(performer_in["stored_id"]))
 			if performer_in.get("name"):
 				name = performer_in["name"]
 		if isinstance(performer_in, str):
@@ -288,15 +340,22 @@ class StashInterface(GQLWrapper):
 		elif len(performer_matches) > 0:
 			return performer_matches[0] 
 
-
 		if create:
 			log.info(f'Create missing performer: "{name}"')
 			return self.create_performer(performer_in)
-	def create_performer(self, performer_in):
+	def create_performer(self, performer_in:dict) -> dict:
+		"""creates performer in stash
+
+		Args:
+			 performer_in (PerformerCreateInput): performer to create
+
+		Returns:
+			 dict: stash performer object
+		"""		
 		query = """
 			mutation($input: PerformerCreateInput!) {
 				performerCreate(input: $input) {
-					id
+					...stashPerformer
 				}
 			}
 		"""
@@ -304,23 +363,45 @@ class StashInterface(GQLWrapper):
 		variables = {'input': performer_in}
 
 		result = self._callGraphQL(query, variables)
-		return result['performerCreate']['id']
-	def update_performer(self, performer_in):
+		return result['performerCreate']
+	def update_performer(self, performer_in:dict) -> dict:
+		"""updates existing performer
+
+		Args:
+			 performer_in (PerformerUpdateInput):  update for existing stash performer
+
+		Returns:
+			 dict: stash performer object
+		"""
+
 		query = """
 			mutation performerUpdate($input:PerformerUpdateInput!) {
 				performerUpdate(input: $input) {
-					id
+					...stashPerformer
 				}
 			}
 		"""
 		variables = {'input': performer_in}
 
 		result = self._callGraphQL(query, variables)
-		return result['performerUpdate']['id']
+		return result['performerUpdate']
 	# TODO delete_performer()
 
 	# Performers CRUD
-	def find_performers(self, f:dict={}, filter:dict=FIND_FILTER_DEFAULT, q="", fragment=None, get_count=False):
+	def find_performers(self, f:dict={}, filter:dict={"per_page": -1}, q="", fragment:dict=None, get_count:bool=False) -> list[dict]:
+		"""get performers matching filter/query
+
+		Args:
+			 f (PerformerFilterType, optional): See playground for details. Defaults to {}.
+			 filter (FindFilterType, optional): See playground for details. Defaults to {"per_page": -1}.
+			 q (str, optional): query string, same search bar in stash. Defaults to "".
+			 fragment (dict, optional):  override for gqlFragment. Defaults to "...stashPerformer". example override 'fargment="id name"'
+			 get_count (bool, optional): returns tuple (count, [performers]) where count is the number of results from the query, useful when pageing. Defaults to False.
+
+		Returns:
+			 _type_: list of performer objects or tuple with count and list (count, [performers])
+		"""		
+
 		query =  """
 			query FindPerformers($filter: FindFilterType, $performer_filter: PerformerFilterType) {
 				findPerformers(filter: $filter, performer_filter: $performer_filter) {
@@ -347,14 +428,44 @@ class StashInterface(GQLWrapper):
 			return result['findPerformers']['performers']
 
 	# Studio CRUD
-	def find_studio(self, studio, create=False, domain_pattern=r'[^.]*\.[^.]{2,3}(?:\.[^.]{2,3})?$'):
-		if not studio.get("name"):
-			return None
+	def find_studio(self, studio, create=False, domain_pattern=r'[^.]*\.[^.]{2,3}(?:\.[^.]{2,3})?$') -> dict:
+		"""looks for studio from stash matching aliases and URLs if name is like a url
 
-		name = studio["name"]
+		Args:
+			 studio (int, str, dict): int, str, dict of studio to search for
+			 create (bool, optional): create studio if not found. Defaults to False.
+			 domain_pattern (regexp, optional): pattern to use against name that will match a URL like "brazzers.com". Defaults to r'[^.]*\.[^.]{2,3}(?:\.[^.]{2,3})?$'.
+
+		Returns:
+			 dict: stash studio object
+		"""
+
+		# assume input is an ID if int
+		if isinstance(studio, int):
+			return self.__genric_find(
+				"query FindStudio($id: ID!) { findStudio(id: $id) { ...stashStudio } }",
+				studio,
+			)
+
+		name = None
+		if isinstance(studio, dict):
+			if studio.get("stored_id"):
+				return self.find_studio(int(studio["stored_id"]))
+			if studio.get("id"):
+				return self.find_studio(int(studio["id"]))
+			if studio.get("name"):
+				name = studio["name"]
+		if isinstance(studio, str):
+			name = studio
+
+		if not name:
+			log.warning(f'find_studio() expects int, str, or dict not {type(studio)} "{studio}"')
+			return
+		name = name.strip()
 
 		studio_matches = []
 
+		# studio name looks like a url match to URLs
 		if re.match(domain_pattern, name):
 			url_search = self.find_studios(f={
 				"url":{ "value": name, "modifier": "INCLUDES" }
@@ -375,37 +486,65 @@ class StashInterface(GQLWrapper):
 		if create:
 			log.info(f'Create missing studio: "{name}"')
 			return self.create_studio(studio)
-	def create_studio(self, studio):
+	def create_studio(self, studio:dict) -> dict:
+		"""create studio in stash
+
+		Args:
+			 studio (StudioCreateInput): See playground for details
+
+		Returns:
+			 dict: stash studio object
+		"""		
 		query = """
-			mutation($name: String!) {
-				studioCreate(input: { name: $name }) {
-					id
+			mutation StudioCreate($input: StudioCreateInput!) {
+				studioCreate(input: $input) {
+					...stashStudio
 				}
 			}
 		"""
 		variables = {
-			'name': studio['name']
+			'name': studio
 		}
 
 		result = self._callGraphQL(query, variables)
-		studio['id'] = result['studioCreate']['id']
+		return result['studioCreate']
+	def update_studio(self, studio:dict):
+		"""update existing stash studio
 
-		return self.update_studio(studio)
-	def update_studio(self, studio):
+		Args:
+			 studio (StudioUpdateInput): see playground for details
+
+		Returns:
+			 dict: stash studio object
+		"""		
+
 		query = """
 			mutation StudioUpdate($input:StudioUpdateInput!) {
 				studioUpdate(input: $input) {
-					id
+					...stashStudio
 				}
 			}
 		"""
 		variables = {'input': studio}
 
 		result = self._callGraphQL(query, variables)
-		return result["studioUpdate"]["id"]
+		return result["studioUpdate"]
 	# TODO delete_studio()
 
-	def find_studios(self, f:dict={}, filter:dict=FIND_FILTER_DEFAULT, q="", fragment=None, get_count=False):
+	def find_studios(self, f:dict={}, filter:dict={"per_page": -1}, q:str="", fragment:str=None, get_count:bool=False):
+		"""get studios matching filter/query
+
+		Args:
+			 f (StudioFilterType, optional): See playground for details. Defaults to {}.
+			 filter (FindFilterType, optional): See playground for details. Defaults to {"per_page": -1}.
+			 q (str, optional): query string, same search bar in stash. Defaults to "".
+			 fragment (_type_, optional): override for gqlFragment. Defaults to "...stashStudio". example override 'fargment="id name"'
+			 get_count (bool, optional): returns tuple (count, [studios]) where count is the number of results from the query, useful when pageing. Defaults to False.
+
+		Returns:
+			 _type_: list of studio ojbests from stash, or tuple (count, [studios])
+		"""
+
 		query =  """
 		query FindStudios($filter: FindFilterType, $studio_filter: StudioFilterType) {
 			findStudios(filter: $filter, studio_filter: $studio_filter) {
@@ -496,7 +635,7 @@ class StashInterface(GQLWrapper):
 	# TODO delete_movie()
 
 	# Movies CRUD
-	def find_movies(self, f:dict={}, filter:dict=FIND_FILTER_DEFAULT, q="", fragment=None, get_count=False):
+	def find_movies(self, f:dict={}, filter:dict={"per_page": -1}, q="", fragment=None, get_count=False):
 		query = """
 			query FindMovies($filter: FindFilterType, $movie_filter: MovieFilterType) {
 				findMovies(filter: $filter, movie_filter: $movie_filter) {
@@ -589,7 +728,7 @@ class StashInterface(GQLWrapper):
 		return result['galleryDestroy']
 
 	# BULK Gallery
-	def find_galleries(self, f:dict={}, filter:dict=FIND_FILTER_DEFAULT, q="", fragment=None, get_count=False):
+	def find_galleries(self, f:dict={}, filter:dict={"per_page": -1}, q="", fragment=None, get_count=False):
 		query = """
 			query FindGalleries($filter: FindFilterType, $gallery_filter: GalleryFilterType) {
 				findGalleries(gallery_filter: $gallery_filter, filter: $filter) {
@@ -640,7 +779,7 @@ class StashInterface(GQLWrapper):
 				log.warning(f"could not parse {image_in} to Image ID (int)")
 
 		log.warning(f'find_image expects int, str, or dict not {type(image_in)} "{image_in}"')
-	def find_images(self, f:dict={}, filter:dict=FIND_FILTER_DEFAULT, q="", fragment=None, get_count=False):
+	def find_images(self, f:dict={}, filter:dict={"per_page": -1}, q="", fragment=None, get_count=False):
 		query = """
 		query FindImages($filter: FindFilterType, $image_filter: ImageFilterType, $image_ids: [Int!]) {
   			findImages(filter: $filter, image_filter: $image_filter, image_ids: $image_ids) {
@@ -773,7 +912,7 @@ class StashInterface(GQLWrapper):
 	# BULK Scenes
 	def create_scenes(self, paths:list=[]):
 		return self.metadata_scan(paths)
-	def find_scenes(self, f:dict={}, filter:dict=FIND_FILTER_DEFAULT, fragment=None, get_count=False):
+	def find_scenes(self, f:dict={}, filter:dict={"per_page": -1}, fragment=None, get_count=False):
 		query = """
 		query FindScenes($filter: FindFilterType, $scene_filter: SceneFilterType, $scene_ids: [Int!]) {
 			findScenes(filter: $filter, scene_filter: $scene_filter, scene_ids: $scene_ids) {
