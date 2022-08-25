@@ -2,8 +2,6 @@ import re, sys
 
 from requests.structures import CaseInsensitiveDict
 
-from .stashbox import StashBoxInterface
-
 from . import stashapp_gql_fragments
 from . import log as stash_logger
 
@@ -52,8 +50,6 @@ class StashInterface(GQLWrapper):
 			sys.exit()
 			
 		log.debug(f'Using stash ({version["version"]}) endpoint at {self.url}')
-			
-		self.sbox_endpoints = {}
 
 		self.fragments = {}
 		for fragment in fragments:
@@ -1407,16 +1403,6 @@ class StashInterface(GQLWrapper):
 		return None
 
 	# Stash Box
-	def get_stashbox_interface(self, sbox_target_endpoint) -> StashBoxInterface:
-		# intended for internal use for when this weapper wants to query one of many stashbox endpoints for a given stash_id
-		for endpoint, sbox in self.sbox_endpoints.items():
-			if sbox_target_endpoint == endpoint:
-				return sbox
-		sbox_config = {"logger": log}
-		sbox_config.update(self.get_stashbox_connection(sbox_target_endpoint))
-		sbox = StashBoxInterface(sbox_config)
-		self.sbox_endpoints[sbox.url] = sbox
-		return sbox
 	def get_stashbox_connection(self, sbox_endpoint):
 		for sbox_idx, sbox_cfg in enumerate(self.get_stashbox_connections()):
 			if sbox_endpoint in sbox_cfg["endpoint"]:
