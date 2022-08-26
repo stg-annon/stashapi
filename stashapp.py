@@ -908,7 +908,7 @@ class StashInterface(GQLWrapper):
 	# BULK Scenes
 	def create_scenes(self, paths:list=[]):
 		return self.metadata_scan(paths)
-	def find_scenes(self, f:dict={}, filter:dict={"per_page": -1}, fragment=None, get_count=False):
+	def find_scenes(self, f:dict={}, filter:dict={"per_page": -1}, q:str="", fragment=None, get_count=False):
 		query = """
 		query FindScenes($filter: FindFilterType, $scene_filter: SceneFilterType, $scene_ids: [Int!]) {
 			findScenes(filter: $filter, scene_filter: $scene_filter, scene_ids: $scene_ids) {
@@ -922,6 +922,7 @@ class StashInterface(GQLWrapper):
 		if fragment:
 			query = re.sub(r'\.\.\.stashScene', fragment, query)
 
+		filter["q"] = q
 		variables = {
 			"filter": filter,
 			"scene_filter": f
