@@ -1,4 +1,4 @@
-DEVELOP="""
+RELEASE_0_16_0="""
 fragment scrapedScene on ScrapedScene {
 	title
 	details
@@ -367,7 +367,7 @@ fragment ConfigDLNAData on ConfigDLNAResult {
 	interfaces
 }
 """
-FILES_REFACTOR="""
+DEVELOP="""
 fragment scrapedScene on ScrapedScene {
 	title
 	details
