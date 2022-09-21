@@ -1,3 +1,4 @@
+import base64
 from collections import defaultdict
 
 def defaultify(d:dict, default=None):
@@ -9,6 +10,21 @@ def defaultify(d:dict, default=None):
 def clean_dict(to_clean):
 # returns dictionary where values are not None
 	return {k:v for k,v in to_clean.items() if v and "__" not in k}
+
+def get_base64(image_path):
+	"""get base64 encoded image from local image path
+
+	Args:
+		 image_path (str): path to image file
+
+	Returns:
+		 str: base64 encoded string of image
+	"""	
+	with open(image_path, "rb") as img:
+		b64img_bytes = base64.b64encode(img.read())
+	if not b64img_bytes:
+		return None
+	return f"data:image/jpeg;base64,{b64img_bytes.decode('utf-8')}"
 
 def human_bytes(size):
 	# 2**10 = 1024
