@@ -456,7 +456,7 @@ fragment stashScene on Scene {
 	o_counter
 	files { id path }
 	tags { ...stashTag }
-	galleries { id name }
+	galleries { id }
 	performers { ...stashPerformer }
 	scene_markers { ...stashSceneMarker }
 	studio{ ...stashStudio }
