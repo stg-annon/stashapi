@@ -1,4 +1,4 @@
-RELEASE_0_16_0="""
+RELEASE_0_16_1="""
 fragment scrapedScene on ScrapedScene {
 	title
 	details

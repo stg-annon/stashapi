@@ -21,7 +21,7 @@ class StashInterface(GQLWrapper):
 	}
 	cookies = {}
 
-	def __init__(self, conn:dict={}, fragments:list[str]=[stashapp_gql_fragments.DEVELOP]):
+	def __init__(self, conn:dict={}, fragments:list[str]=[]):
 		global log
 
 		conn = CaseInsensitiveDict(conn)
@@ -43,13 +43,21 @@ class StashInterface(GQLWrapper):
 
 		try:
 			# test query to ensure good connection
-			version = self.stash_version()
+			build = self.stash_version()
+			version = build["version"]
 		except Exception as e:
 			log.error(f"Could not connect to Stash at {self.url}")
 			log.error(e)
 			sys.exit()
 			
-		log.debug(f'Using stash ({version["version"]}) endpoint at {self.url}')
+		log.debug(f'Using stash ({version}) endpoint at {self.url}')
+
+
+		if fragments == []:
+			if version > "v0.16.1-34":
+				fragments.append(stashapp_gql_fragments.DEVELOP)
+			else:
+				fragments.append(stashapp_gql_fragments.RELEASE_0_16_1)
 
 		self.fragments = {}
 		for fragment in fragments:
