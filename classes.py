@@ -69,26 +69,23 @@ class GQLWrapper:
 			json_request['variables'] = variables
 
 		response = requests.post(self.url, json=json_request, headers=self.headers, cookies=self.cookies)
-		
-		if response.status_code == 200:
-			result = response.json()
+		result = response.json()
 
-			if result.get("errors"):
-				for error in result["errors"]:
-					log.error(f"GraphQL error: {error}")
-			if result.get("error"):
-				for error in result["error"]["errors"]:
-					log.error(f"GraphQL error: {error}")
-			if result.get("data"):
-				result_data = defaultify(result)
-				return result_data['data']
+		for error in result.get("errors", []):
+			message = error.get("message")
+			code = error.get("extensions", {}).get("code", "GRAPHQL_ERROR")
+			path = error.get("path", "")
+			fmt_error = f"{code}: {message} {path}".strip()
+			log.error(fmt_error)
+
+		if response.status_code == 200:
+			result_data = defaultify(result.get("data"))
+			return result_data['data']
 		elif response.status_code == 401:
-			sys.exit("HTTP Error 401, Unauthorized. Cookie authentication most likely failed")
+			log.error(f"401, Unauthorized. Could not access endpoiont {self.url}. Did you provide an API key?")
 		else:
-			raise ConnectionError(
-				"GraphQL query failed:{} - {}. Query: {}. Variables: {}".format(
-					response.status_code, response.content, query, variables)
-			)
+			log.error(f"{response.status_code} query failed. {query}. Variables: {variables}")
+		sys.exit()
 
 class SQLiteWrapper:
 	conn = None
