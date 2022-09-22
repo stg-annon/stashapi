@@ -126,7 +126,7 @@ class StashInterface(GQLWrapper):
 			sql_file = self.call_gql("query dbPath{configuration{general{databasePath}}}")
 			return SQLiteWrapper(sql_file["configuration"]["general"]["databasePath"])
 		else:
-			raise Exception("not local stash instance cannot create sql interface")
+			raise Exception(f"cannot create sql interface on a non local stash instance ({self.url})")
 
 	def graphql_configuration(self):
 		query = """
