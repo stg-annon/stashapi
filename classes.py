@@ -69,9 +69,9 @@ class GQLWrapper:
 			json_request['variables'] = variables
 
 		response = requests.post(self.url, json=json_request, headers=self.headers, cookies=self.cookies)
-		result = response.json()
+		content = response.json()
 
-		for error in result.get("errors", []):
+		for error in content.get("errors", []):
 			message = error.get("message")
 			code = error.get("extensions", {}).get("code", "GRAPHQL_ERROR")
 			path = error.get("path", "")
@@ -79,8 +79,7 @@ class GQLWrapper:
 			log.error(fmt_error)
 
 		if response.status_code == 200:
-			result_data = defaultify(result.get("data"))
-			return result_data['data']
+			return content["data"]
 		elif response.status_code == 401:
 			log.error(f"401, Unauthorized. Could not access endpoiont {self.url}. Did you provide an API key?")
 		else:
@@ -91,10 +90,14 @@ class SQLiteWrapper:
 	conn = None
 
 	def __init__(self, db_filepath) -> None:
-		# generate uri for read-only connection, all write operations should be done from the API
-		p = Path(db_filepath).resolve()
-		db_uri = f"{p.as_uri()}?mode=ro"
-		self.conn = sqlite3.connect(db_uri, uri=True)
+		## TODO generate uri for read-only connection, all write operations should be done from the API
+		## issuses with cross os paths parsing to uri skip for now, opt for warning message
+		# db_filepath = Path(db_filepath)
+		# db_filepath = db_filepath.resolve()
+		# db_uri = f"{db_filepath.as_uri()}?mode=ro"
+		
+		log.warning("SQL connetion should only be used for read-only operations, all write operations should be done from the API")
+		self.conn = sqlite3.connect(db_filepath)
 
 	def query(self, query, args=(), one=False):
 		cur = self.conn.cursor()
