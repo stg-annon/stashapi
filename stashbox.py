@@ -189,52 +189,49 @@ class StashBoxInterface(GQLWrapper):
 		if edit.get("tags"):
 			passed_tag_ids = edit["tags"]["ids"]
 			mode = edit["tags"]["mode"]
-			match mode:
-				case "SET":
-					details["tag_ids"] = passed_tag_ids
-					comments.append("SET Tags")
-				case "ADD":
-					details["tag_ids"].extend(passed_tag_ids)
-					comments.append(f"ADD {len(passed_tag_ids)} Tag(s)")
-				case "REMOVE":
-					details["tag_ids"] = [tid for tid in details["tag_ids"] if tid not in passed_tag_ids]
-					comments.append(f"REMOVE {len(passed_tag_ids)} Tag(s)")
+			if mode == "SET":
+				details["tag_ids"] = passed_tag_ids
+				comments.append("SET Tags")
+			if mode == "ADD":
+				details["tag_ids"].extend(passed_tag_ids)
+				comments.append(f"ADD {len(passed_tag_ids)} Tag(s)")
+			if mode == "REMOVE":
+				details["tag_ids"] = [tid for tid in details["tag_ids"] if tid not in passed_tag_ids]
+				comments.append(f"REMOVE {len(passed_tag_ids)} Tag(s)")
 
 		if edit.get("performers"):
 			passed_performer_appearances = edit["performers"]["appearances"]
 			mode = edit["performers"]["mode"]
-			match mode:
-				case "SET":
-					details["performers"] = passed_performer_appearances
-					comments.append("SET Performers")
-				case "ADD":
-					details["performers"].extend(passed_performer_appearances)
-					comments.append(f"ADD {len(passed_performer_appearances)} Performer(s)")
-				case "REMOVE":
-					remove_lookup = [p["performer_id"] for p in passed_performer_appearances]
-					details["performers"] = [p for p in details["performers"] if p["performer_id"] not in remove_lookup ]
-					comments.append(f"REMOVE {len(passed_performer_appearances)} Performer(s)")
+			if mode == "SET":
+				details["performers"] = passed_performer_appearances
+				comments.append("SET Performers")
+			if mode == "ADD":
+				details["performers"].extend(passed_performer_appearances)
+				comments.append(f"ADD {len(passed_performer_appearances)} Performer(s)")
+			if mode == "REMOVE":
+				remove_lookup = [p["performer_id"] for p in passed_performer_appearances]
+				details["performers"] = [p for p in details["performers"] if p["performer_id"] not in remove_lookup ]
+				comments.append(f"REMOVE {len(passed_performer_appearances)} Performer(s)")
 		
 		if edit.get("urls"):
 			passed_url_edits = edit["urls"]["links"]
 			mode = edit["urls"]["mode"]
-			match mode:
-				case "SET":
-					details["urls"] = passed_url_edits
-					comments.append("SET Performers")
-				case "ADD":
-					details["urls"].extend(passed_url_edits)
-					comments.append(f"ADD {len(passed_url_edits)} URL(s)")
-				case "REMOVE":
-					remove_lookup = [url["url"] for url in passed_url_edits]
-					details["urls"] = [url for url in details["urls"] if url["url"] not in remove_lookup ]
-					comments.append(f"REMOVE {len(passed_url_edits)} Performer(s)")
-				case "REPLACE":
-					for url_edit in passed_url_edits:
-						for url in details["urls"]:
-							if url["url"] == url_edit["target_url"]:
-								url["url"] = url_edit["url"]
-								comments.append(f'REPLACE {url_edit["target_url"]} with {url_edit["url"]}')
+			if mode == "SET":
+				details["urls"] = passed_url_edits
+				comments.append("SET Performers")
+			if mode == "ADD":
+				details["urls"].extend(passed_url_edits)
+				comments.append(f"ADD {len(passed_url_edits)} URL(s)")
+			if mode == "REMOVE":
+				remove_lookup = [url["url"] for url in passed_url_edits]
+				details["urls"] = [url for url in details["urls"] if url["url"] not in remove_lookup ]
+				comments.append(f"REMOVE {len(passed_url_edits)} Performer(s)")
+			if mode == "REPLACE":
+				for url_edit in passed_url_edits:
+					for url in details["urls"]:
+						if url["url"] == url_edit["target_url"]:
+							url["url"] = url_edit["url"]
+							comments.append(f'REPLACE {url_edit["target_url"]} with {url_edit["url"]}')
 
 		for attr in ["code","date","details","director","duration","studio_id","title"]:
 			if edit.get(attr):
