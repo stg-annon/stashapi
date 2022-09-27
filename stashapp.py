@@ -175,7 +175,7 @@ class StashInterface(GQLWrapper):
 		# assume input is an ID if int
 		if isinstance(tag_in, int):
 			return self.__genric_find(
-				"query FindTag($id: ID!) { findTag(id: $id) { ...stashTag } }",
+				"query FindTag($id: ID!) { findTag(id: $id) { ...Tag } }",
 				tag_in
 			)
 
@@ -213,7 +213,7 @@ class StashInterface(GQLWrapper):
 		query = """
 			mutation tagCreate($input:TagCreateInput!) {
 				tagCreate(input: $input){
-					...stashTag
+					...Tag
 				}
 			}
 		"""
@@ -257,7 +257,7 @@ class StashInterface(GQLWrapper):
 			 f (TagFilterType, optional): See playground for details. Defaults to {}.
 			 filter (FindFilterType, optional): See playground for details. Defaults to {"per_page": -1}.
 			 q (str, optional): query string, same search bar in stash. Defaults to "".
-			 fragment (str, optional): override for gqlFragment. Defaults to "...stashTag". example override 'fargment="id name"'
+			 fragment (str, optional): override for gqlFragment. Defaults to "...Tag". example override 'fargment="id name"'
 			 get_count (bool, optional): returns tuple (count, [tags]) where count is the number of results from the query, useful when pageing. Defaults to False.
 
 		Returns:
@@ -269,13 +269,13 @@ class StashInterface(GQLWrapper):
 				findTags(filter: $filter, tag_filter: $tag_filter) {
 					count
 					tags {
-						...stashTag
+						...Tag
 					}
 				}
 			}
 		"""
 		if fragment:
-			query = re.sub(r'\.\.\.stashTag', fragment, query)
+			query = re.sub(r'\.\.\.Tag', fragment, query)
 
 		filter["q"] = q
 		variables = {
@@ -304,7 +304,7 @@ class StashInterface(GQLWrapper):
 		# assume input is an ID if int
 		if isinstance(performer_in, int):
 			return self.__genric_find(
-				"query FindPerformer($id: ID!) { findPerformer(id: $id) { ...stashPerformer } }",
+				"query FindPerformer($id: ID!) { findPerformer(id: $id) { ...Performer } }",
 				performer_in,
 			)
 
@@ -359,7 +359,7 @@ class StashInterface(GQLWrapper):
 		query = """
 			mutation($input: PerformerCreateInput!) {
 				performerCreate(input: $input) {
-					...stashPerformer
+					...Performer
 				}
 			}
 		"""
@@ -381,7 +381,7 @@ class StashInterface(GQLWrapper):
 		query = """
 			mutation performerUpdate($input:PerformerUpdateInput!) {
 				performerUpdate(input: $input) {
-					...stashPerformer
+					...Performer
 				}
 			}
 		"""
@@ -399,7 +399,7 @@ class StashInterface(GQLWrapper):
 			 f (PerformerFilterType, optional): See playground for details. Defaults to {}.
 			 filter (FindFilterType, optional): See playground for details. Defaults to {"per_page": -1}.
 			 q (str, optional): query string, same search bar in stash. Defaults to "".
-			 fragment (dict, optional):  override for gqlFragment. Defaults to "...stashPerformer". example override 'fargment="id name"'
+			 fragment (dict, optional):  override for gqlFragment. Defaults to "...Performer". example override 'fargment="id name"'
 			 get_count (bool, optional): returns tuple (count, [performers]) where count is the number of results from the query, useful when pageing. Defaults to False.
 
 		Returns:
@@ -411,13 +411,13 @@ class StashInterface(GQLWrapper):
 				findPerformers(filter: $filter, performer_filter: $performer_filter) {
 					count
 					performers {
-						...stashPerformer
+						...Performer
 					}
 				}
 			}
 		"""
 		if fragment:
-			query = re.sub(r'\.\.\.stashPerformer', fragment, query)
+			query = re.sub(r'\.\.\.Performer', fragment, query)
 		
 		filter["q"] = q
 		variables = {
@@ -447,7 +447,7 @@ class StashInterface(GQLWrapper):
 		# assume input is an ID if int
 		if isinstance(studio, int):
 			return self.__genric_find(
-				"query FindStudio($id: ID!) { findStudio(id: $id) { ...stashStudio } }",
+				"query FindStudio($id: ID!) { findStudio(id: $id) { ...Studio } }",
 				studio,
 			)
 
@@ -502,7 +502,7 @@ class StashInterface(GQLWrapper):
 		query = """
 			mutation StudioCreate($input: StudioCreateInput!) {
 				studioCreate(input: $input) {
-					...stashStudio
+					...Studio
 				}
 			}
 		"""
@@ -525,7 +525,7 @@ class StashInterface(GQLWrapper):
 		query = """
 			mutation StudioUpdate($input:StudioUpdateInput!) {
 				studioUpdate(input: $input) {
-					...stashStudio
+					...Studio
 				}
 			}
 		"""
@@ -542,7 +542,7 @@ class StashInterface(GQLWrapper):
 			 f (StudioFilterType, optional): See playground for details. Defaults to {}.
 			 filter (FindFilterType, optional): See playground for details. Defaults to {"per_page": -1}.
 			 q (str, optional): query string, same search bar in stash. Defaults to "".
-			 fragment (_type_, optional): override for gqlFragment. Defaults to "...stashStudio". example override 'fargment="id name"'
+			 fragment (_type_, optional): override for gqlFragment. Defaults to "...Studio". example override 'fargment="id name"'
 			 get_count (bool, optional): returns tuple (count, [studios]) where count is the number of results from the query, useful when pageing. Defaults to False.
 
 		Returns:
@@ -554,13 +554,13 @@ class StashInterface(GQLWrapper):
 			findStudios(filter: $filter, studio_filter: $studio_filter) {
 			count
 			studios {
-				...stashStudio
+				...Studio
 			}
 			}
 		}
 		"""
 		if fragment:
-			query = re.sub(r'\.\.\.stashStudio', fragment, query)
+			query = re.sub(r'\.\.\.Studio', fragment, query)
 
 		filter["q"] = q
 		variables = {
@@ -579,7 +579,7 @@ class StashInterface(GQLWrapper):
 		# assume input is an ID if int
 		if isinstance(movie_in, int):
 			return self.__genric_find(
-				"query FindMovie($id: ID!) { findMovie(id: $id) { ...stashMovie } }",
+				"query FindMovie($id: ID!) { findMovie(id: $id) { ...Movie } }",
 				movie_in
 			)
 
@@ -628,7 +628,7 @@ class StashInterface(GQLWrapper):
 		query = """
 			mutation MovieUpdate($input:MovieUpdateInput!) {
 				movieUpdate(input: $input) {
-					...stashMovie
+					...Movie
 				}
 			}
 		"""
@@ -645,13 +645,13 @@ class StashInterface(GQLWrapper):
 				findMovies(filter: $filter, movie_filter: $movie_filter) {
 					count
 					movies {
-						...stashMovie
+						...Movie
 					}
 				}
 			}
 		"""
 		if fragment:
-			query = re.sub(r'\.\.\.stashMovie', fragment, query)
+			query = re.sub(r'\.\.\.Movie', fragment, query)
 
 		filter["q"] = q
 		variables = {
@@ -672,9 +672,9 @@ class StashInterface(GQLWrapper):
 	def find_gallery(self, gallery_in, fragment=None):
 		if isinstance(gallery_in, int):
 			return self.__genric_find(
-				"query FindGallery($id: ID!) { findGallery(id: $id) { ...stashGallery } }",
+				"query FindGallery($id: ID!) { findGallery(id: $id) { ...Gallery } }",
 				gallery_in,
-				(r'\.\.\.stashGallery', fragment)
+				(r'\.\.\.Gallery', fragment)
 			)
 
 		if isinstance(gallery_in, dict):
@@ -738,13 +738,13 @@ class StashInterface(GQLWrapper):
 				findGalleries(gallery_filter: $gallery_filter, filter: $filter) {
 					count
 					galleries {
-						...stashGallery
+						...Gallery
 					}
 				}
 			}
 		"""
 		if fragment:
-			query = re.sub(r'\.\.\.stashGallery', fragment, query)
+			query = re.sub(r'\.\.\.Gallery', fragment, query)
 
 		filter["q"] = q
 		variables = {
@@ -765,9 +765,9 @@ class StashInterface(GQLWrapper):
 	def find_image(self, image_in, fragment=None):
 		if isinstance(image_in, int):
 			return self.__genric_find(
-				"query FindImage($id: ID!) { findImage(id: $id) { ...stashImage } }",
+				"query FindImage($id: ID!) { findImage(id: $id) { ...Image } }",
 				image_in,
-				(r'\.\.\.stashImage', fragment),
+				(r'\.\.\.Image', fragment),
 			)
 
 		if isinstance(image_in, dict):
@@ -787,15 +787,15 @@ class StashInterface(GQLWrapper):
 		query = """
 		query FindImages($filter: FindFilterType, $image_filter: ImageFilterType, $image_ids: [Int!]) {
   			findImages(filter: $filter, image_filter: $image_filter, image_ids: $image_ids) {
-    			count
-    			images {
-      			...stashImage
-    			}
+	 			count
+	 			images {
+					...Image
+	 			}
   			}
 		}
 		"""
 		if fragment:
-			query = re.sub(r'\.\.\.stashImage', fragment, query)
+			query = re.sub(r'\.\.\.Image', fragment, query)
 
 		filter["q"] = q
 		variables = {
@@ -873,12 +873,12 @@ class StashInterface(GQLWrapper):
 		query = """
 		query FindScene($scene_id: ID) {
 			findScene(id: $scene_id) {
-				...stashScene
+				...Scene
 			}
 		}
 		"""
 		if fragment:
-			query = re.sub(r'\.\.\.stashScene', fragment, query)
+			query = re.sub(r'\.\.\.Scene', fragment, query)
 
 		variables = {"scene_id": id}
 
@@ -922,13 +922,13 @@ class StashInterface(GQLWrapper):
 			findScenes(filter: $filter, scene_filter: $scene_filter, scene_ids: $scene_ids) {
 				count
 				scenes {
-					...stashScene
+					...Scene
 				}
 			}
 		}
 		"""
 		if fragment:
-			query = re.sub(r'\.\.\.stashScene', fragment, query)
+			query = re.sub(r'\.\.\.Scene', fragment, query)
 
 		filter["q"] = q
 		variables = {
@@ -975,13 +975,13 @@ class StashInterface(GQLWrapper):
 			query FindSceneMarkers($scene_id: ID) {
 				findScene(id: $scene_id) {
 					scene_markers {
-						...stashSceneMarker
+						...SceneMarker
 					}
 				}
 			}
 		"""
 		if fragment:
-			query = re.sub(r'\.\.\.stashSceneMarker', fragment, query)
+			query = re.sub(r'\.\.\.SceneMarker', fragment, query)
 
 		variables = { "scene_id": scene_id }
 		return self._callGraphQL(query, variables)["findScene"]["scene_markers"]
@@ -989,12 +989,12 @@ class StashInterface(GQLWrapper):
 		query = """
 			mutation SceneMarkerCreate($marker_input: SceneMarkerCreateInput!) {
 				sceneMarkerCreate(input: $marker_input) {
-					...stashSceneMarker
+					...SceneMarker
 				}
 			}
 		"""
 		if fragment:
-			query = re.sub(r'\.\.\.stashSceneMarker', fragment, query)
+			query = re.sub(r'\.\.\.SceneMarker', fragment, query)
 			
 		variables = { "marker_input": marker_create_input }
 		return self._callGraphQL(query, variables)["sceneMarkerCreate"]
@@ -1504,14 +1504,13 @@ class StashInterface(GQLWrapper):
 	def find_duplicate_scenes(self, distance: PhashDistance=PhashDistance.EXACT, fragment=None):
 		query = """
 			query FindDuplicateScenes($distance: Int) {
-				  findDuplicateScenes(distance: $distance) {
-					...stashSceneSlim
-					__typename
-				  }
+				findDuplicateScenes(distance: $distance) {
+					...SceneSlim
+				}
 			}
 		"""
 		if fragment:
-			query = re.sub(r'\.\.\.stashSceneSlim', fragment, query)
+			query = re.sub(r'\.\.\.SceneSlim', fragment, query)
 
 		variables = { "distance": distance }
 		result = self._callGraphQL(query, variables)
