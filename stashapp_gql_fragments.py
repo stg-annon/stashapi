@@ -1,26 +1,26 @@
 RELEASE_0_16_1="""
-fragment scrapedScene on ScrapedScene {
+fragment ScrapedScene on ScrapedScene {
 	title
 	details
 	url
 	date
 	image
-	studio{ ...scrapedStudio }
-	tags{ ...scrapedTag }
-	performers{ ...scrapedPerformer }
-	movies{ ...scrapedMovie }
+	studio{ ...ScrapedStudio }
+	tags{ ...ScrapedTag }
+	performers{ ...ScrapedPerformer }
+	movies{ ...ScrapedMovie }
 	duration
 }
-fragment scrapedGallery on ScrapedGallery {
+fragment ScrapedGallery on ScrapedGallery {
 	title
 	details
 	url
 	date
-	studio{ ...scrapedStudio }
-	tags{ ...scrapedTag }
-	performers{ ...scrapedPerformer }
+	studio{ ...ScrapedStudio }
+	tags{ ...ScrapedTag }
+	performers{ ...ScrapedPerformer }
 }
-fragment scrapedPerformer on ScrapedPerformer {
+fragment ScrapedPerformer on ScrapedPerformer {
 	stored_id
 	name
 	gender
@@ -38,7 +38,7 @@ fragment scrapedPerformer on ScrapedPerformer {
 	tattoos
 	piercings
 	aliases
-	tags { ...scrapedTag }
+	tags { ...ScrapedTag }
 	images
 	details
 	death_date
@@ -46,11 +46,11 @@ fragment scrapedPerformer on ScrapedPerformer {
 	weight
 	remote_site_id
 }
-fragment scrapedTag on ScrapedTag {
+fragment ScrapedTag on ScrapedTag {
 	stored_id
 	name
 }
-fragment scrapedMovie on ScrapedMovie {
+fragment ScrapedMovie on ScrapedMovie {
 	stored_id
 	name
 	aliases
@@ -60,17 +60,17 @@ fragment scrapedMovie on ScrapedMovie {
 	director
 	synopsis
 	url
-	studio { ...scrapedStudio }
+	studio { ...ScrapedStudio }
 	front_image
 	back_image
 }
-fragment scrapedStudio on ScrapedStudio {
+fragment ScrapedStudio on ScrapedStudio {
 	stored_id
 	name
 	url
 	remote_site_id
 }
-fragment stashScene on Scene {
+fragment Scene on Scene {
 	id
 	checksum
 	oshash
@@ -83,58 +83,24 @@ fragment stashScene on Scene {
 	organized
 	o_counter
 	path
-	tags {
-	...stashTag
-	}
+	tags { ...Tag }
 	file {
-	size
-	duration
-	video_codec
-	audio_codec
-	width
-	height
-	framerate
-	bitrate
-	__typename
+		size
+		duration
+		video_codec
+		audio_codec
+		width
+		height
+		framerate
+		bitrate
 	}
-	galleries {
-	id
-	checksum
-	path
-	title
-	url
-	date
-	details
-	rating
-	organized
-	studio {
-		id
-		name
-		url
-		__typename
-	}
-	image_count
-	tags {
-		...stashTag
-	}
-	}
-	performers {
-	...stashPerformer
-	}
-	scene_markers { 
-	...stashSceneMarker
-	}
-	studio{
-	...stashStudio
-	}
-	stash_ids{
-	endpoint
-	stash_id
-	__typename
-	}
-	__typename
+	galleries { ...Gallery }
+	performers { ...Performer }
+	scene_markers { ...SceneMarker }
+	studio{ ...Studio }
+	stash_ids{ ...StashID }
 }
-fragment stashSceneSlim on Scene {
+fragment SceneSlim on Scene {
 	id
 	title
 	path
@@ -148,11 +114,9 @@ fragment stashSceneSlim on Scene {
 	height
 	framerate
 	bitrate
-	__typename
 	}
-	__typename
 }
-fragment stashGallery on Gallery {
+fragment Gallery on Gallery {
 	id
 	checksum
 	path
@@ -171,26 +135,23 @@ fragment stashGallery on Gallery {
 	studio {
 		id
 		name
-		__typename
 	}
 	tags {
-		...stashTag
+		...Tag
 	}
 	performers {
-		...stashPerformer
+		...Performer
 	}
 	scenes {
 		id
 		title
-		__typename
 	}
 	images {
 		id
 		title
 	}
-	__typename
 }
-fragment stashImage on Image {
+fragment Image on Image {
 	id
 	checksum
 	title
@@ -200,10 +161,10 @@ fragment stashImage on Image {
 	path
 	galleries { id }
 	studio { id name }
-	tags { ...stashTag }
+	tags { ...Tag }
 	performers { id name }
 }
-fragment stashPerformer on Performer {
+fragment Performer on Performer {
 	id
 	checksum
 	name
@@ -223,33 +184,27 @@ fragment stashPerformer on Performer {
 	piercings
 	aliases
 	favorite
-	tags { ...stashTag }
+	tags { ...Tag }
 	image_path
 	scene_count
 	image_count
 	gallery_count
-	stash_ids {
-		stash_id
-		endpoint
-		__typename
-	}
+	stash_ids { ...StashID }
 	rating
 	details
 	death_date
 	hair_color
 	weight
-	__typename
 }
-fragment stashSceneMarker on SceneMarker {
+fragment SceneMarker on SceneMarker {
 	id
 	scene { id }
 	title
 	seconds
-	primary_tag { ...stashTag }
-	tags { ...stashTag }
-	__typename
+	primary_tag { ...Tag }
+	tags { ...Tag }
 }
-fragment stashMovie on Movie {
+fragment Movie on Movie {
 	id
 	name
 	aliases
@@ -263,33 +218,30 @@ fragment stashMovie on Movie {
 	created_at
 	updated_at
 	scene_count
-	__typename
 }
-fragment stashTag on Tag {
+fragment Tag on Tag {
 	id
 	name
 	aliases
 	image_path
 	scene_count
-	__typename
 }
-fragment stashStudio on Studio {
+fragment Studio on Studio {
 	id
 	name
 	url
 	aliases
 	rating
 	details
-	stash_ids{
-		endpoint
-		stash_id
-		__typename
-	}
+	stash_ids { ...StashID }
 	parent_studio {
 		id
 		name
 	}
-	__typename
+}
+fragment StashID on StashID{
+	stash_id
+	endpoint
 }
 fragment ConfigData on ConfigResult {
 	general {
@@ -368,30 +320,28 @@ fragment ConfigDLNAData on ConfigDLNAResult {
 }
 """
 DEVELOP="""
-fragment scrapedScene on ScrapedScene {
+fragment ScrapedScene on ScrapedScene {
 	title
 	details
 	url
 	date
 	image
-	studio{ ...scrapedStudio }
-	tags{ ...scrapedTag }
-	performers{ ...scrapedPerformer }
-	movies{ ...scrapedMovie }
+	studio{ ...ScrapedStudio }
+	tags{ ...ScrapedTag }
+	performers{ ...ScrapedPerformer }
+	movies{ ...ScrapedMovie }
 	duration
-	__typename
 }
-fragment scrapedGallery on ScrapedGallery {
+fragment ScrapedGallery on ScrapedGallery {
 	title
 	details
 	url
 	date
-	studio{ ...scrapedStudio }
-	tags{ ...scrapedTag }
-	performers{ ...scrapedPerformer }
-	__typename
+	studio{ ...ScrapedStudio }
+	tags{ ...ScrapedTag }
+	performers{ ...ScrapedPerformer }
 }
-fragment scrapedPerformer on ScrapedPerformer {
+fragment ScrapedPerformer on ScrapedPerformer {
 	stored_id
 	name
 	gender
@@ -409,21 +359,19 @@ fragment scrapedPerformer on ScrapedPerformer {
 	tattoos
 	piercings
 	aliases
-	tags { ...scrapedTag }
+	tags { ...ScrapedTag }
 	images
 	details
 	death_date
 	hair_color
 	weight
 	remote_site_id
-	__typename
 }
-fragment scrapedTag on ScrapedTag {
+fragment ScrapedTag on ScrapedTag {
 	stored_id
 	name
-	__typename
 }
-fragment scrapedMovie on ScrapedMovie {
+fragment ScrapedMovie on ScrapedMovie {
 	stored_id
 	name
 	aliases
@@ -433,19 +381,17 @@ fragment scrapedMovie on ScrapedMovie {
 	director
 	synopsis
 	url
-	studio { ...scrapedStudio }
+	studio { ...ScrapedStudio }
 	front_image
 	back_image
-	__typename
 }
-fragment scrapedStudio on ScrapedStudio {
+fragment ScrapedStudio on ScrapedStudio {
 	stored_id
 	name
 	url
 	remote_site_id
-	__typename
 }
-fragment stashScene on Scene {
+fragment Scene on Scene {
 	id
 	title
 	details
@@ -454,42 +400,22 @@ fragment stashScene on Scene {
 	rating
 	organized
 	o_counter
-	files { id path }
-	tags { ...stashTag }
-	galleries { id }
-	performers { ...stashPerformer }
-	scene_markers { ...stashSceneMarker }
-	studio{ ...stashStudio }
-	stash_ids{ endpoint stash_id }
+	files { ...VideoFile }
+	tags { ...Tag }
+	galleries { ...Gallery }
+	performers { ...Performer }
+	scene_markers { ...SceneMarker }
+	studio{ ...Studio }
+	stash_ids{ ...StashID }
 }
-fragment stashSceneSlim on Scene {
+fragment SceneSlim on Scene {
 	id
 	title
-	files { id path }
+	files { ...VideoFile }
 	oshash
 	phash
 }
-fragment stashVideoFile on VideoFile {
-   id
-   path
-   basename
-   parent_folder_id
-   zip_file_id
-   mod_time
-   size
-   fingerprints { type value }
-   format
-   width
-   height
-   duration
-   video_codec
-   audio_codec
-   frame_rate
-   bit_rate
-   created_at
-   updated_at
-}
-fragment stashGallery on Gallery {
+fragment Gallery on Gallery {
 	id
 	title
 	date
@@ -497,59 +423,32 @@ fragment stashGallery on Gallery {
 	details
 	rating
 	organized
-   files { id path }
-   folder
+	files { ...GalleryFile }
+	folder { ...Folder }
 	scenes { id title }
 	studio { id name }
-   image_count
-	tags { ...stashTag }
-	performers { ...stashPerformer }
-	images { id }
+	image_count
+	tags { ...Tag }
+	performers { ...Performer }
 	cover { id }
-   created_at
-   updated_at
+	created_at
+	updated_at
 }
-fragment stashGalleryFile on GalleryFile {
-   id
-   path
-   basename
-   parent_folder_id
-   zip_file_id
-   mod_time
-   size
-   fingerprints { type value }
-   created_at
-   updated_at
-}
-fragment stashImage on Image {
+fragment Image on Image {
 	id
 	title
 	rating
 	o_counter
 	organized
-	files { id path fingerprints { type value } }
+	files { ...ImageFile }
 	galleries { id }
 	studio { id name }
 	tags { id name }
 	performers { id name }
-   created_at
-   updated_at
+	created_at
+	updated_at
 }
-fragment stashImageFile on ImageFile {
-   id
-   path
-   basename
-   parent_folder_id
-   zip_file_id
-   mod_time
-   size
-   fingerprints { type value }
-   width
-   height
-   created_at
-   updated_at
-}
-fragment stashPerformer on Performer {
+fragment Performer on Performer {
 	id
 	checksum
 	name
@@ -569,72 +468,120 @@ fragment stashPerformer on Performer {
 	piercings
 	aliases
 	favorite
-	tags { ...stashTag }
+	tags { ...Tag }
 	image_path
 	scene_count
 	image_count
 	gallery_count
-	stash_ids {
-		stash_id
-		endpoint
-	}
+	stash_ids { ...StashID }
 	rating
 	details
 	death_date
 	hair_color
 	weight
-	__typename
 }
-fragment stashSceneMarker on SceneMarker {
+fragment SceneMarker on SceneMarker {
 	id
 	scene { id }
 	title
 	seconds
-	primary_tag { ...stashTag }
-	tags { ...stashTag }
-	__typename
+	primary_tag { ...Tag }
+	tags { ...Tag }
 }
-fragment stashMovie on Movie {
+fragment Movie on Movie {
 	id
 	name
 	aliases
 	duration
 	date
 	rating
-	studio { id }
+	studio { id name }
 	director
 	synopsis
 	url
 	created_at
 	updated_at
 	scene_count
-	__typename
 }
-fragment stashTag on Tag {
+fragment Tag on Tag {
 	id
 	name
 	aliases
 	image_path
 	scene_count
-	__typename
 }
-fragment stashStudio on Studio {
+fragment Studio on Studio {
 	id
 	name
 	url
 	aliases
 	rating
 	details
-	stash_ids{
-		endpoint
-		stash_id
-		__typename
-	}
-	parent_studio {
-		id
-		name
-	}
-	__typename
+	stash_ids{ ...StashID }
+	parent_studio { id name }
+}
+fragment StashID on StashID{
+	stash_id
+	endpoint
+}
+fragment Fingerprint on Fingerprint {
+	type
+	value
+}
+fragment Folder on Folder {
+	id
+	path
+	parent_folder_id
+	zip_file_id
+	mod_time
+	created_at
+	updated_at
+}
+fragment VideoFile on VideoFile {
+	id
+	path
+	basename
+	parent_folder_id
+	zip_file_id
+	mod_time
+	size
+	fingerprints { ...Fingerprint }
+	format
+	width
+	height
+	duration
+	video_codec
+	audio_codec
+	frame_rate
+	bit_rate
+	created_at
+	updated_at
+}
+fragment ImageFile on ImageFile {
+	id
+	path
+	basename
+	parent_folder_id
+	zip_file_id
+	mod_time
+	size
+	fingerprints {...Fingerprints}
+	width
+	height
+	created_at
+	updated_at
+}
+fragment GalleryFile on GalleryFile {
+	id
+	path
+	basename
+	parent_folder_id
+	zip_file_id
+	mod_time
+	size
+	fingerprints { ...Fingerprint }
+	created_at
+	updated_at
 }
 fragment ConfigData on ConfigResult {
 	general {
