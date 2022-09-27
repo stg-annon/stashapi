@@ -37,3 +37,10 @@ def human_bytes(size):
 		n += 1
 	return f"{size:.2f}{power_labels[n]}B"
 	
+def phash_distance(lhash, rhash):
+	assert len(lhash) == len(rhash)
+	hamming = int(lhash,16) ^ int(rhash,16)
+	return bin(hamming).count("1")
+
+def similarity_score(lhash, rhash):
+	return 1-(phash_distance(lhash, rhash)/64.0)
