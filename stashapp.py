@@ -27,6 +27,7 @@ class StashInterface(GQLWrapper):
 		conn = CaseInsensitiveDict(conn)
 
 		log = conn.get("Logger", stash_logger)
+		self.log = log
 
 		# Session cookie for authentication
 		self.cookies = {}

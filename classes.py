@@ -1,9 +1,5 @@
-import re, sys, json, sqlite3
+import re, sys, sqlite3
 import requests
-from pathlib import Path
-
-from .tools import defaultify
-from . import log
 
 class GQLWrapper:
 	port = ""
@@ -76,14 +72,14 @@ class GQLWrapper:
 			code = error.get("extensions", {}).get("code", "GRAPHQL_ERROR")
 			path = error.get("path", "")
 			fmt_error = f"{code}: {message} {path}".strip()
-			log.error(fmt_error)
+			self.log.error(fmt_error)
 
 		if response.status_code == 200:
 			return content["data"]
 		elif response.status_code == 401:
-			log.error(f"401, Unauthorized. Could not access endpoiont {self.url}. Did you provide an API key?")
+			self.log.error(f"401, Unauthorized. Could not access endpoiont {self.url}. Did you provide an API key?")
 		else:
-			log.error(f"{response.status_code} query failed. {query}. Variables: {variables}")
+			self.log.error(f"{response.status_code} query failed. {query}. Variables: {variables}")
 		sys.exit()
 
 class SQLiteWrapper:
@@ -95,8 +91,8 @@ class SQLiteWrapper:
 		# db_filepath = Path(db_filepath)
 		# db_filepath = db_filepath.resolve()
 		# db_uri = f"{db_filepath.as_uri()}?mode=ro"
-		
-		log.warning("SQL connetion should only be used for read-only operations, all write operations should be done from the API")
+
+		self.log.warning("SQL connetion should only be used for read-only operations, all write operations should be done from the API")
 		self.conn = sqlite3.connect(db_filepath)
 
 	def query(self, query, args=(), one=False):
