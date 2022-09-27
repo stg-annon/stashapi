@@ -69,6 +69,8 @@ class GQLWrapper:
 
 		for error in content.get("errors", []):
 			message = error.get("message")
+			if len(message) > 2500:
+				message = f"{message[:2500]}..."
 			code = error.get("extensions", {}).get("code", "GRAPHQL_ERROR")
 			path = error.get("path", "")
 			fmt_error = f"{code}: {message} {path}".strip()
