@@ -239,7 +239,7 @@ fragment Studio on Studio {
       name
    }
 }
-fragment StashID on StashID{
+fragment StashID on StashID {
    stash_id
    endpoint
 }
@@ -520,7 +520,7 @@ fragment Studio on Studio {
    stash_ids{ ...StashID }
    parent_studio { id name }
 }
-fragment StashID on StashID{
+fragment StashID on StashID {
    stash_id
    endpoint
 }

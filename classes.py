@@ -22,7 +22,7 @@ class GQLWrapper:
 
 	def parse_fragments(self, fragments_in):
 		fragments = {}
-		fragment_matches = re.finditer(r'fragment ([A-Za-z]+) on [A-Za-z]+ {', fragments_in)
+		fragment_matches = re.finditer(r'fragment\s+([A-Za-z]+)\s+on\s+[A-Za-z]+(\s+)?{', fragments_in)
 		for fagment_match in fragment_matches:
 			start = fagment_match.end()
 			end = start
@@ -57,7 +57,7 @@ class GQLWrapper:
 			for fragment in [f["fragment"] for f in fragments if not f["defined"]]:
 				if fragment not in self.fragments:
 					raise Exception(f'GraphQL error: fragment "{fragment}" not defined')
-				query += self.fragments[fragment]
+				query += f"\n{self.fragments[fragment]}"
 			return self.__resolveFragments(query)
 
 	def _callGraphQL(self, query, variables=None):
