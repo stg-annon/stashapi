@@ -1216,7 +1216,7 @@ class StashInterface(GQLWrapper):
 
 		query = """query ScrapeSingleScene($source: ScraperSourceInput!, $input: ScrapeSingleSceneInput!) {
 			scrapeSingleScene(source: $source, input: $input) {
-			  ...scrapedScene
+			  ...ScrapedScene
 			}
 		  }
 		"""
@@ -1242,7 +1242,7 @@ class StashInterface(GQLWrapper):
 	def scrape_gallery(self, scraper_id:int, gallery):
 		query = """query ScrapeGallery($scraper_id: ID!, $gallery: GalleryUpdateInput!) {
 			scrapeGallery(scraper_id: $scraper_id, gallery: $gallery) {
-			  ...scrapedGallery
+			  ...ScrapedGallery
 			}
 		  }
 		"""
@@ -1267,7 +1267,7 @@ class StashInterface(GQLWrapper):
 	def scrape_performer(self, scraper_id:int, performer):
 		query = """query ScrapePerformer($scraper_id: ID!, $performer: ScrapedPerformerInput!) {
 			scrapePerformer(scraper_id: $scraper_id, performer: $performer) {
-			  ...scrapedPerformer
+			  ...ScrapedPerformer
 			}
 		  }
 		"""
@@ -1306,7 +1306,7 @@ class StashInterface(GQLWrapper):
 		query = """
 			query($url: String!) {
 				scrapeSceneURL(url: $url) {
-					...scrapedScene
+					...ScrapedScene
 				}
 			}
 		"""
@@ -1319,7 +1319,7 @@ class StashInterface(GQLWrapper):
 		query = """
 			query($url: String!) {
 				scrapeMovieURL(url: $url) {
-					...scrapedMovie
+					...ScrapedMovie
 				}
 			}
 		"""
@@ -1332,7 +1332,7 @@ class StashInterface(GQLWrapper):
 		query = """
 			query($url: String!) {
 				scrapeGalleryURL(url: $url) {
-					...scrapedGallery 
+					...ScrapedGallery 
 				}
 			}
 		"""
@@ -1345,7 +1345,7 @@ class StashInterface(GQLWrapper):
 		query = """
 			query($url: String!) {
 				scrapePerformerURL(url: $url) {
-					...scrapedPerformer
+					...ScrapedPerformer
 				}
 			}
 		"""
@@ -1439,7 +1439,7 @@ class StashInterface(GQLWrapper):
 		query = """
 			query QueryStashBoxScene($input: StashBoxSceneQueryInput!) {
 				queryStashBoxScene(input: $input) {
-					...scrapedScene
+					...ScrapedScene
 				}
 			}
 		"""
