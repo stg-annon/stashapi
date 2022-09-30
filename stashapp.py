@@ -133,7 +133,7 @@ class StashInterface(GQLWrapper):
 		query = """
 			query Configuration {
 				configuration {
-					...ConfigData
+					...ConfigResult
 				}
 			}
 		"""

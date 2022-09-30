@@ -243,18 +243,18 @@ fragment StashID on StashID {
    stash_id
    endpoint
 }
-fragment ConfigData on ConfigResult {
+fragment ConfigResult on ConfigResult {
    general {
-      ...ConfigGeneralData
+      ...ConfigGeneralResult
    }
    interface {
-      ...ConfigInterfaceData
+      ...ConfigInterfaceResult
    }
    dlna {
-      ...ConfigDLNAData
+      ...ConfigDLNAResult
    }
 }
-fragment ConfigGeneralData on ConfigGeneralResult {
+fragment ConfigGeneralResult on ConfigGeneralResult {
    stashes {
       path
       excludeVideo
@@ -298,7 +298,7 @@ fragment ConfigGeneralData on ConfigGeneralResult {
       api_key
    }
 }
-fragment ConfigInterfaceData on ConfigInterfaceResult {
+fragment ConfigInterfaceResult on ConfigInterfaceResult {
    menuItems
    soundOnPreview
    wallShowTitle
@@ -312,7 +312,7 @@ fragment ConfigInterfaceData on ConfigInterfaceResult {
    slideshowDelay
    handyKey
 }
-fragment ConfigDLNAData on ConfigDLNAResult {
+fragment ConfigDLNAResult on ConfigDLNAResult {
    serverName
    enabled
    whitelistedIPs
@@ -583,18 +583,18 @@ fragment GalleryFile on GalleryFile {
    created_at
    updated_at
 }
-fragment ConfigData on ConfigResult {
+fragment ConfigResult on ConfigResult {
    general {
-      ...ConfigGeneralData
+      ...ConfigGeneralResult
    }
    interface {
-      ...ConfigInterfaceData
+      ...ConfigInterfaceResult
    }
    dlna {
-      ...ConfigDLNAData
+      ...ConfigDLNAResult
    }
 }
-fragment ConfigGeneralData on ConfigGeneralResult {
+fragment ConfigGeneralResult on ConfigGeneralResult {
    stashes {
       path
       excludeVideo
@@ -638,7 +638,7 @@ fragment ConfigGeneralData on ConfigGeneralResult {
       api_key
    }
 }
-fragment ConfigInterfaceData on ConfigInterfaceResult {
+fragment ConfigInterfaceResult on ConfigInterfaceResult {
    menuItems
    soundOnPreview
    wallShowTitle
@@ -652,7 +652,7 @@ fragment ConfigInterfaceData on ConfigInterfaceResult {
    slideshowDelay
    handyKey
 }
-fragment ConfigDLNAData on ConfigDLNAResult {
+fragment ConfigDLNAResult on ConfigDLNAResult {
    serverName
    enabled
    whitelistedIPs
