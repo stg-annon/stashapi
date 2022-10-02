@@ -162,6 +162,26 @@ class StashInterface(GQLWrapper):
 		return result
 
 	# Tag CRUD
+	def create_tag(self, tag_in:dict) -> dict:
+		"""creates tag in stash
+
+		Args:
+			 tag_in (dict): TagCreateInput to create a tag.
+
+		Returns:
+			 dict: stash Tag dict
+		"""
+
+		query = """
+			mutation tagCreate($input:TagCreateInput!) {
+				tagCreate(input: $input){
+					...Tag
+				}
+			}
+		"""
+		variables = {'input': tag_in}
+		result = self._callGraphQL(query, variables)
+		return result["tagCreate"]
 	def find_tag(self, tag_in, create=False) -> dict:
 		"""looks for tag from stash matching aliases
 
@@ -200,27 +220,6 @@ class StashInterface(GQLWrapper):
 				return tag
 		if create:
 			return self.create_tag({"name":name})
-	
-	def create_tag(self, tag_in:dict) -> dict:
-		"""creates tag in stash
-
-		Args:
-			 tag_in (dict): TagCreateInput to create a tag.
-
-		Returns:
-			 dict: stash Tag dict
-		"""
-
-		query = """
-			mutation tagCreate($input:TagCreateInput!) {
-				tagCreate(input: $input){
-					...Tag
-				}
-			}
-		"""
-		variables = {'input': tag_in}
-		result = self._callGraphQL(query, variables)
-		return result["tagCreate"]
 	def update_tag(self, tag_update):
 		query = """
 		mutation TagUpdate($input: TagUpdateInput!) {
@@ -250,7 +249,7 @@ class StashInterface(GQLWrapper):
 
 		self._callGraphQL(query, variables)
 
-	# Tags CRUD
+	# BULK Tags
 	def find_tags(self, f:dict={}, filter:dict={"per_page": -1}, q:str="", fragment:str=None, get_count:bool=False) -> list[dict]:
 		"""gets tags matching filter/query
 
@@ -291,6 +290,27 @@ class StashInterface(GQLWrapper):
 			return result["findTags"]["tags"]
 
 	# Performer CRUD
+	def create_performer(self, performer_in:dict) -> dict:
+		"""creates performer in stash
+
+		Args:
+			 performer_in (PerformerCreateInput): performer to create
+
+		Returns:
+			 dict: stash performer object
+		"""		
+		query = """
+			mutation($input: PerformerCreateInput!) {
+				performerCreate(input: $input) {
+					...Performer
+				}
+			}
+		"""
+
+		variables = {'input': performer_in}
+
+		result = self._callGraphQL(query, variables)
+		return result['performerCreate']
 	def find_performer(self, performer_in, create=False) -> dict:
 		"""looks for performer from stash matching aliases
 
@@ -348,27 +368,6 @@ class StashInterface(GQLWrapper):
 		if create:
 			log.info(f'Create missing performer: "{name}"')
 			return self.create_performer(performer_in)
-	def create_performer(self, performer_in:dict) -> dict:
-		"""creates performer in stash
-
-		Args:
-			 performer_in (PerformerCreateInput): performer to create
-
-		Returns:
-			 dict: stash performer object
-		"""		
-		query = """
-			mutation($input: PerformerCreateInput!) {
-				performerCreate(input: $input) {
-					...Performer
-				}
-			}
-		"""
-
-		variables = {'input': performer_in}
-
-		result = self._callGraphQL(query, variables)
-		return result['performerCreate']
 	def update_performer(self, performer_in:dict) -> dict:
 		"""updates existing performer
 
@@ -390,7 +389,7 @@ class StashInterface(GQLWrapper):
 
 		result = self._callGraphQL(query, variables)
 		return result['performerUpdate']
-	# TODO delete_performer()
+	# TODO destroy_performer()
 
 	# Performers CRUD
 	def find_performers(self, f:dict={}, filter:dict={"per_page": -1}, q="", fragment:dict=None, get_count:bool=False) -> list[dict]:
@@ -433,6 +432,28 @@ class StashInterface(GQLWrapper):
 			return result['findPerformers']['performers']
 
 	# Studio CRUD
+	def create_studio(self, studio:dict) -> dict:
+		"""create studio in stash
+
+		Args:
+			 studio (StudioCreateInput): See playground for details
+
+		Returns:
+			 dict: stash studio object
+		"""		
+		query = """
+			mutation StudioCreate($input: StudioCreateInput!) {
+				studioCreate(input: $input) {
+					...Studio
+				}
+			}
+		"""
+		variables = {
+			'name': studio
+		}
+
+		result = self._callGraphQL(query, variables)
+		return result['studioCreate']
 	def find_studio(self, studio, create=False, domain_pattern=r'[^.]*\.[^.]{2,3}(?:\.[^.]{2,3})?$') -> dict:
 		"""looks for studio from stash matching aliases and URLs if name is like a url
 
@@ -491,28 +512,6 @@ class StashInterface(GQLWrapper):
 		if create:
 			log.info(f'Create missing studio: "{name}"')
 			return self.create_studio(studio)
-	def create_studio(self, studio:dict) -> dict:
-		"""create studio in stash
-
-		Args:
-			 studio (StudioCreateInput): See playground for details
-
-		Returns:
-			 dict: stash studio object
-		"""		
-		query = """
-			mutation StudioCreate($input: StudioCreateInput!) {
-				studioCreate(input: $input) {
-					...Studio
-				}
-			}
-		"""
-		variables = {
-			'name': studio
-		}
-
-		result = self._callGraphQL(query, variables)
-		return result['studioCreate']
 	def update_studio(self, studio:dict):
 		"""update existing stash studio
 
@@ -534,8 +533,9 @@ class StashInterface(GQLWrapper):
 
 		result = self._callGraphQL(query, variables)
 		return result["studioUpdate"]
-	# TODO delete_studio()
+	# TODO destroy_studio()
 
+	# BULK Studios
 	def find_studios(self, f:dict={}, filter:dict={"per_page": -1}, q:str="", fragment:str=None, get_count:bool=False):
 		"""get studios matching filter/query
 
@@ -576,6 +576,22 @@ class StashInterface(GQLWrapper):
 			return result['findStudios']['studios']
 
 	# Movie CRUD
+	def create_movie(self, movie_in):
+		if isinstance(movie_in, str):
+			movie_in = {"name": movie_in}
+		if not isinstance(movie_in, dict):
+			log.warning(f"could not create movie from {movie_in}")
+			return
+		query = """
+			mutation($input: MovieCreateInput!) {
+				movieCreate(input: $input) {
+					id
+				}
+			}
+		"""
+		variables = {'input': movie_in}
+		result = self._callGraphQL(query, variables)
+		return result['movieCreate']
 	def find_movie(self, movie_in, create=False):
 		# assume input is an ID if int
 		if isinstance(movie_in, int):
@@ -609,22 +625,6 @@ class StashInterface(GQLWrapper):
 		if create:
 			log.info(f'Creating missing Movie "{name}"')
 			return self.create_movie(movie_in)
-	def create_movie(self, movie_in):
-		if isinstance(movie_in, str):
-			movie_in = {"name": movie_in}
-		if not isinstance(movie_in, dict):
-			log.warning(f"could not create movie from {movie_in}")
-			return
-		query = """
-			mutation($input: MovieCreateInput!) {
-				movieCreate(input: $input) {
-					id
-				}
-			}
-		"""
-		variables = {'input': movie_in}
-		result = self._callGraphQL(query, variables)
-		return result['movieCreate']
 	def update_movie(self, movie_in):
 		query = """
 			mutation MovieUpdate($input:MovieUpdateInput!) {
@@ -637,9 +637,9 @@ class StashInterface(GQLWrapper):
 
 		result = self._callGraphQL(query, variables)
 		return result['movieUpdate']
-	# TODO delete_movie()
+	# TODO destroy_movie()
 
-	# Movies CRUD
+	# BULK Movies
 	def find_movies(self, f:dict={}, filter:dict={"per_page": -1}, q="", fragment=None, get_count=False):
 		query = """
 			query FindMovies($filter: FindFilterType, $movie_filter: MovieFilterType) {
@@ -699,18 +699,6 @@ class StashInterface(GQLWrapper):
 
 		result = self._callGraphQL(query, variables)
 		return result["galleryUpdate"]["id"]
-	def update_galleries(self, galleries_input):
-		query = """
-			mutation BulkGalleryUpdate($input:BulkGalleryUpdateInput!) {
-				bulkGalleryUpdate(input: $input) {
-					id
-				}
-			}
-		"""
-		variables = {'input': galleries_input}
-
-		result = self._callGraphQL(query, variables)
-		return result["bulkGalleryUpdate"]
 	def destroy_gallery(self, gallery_ids, delete_file=False, delete_generated=True):
 		if isinstance(gallery_ids, int):
 			gallery_ids = [gallery_ids]
@@ -758,6 +746,18 @@ class StashInterface(GQLWrapper):
 			return result['findGalleries']['count'], result['findGalleries']['galleries']
 		else:
 			return result['findGalleries']['galleries']
+	def update_galleries(self, galleries_input):
+		query = """
+			mutation BulkGalleryUpdate($input:BulkGalleryUpdateInput!) {
+				bulkGalleryUpdate(input: $input) {
+					id
+				}
+			}
+		"""
+		variables = {'input': galleries_input}
+
+		result = self._callGraphQL(query, variables)
+		return result["bulkGalleryUpdate"]
 
 	# Image CRUD
 	def create_image(self, path:str=""):
@@ -784,6 +784,36 @@ class StashInterface(GQLWrapper):
 				log.warning(f"could not parse {image_in} to Image ID (int)")
 
 		log.warning(f'find_image expects int, str, or dict not {type(image_in)} "{image_in}"')
+	def update_image(self, update_input):
+		query = """
+			mutation ImageUpdate($input:ImageUpdateInput!) {
+				imageUpdate(input: $input) {
+					id
+				}
+			}
+		"""
+		variables = {'input': update_input}
+
+		result = self._callGraphQL(query, variables)
+		return result["imageUpdate"]
+	def destroy_image(self, image_id, delete_file=False):
+		query = """
+		mutation ImageDestroy($input:ImageDestroyInput!) {
+			imageDestroy(input: $input)
+		}
+		"""
+		variables = {
+			"input": {
+				"delete_file": delete_file,
+				"delete_generated": True,
+				"id": image_id
+			}
+		}
+			
+		result = self._callGraphQL(query, variables)
+		return result['imageDestroy']
+	
+	# BULK Images
 	def find_images(self, f:dict={}, filter:dict={"per_page": -1}, q="", fragment=None, get_count=False):
 		query = """
 		query FindImages($filter: FindFilterType, $image_filter: ImageFilterType, $image_ids: [Int!]) {
@@ -808,19 +838,7 @@ class StashInterface(GQLWrapper):
 		if get_count:
 			return result['findImages']['count'], result['findImages']['images']
 		else:
-			return result['findImages']['images']
-	def update_image(self, update_input):
-		query = """
-			mutation ImageUpdate($input:ImageUpdateInput!) {
-				imageUpdate(input: $input) {
-					id
-				}
-			}
-		"""
-		variables = {'input': update_input}
-
-		result = self._callGraphQL(query, variables)
-		return result["imageUpdate"]
+			return result['findImages']['images']		
 	def update_images(self, updates_input):
 		query = """
 			mutation BulkImageUpdate($input:BulkImageUpdateInput!) {
@@ -833,22 +851,6 @@ class StashInterface(GQLWrapper):
 
 		result = self._callGraphQL(query, variables)
 		return result["bulkImageUpdate"]
-	def destroy_image(self, image_id, delete_file=False):
-		query = """
-		mutation ImageDestroy($input:ImageDestroyInput!) {
-			imageDestroy(input: $input)
-		}
-		"""
-		variables = {
-			"input": {
-				"delete_file": delete_file,
-				"delete_generated": True,
-				"id": image_id
-			}
-		}
-			
-		result = self._callGraphQL(query, variables)
-		return result['imageDestroy']
 	def destroy_images(self, image_ids:list, delete_file=False):
 		query = """
 		mutation ImagesDestroy($input:ImagesDestroyInput!) {
@@ -971,6 +973,7 @@ class StashInterface(GQLWrapper):
 		result = self._callGraphQL(query, variables)
 		return result['scenesDestroy']
 
+	# Markers CRUD
 	def find_scene_markers(self, scene_id, fragment=None) -> list:
 		query = """
 			query FindSceneMarkers($scene_id: ID) {
@@ -1006,6 +1009,8 @@ class StashInterface(GQLWrapper):
 			}
 		"""
 		self._callGraphQL(query, {"marker_id": marker_id})
+	
+	# BULK Markers
 	def destroy_scene_markers(self, scene_id:int):
 		scene_markers = self.find_scene_markers(scene_id, fragment="id")
 		for marker in scene_markers:
@@ -1033,6 +1038,7 @@ class StashInterface(GQLWrapper):
 			created_markers.append(marker_id)
 		return created_markers
 
+	# Scene Utils
 	def destroy_scene_stash_id(self, stash_id):
 		scenes = self.find_scenes(f={
 			"stash_id": {
@@ -1044,7 +1050,6 @@ class StashInterface(GQLWrapper):
 		for scene in scenes:
 			scene["stash_ids"] = [sid for sid in scene["stash_ids"] if sid["stash_id"] != stash_id ]
 			self.update_scene(scene)
-
 	def merge_scenes(self, target_scene_id:int, source_scene_ids:list, exclusions={}):
 
 		min_scene_fragment="""
@@ -1102,6 +1107,20 @@ class StashInterface(GQLWrapper):
 			updated_scene_ids = self.update_scenes(scene_update)
 
 		return updated_scene_ids
+	def find_duplicate_scenes(self, distance: PhashDistance=PhashDistance.EXACT, fragment=None):
+		query = """
+			query FindDuplicateScenes($distance: Int) {
+				findDuplicateScenes(distance: $distance) {
+					...SceneSlim
+				}
+			}
+		"""
+		if fragment:
+			query = re.sub(r'\.\.\.SceneSlim', fragment, query)
+
+		variables = { "distance": distance }
+		result = self._callGraphQL(query, variables)
+		return result['findDuplicateScenes']
 
 	# Scraper Operations
 	def reload_scrapers(self):
@@ -1501,18 +1520,3 @@ class StashInterface(GQLWrapper):
 		} }
 		result = self._callGraphQL(query, variables)
 		return result['submitStashBoxSceneDraft']
-
-	def find_duplicate_scenes(self, distance: PhashDistance=PhashDistance.EXACT, fragment=None):
-		query = """
-			query FindDuplicateScenes($distance: Int) {
-				findDuplicateScenes(distance: $distance) {
-					...SceneSlim
-				}
-			}
-		"""
-		if fragment:
-			query = re.sub(r'\.\.\.SceneSlim', fragment, query)
-
-		variables = { "distance": distance }
-		result = self._callGraphQL(query, variables)
-		return result['findDuplicateScenes']
