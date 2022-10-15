@@ -52,7 +52,7 @@ class GQLWrapper:
 		else:
 			for fragment in [f["fragment"] for f in fragments if not f["defined"]]:
 				if fragment not in self.fragments:
-					raise Exception(f'GraphQL error: fragment "{fragment}" not defined')
+					raise Exception(f'StashAPI error: fragment "{fragment}" not defined')
 				query += f"\n{self.fragments[fragment]}"
 			return self.__resolveFragments(query)
 
@@ -65,21 +65,20 @@ class GQLWrapper:
 			json_request['variables'] = variables
 
 		response = requests.post(self.url, json=json_request, headers=self.headers, cookies=self.cookies)
-		content = response.json()
-
-		for error in content.get("errors", []):
-			message = error.get("message")
-			if len(message) > 2500:
-				message = f"{message[:2500]}..."
-			code = error.get("extensions", {}).get("code", "GRAPHQL_ERROR")
-			path = error.get("path", "")
-			fmt_error = f"{code}: {message} {path}".strip()
-			self.log.error(fmt_error)
-
+		
 		if response.status_code == 200:
+			content = response.json()
+			for error in content.get("errors", []):
+				message = error.get("message")
+				if len(message) > 2500:
+					message = f"{message[:2500]}..."
+				code = error.get("extensions", {}).get("code", "GRAPHQL_ERROR")
+				path = error.get("path", "")
+				fmt_error = f"{code}: {message} {path}".strip()
+				self.log.error(fmt_error)
 			return content["data"]
 		elif response.status_code == 401:
-			self.log.error(f"401, Unauthorized. Could not access endpoiont {self.url}. Did you provide an API key?")
+			self.log.error(f"401, Unauthorized. Could not access endpoint {self.url}. Did you provide an API key?")
 		else:
 			self.log.error(f"{response.status_code} query failed. {query}. Variables: {variables}")
 		sys.exit()
