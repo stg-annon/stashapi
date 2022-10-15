@@ -337,7 +337,7 @@ class ScrapeParser:
 			scene_update["studio_id"] = self.studio_from_scrape(scene["studio"]).get("id")
 
 		if scene.get("tags"):
-			scene_update["tag_ids"] = [self.tag_from_scrape(t).get("id") for t in scene["tags"]]
+			scene_update["tag_ids"] = [self.tag_from_scrape(t).get("id") for t in scene["tags"] if t]
 
 		if scene.get("performers"):
 			scene_update["performer_ids"] = []
