@@ -29,6 +29,9 @@ class StashInterface(GQLWrapper):
 		log = conn.get("Logger", stash_logger)
 		self.log = log
 
+		if conn.get("ApiKey"):
+			self.headers["ApiKey"] = conn["ApiKey"]
+
 		# Session cookie for authentication
 		self.cookies = {}
 		if conn.get("SessionCookie"):
