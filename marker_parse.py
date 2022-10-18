@@ -24,7 +24,7 @@ class Marker:
 	def __repr__(self) -> str:
 		return f'<Marker>{str(self)}'
 	def __str__(self) -> str:
-		return f'{self.primary_tag["name"]}@{self.seconds}'
+		return f'{self.title}@{self.seconds}'
 
 	def within_distance(self, other, seconds_distance:int=15):
 		if not isinstance(other, Marker):
@@ -151,12 +151,13 @@ def import_scene_markers(stash:StashInterface, scraped_markers, stash_scene_id, 
 			continue
 			
 		stash_marker = stash.create_scene_marker(scraped.gql_input(), SCENE_MARKER_FRAGMENT)
-
-		# log.debug(f'created marker {m.site_name} ({m.primary_tag["name"]}) @{scraped_timestamp}')
+		if not stash_marker:
+			log.warning(f'issue creating marker {scraped}')
 		new_marker_list.append(stash_marker)
+
 		
 	log.info(f"created ({len(new_marker_list)}) new marker(s) for SceneID ({stash_scene_id})")
-	new_marker_log = [f'{m["primary_tag"]["name"]}@{m["seconds"]}' for m in new_marker_list]
+	new_marker_log = [f'{m["primary_tag"]["name"]}@{m["seconds"]}' for m in new_marker_list if m]
 	log.debug(f"Markers: {new_marker_log}")
 	
 	return new_marker_list
