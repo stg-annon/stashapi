@@ -56,12 +56,9 @@ class StashInterface(GQLWrapper):
 			
 		log.debug(f'Using stash ({version}) endpoint at {self.url}')
 
-
 		if fragments == []:
-			if version > "v0.16.1-34":
-				fragments.append(stashapp_gql_fragments.DEVELOP)
-			else:
-				fragments.append(stashapp_gql_fragments.RELEASE_0_16_1)
+			log.debug("Using DEVELOP fragments")
+			fragments.append(stashapp_gql_fragments.DEVELOP)
 
 		self.fragments = {}
 		for fragment in fragments:
