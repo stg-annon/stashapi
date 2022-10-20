@@ -565,7 +565,7 @@ fragment ImageFile on ImageFile {
    zip_file_id
    mod_time
    size
-   fingerprints {...Fingerprints}
+   fingerprints { ...Fingerprint }
    width
    height
    created_at
