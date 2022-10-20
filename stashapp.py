@@ -22,12 +22,9 @@ class StashInterface(GQLWrapper):
 	cookies = {}
 
 	def __init__(self, conn:dict={}, fragments:list[str]=[]):
-		global log
-
 		conn = CaseInsensitiveDict(conn)
 
-		log = conn.get("Logger", stash_logger)
-		self.log = log
+		self.log = conn.get("Logger", stash_logger)
 
 		if conn.get("ApiKey"):
 			self.headers["ApiKey"] = conn["ApiKey"]
@@ -50,14 +47,14 @@ class StashInterface(GQLWrapper):
 			build = self.stash_version()
 			version = build["version"]
 		except Exception as e:
-			log.error(f"Could not connect to Stash at {self.url}")
-			log.error(e)
+			self.log.error(f"Could not connect to Stash at {self.url}")
+			self.log.error(e)
 			sys.exit()
 			
-		log.debug(f'Using stash ({version}) endpoint at {self.url}')
+		self.log.debug(f'Using stash ({version}) endpoint at {self.url}')
 
 		if fragments == []:
-			log.debug("Using DEVELOP fragments")
+			self.log.debug("Using DEVELOP fragments")
 			fragments.append(stashapp_gql_fragments.DEVELOP)
 
 		self.fragments = {}
@@ -86,14 +83,14 @@ class StashInterface(GQLWrapper):
 		item_matches = {}
 		for item in items:
 			if re.match(rf'{search}$', item["name"], re.IGNORECASE):
-				log.debug(f'matched "{search}" to "{item["name"]}" ({item["id"]}) using primary name')
+				self.log.debug(f'matched "{search}" to "{item["name"]}" ({item["id"]}) using primary name')
 				item_matches[item["id"]] = item
 				return list(item_matches.values())
 			if not item["aliases"]:
 				continue
 			for alias in item["aliases"]:
 				if re.match(rf'{search}$', alias.strip(), re.IGNORECASE):
-					log.info(f'matched "{search}" to "{item["name"]}" ({item["id"]}) using alias')
+					self.log.info(f'matched "{search}" to "{item["name"]}" ({item["id"]}) using alias')
 					item_matches[item["id"]] = item
 		return list(item_matches.values())
 
@@ -101,7 +98,7 @@ class StashInterface(GQLWrapper):
 		item_matches = {}
 		for item in performers:
 			if re.match(rf'{search}$', item["name"], re.IGNORECASE):
-				log.info(f'matched "{search}" to "{item["name"]}" ({item["id"]}) using primary name')
+				self.log.info(f'matched "{search}" to "{item["name"]}" ({item["id"]}) using primary name')
 				item_matches[item["id"]] = item
 				return list(item_matches.values())
 			if not item["aliases"]:
@@ -111,7 +108,7 @@ class StashInterface(GQLWrapper):
 				if ":" in alias:
 					parsed_alias = alias.split(":")[-1].strip()
 				if re.match(rf'{search}$', parsed_alias, re.IGNORECASE):
-					log.info(f'matched "{search}" to "{item["name"]}" ({item["id"]}) using alias')
+					self.log.info(f'matched "{search}" to "{item["name"]}" ({item["id"]}) using alias')
 					item_matches[item["id"]] = item
 		return list(item_matches.values())
 
@@ -210,7 +207,7 @@ class StashInterface(GQLWrapper):
 			name = tag_in
 
 		if not name:
-			log.warning(f'find_tag expects int, str, or dict not {type(tag_in)} "{tag_in}"')
+			self.log.warning(f'find_tag expects int, str, or dict not {type(tag_in)} "{tag_in}"')
 			return
 
 		for tag in self.find_tags(q=name):
@@ -339,7 +336,7 @@ class StashInterface(GQLWrapper):
 			name = performer_in
 
 		if not name:
-			log.warning(f'find_performer() expects int, str, or dict not {type(performer_in)} "{performer_in}"')
+			self.log.warning(f'find_performer() expects int, str, or dict not {type(performer_in)} "{performer_in}"')
 			return
 
 		name = name.strip()
@@ -355,7 +352,7 @@ class StashInterface(GQLWrapper):
 			elif len(p["aliases"]) > 0:
 				p["aliases"] = [p["aliases"]]
 			else:
-				log.warning(f'Could not determine delim for aliases "{p["aliases"]}"')
+				self.log.warning(f'Could not determine delim for aliases "{p["aliases"]}"')
 
 		performer_matches = self.__match_performer_alias(name, performers)
 
@@ -366,7 +363,7 @@ class StashInterface(GQLWrapper):
 			return performer_matches[0] 
 
 		if create:
-			log.info(f'Create missing performer: "{name}"')
+			self.log.info(f'Create missing performer: "{name}"')
 			return self.create_performer(performer_in)
 	def update_performer(self, performer_in:dict) -> dict:
 		"""updates existing performer
@@ -485,7 +482,7 @@ class StashInterface(GQLWrapper):
 			name = studio
 
 		if not name:
-			log.warning(f'find_studio() expects int, str, or dict not {type(studio)} "{studio}"')
+			self.log.warning(f'find_studio() expects int, str, or dict not {type(studio)} "{studio}"')
 			return
 		name = name.strip()
 
@@ -498,7 +495,7 @@ class StashInterface(GQLWrapper):
 			})
 			for s in url_search:
 				if re.search(rf'{name}',s["url"]):
-					log.info(f'matched "{name}" to {s["url"]} using URL')
+					self.log.info(f'matched "{name}" to {s["url"]} using URL')
 					studio_matches.append(s)
 
 		name_results = self.find_studios(q=name)
@@ -510,7 +507,7 @@ class StashInterface(GQLWrapper):
 			return studio_matches[0] 
 
 		if create:
-			log.info(f'Create missing studio: "{name}"')
+			self.log.info(f'Create missing studio: "{name}"')
 			return self.create_studio(studio)
 	def update_studio(self, studio:dict):
 		"""update existing stash studio
@@ -580,7 +577,7 @@ class StashInterface(GQLWrapper):
 		if isinstance(movie_in, str):
 			movie_in = {"name": movie_in}
 		if not isinstance(movie_in, dict):
-			log.warning(f"could not create movie from {movie_in}")
+			self.log.warning(f"could not create movie from {movie_in}")
 			return
 		query = """
 			mutation($input: MovieCreateInput!) {
@@ -619,11 +616,11 @@ class StashInterface(GQLWrapper):
 			if len(movie_matches) == 1:
 				return movie_matches[0]
 			else:
-				log.warning(f'Too many matches for movie "{name}"')
+				self.log.warning(f'Too many matches for movie "{name}"')
 				return None
 
 		if create:
-			log.info(f'Creating missing Movie "{name}"')
+			self.log.info(f'Creating missing Movie "{name}"')
 			return self.create_movie(movie_in)
 	def update_movie(self, movie_in):
 		query = """
@@ -686,7 +683,7 @@ class StashInterface(GQLWrapper):
 			try:
 				return self.find_tag(int(gallery_in))
 			except:
-				log.warning(f"could not parse {gallery_in} to Gallery ID (int)")
+				self.log.warning(f"could not parse {gallery_in} to Gallery ID (int)")
 	def update_gallery(self, gallery_data):
 		query = """
 			mutation GalleryUpdate($input:GalleryUpdateInput!) {
@@ -781,9 +778,9 @@ class StashInterface(GQLWrapper):
 			try:
 				return self.find_tag(int(image_in))
 			except:
-				log.warning(f"could not parse {image_in} to Image ID (int)")
+				self.log.warning(f"could not parse {image_in} to Image ID (int)")
 
-		log.warning(f'find_image expects int, str, or dict not {type(image_in)} "{image_in}"')
+		self.log.warning(f'find_image expects int, str, or dict not {type(image_in)} "{image_in}"')
 	def update_image(self, update_input):
 		query = """
 			mutation ImageUpdate($input:ImageUpdateInput!) {
@@ -1066,7 +1063,7 @@ class StashInterface(GQLWrapper):
 		"""
 
 		merged_markers = self.merge_scene_markers(target_scene_id, source_scene_ids)
-		log.info(f"Merged {len(merged_markers)} markers from {source_scene_ids} to {target_scene_id}")
+		self.log.info(f"Merged {len(merged_markers)} markers from {source_scene_ids} to {target_scene_id}")
 
 		target_meta = self.find_scene(target_scene_id, fragment=min_scene_fragment)
 
@@ -1229,9 +1226,9 @@ class StashInterface(GQLWrapper):
 			if not isinstance(scene_id, int):
 				raise Exception("scene_id must be an int")
 		except:
-			log.warning('Unexpected Object passed to scrape_single_scene')
-			log.warning(f'Type: {type(scene)}')
-			log.warning(f'{scene}')
+			self.log.warning('Unexpected Object passed to scrape_single_scene')
+			self.log.warning(f'Type: {type(scene)}')
+			self.log.warning(f'{scene}')
 
 		query = """query ScrapeSingleScene($source: ScraperSourceInput!, $input: ScrapeSingleSceneInput!) {
 			scrapeSingleScene(source: $source, input: $input) {
@@ -1437,7 +1434,7 @@ class StashInterface(GQLWrapper):
 			if sbox_endpoint in sbox_cfg["endpoint"]:
 				sbox_cfg["index"] = sbox_idx
 				return sbox_cfg
-		log.error(f'could not find stash-box conection to "{sbox_endpoint}"')
+		self.log.error(f'could not find stash-box conection to "{sbox_endpoint}"')
 		return {}
 	def get_stashbox_connections(self):
 		query = """
