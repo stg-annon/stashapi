@@ -234,10 +234,8 @@ fragment Studio on Studio {
    rating
    details
    stash_ids { ...StashID }
-   parent_studio {
-      id
-      name
-   }
+   parent_studio { id name }
+   child_studios { id name }
 }
 fragment StashID on StashID {
    stash_id
@@ -519,6 +517,7 @@ fragment Studio on Studio {
    details
    stash_ids{ ...StashID }
    parent_studio { id name }
+   child_studios { id name }
 }
 fragment StashID on StashID {
    stash_id
