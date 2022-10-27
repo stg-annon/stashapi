@@ -429,7 +429,7 @@ class StashInterface(GQLWrapper):
 			return result['findPerformers']['performers']
 
 	# Studio CRUD
-	def create_studio(self, studio:dict) -> dict:
+	def create_studio(self, studio_create_input:dict) -> dict:
 		"""create studio in stash
 
 		Args:
@@ -446,7 +446,7 @@ class StashInterface(GQLWrapper):
 			}
 		"""
 		variables = {
-			'name': studio
+			'input': studio_create_input
 		}
 
 		result = self._callGraphQL(query, variables)
