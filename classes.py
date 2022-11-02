@@ -106,3 +106,45 @@ class SQLiteWrapper:
 		cur.execute(query, args)
 		r = [dict((cur.description[i][0], value) for i, value in enumerate(row)) for row in cur.fetchall()]
 		return (r[0] if r else None) if one else r
+
+class StashVersion:
+
+	def __init__(self, version_in) -> None:
+		if isinstance(version_in, str):
+			self.parse(version_in)
+		if isinstance(version_in, dict):
+			self.parse(f"{version_in['version']}-{version_in['hash']}")
+
+	def parse(self, ver_str) -> None:
+		m = re.search(r'v(?P<MAJOR>\d+)\.(?P<MINOR>\d+)\.(?P<PATCH>\d+)(?:-(?P<BUILD>\d+))?(?:-(?P<HASH>[a-z0-9]{9}))?', ver_str)
+		if m:
+			m = m.groupdict()
+		else:
+			m = {}
+
+		self.major = int(m.get("MAJOR", 0))
+		self.minor = int(m.get("MINOR", 0))
+		self.patch = int(m.get("PATCH", 0))
+		self.build = 0
+		if m.get("BUILD"):
+			self.build = int(m["BUILD"])
+		self.hash = ""
+		if m.get("HASH"):
+			self.hash = m["HASH"]
+
+	def pad_verion(self) -> str:
+		return f"{self.major:04d}.{self.minor:04d}.{self.patch:04d}-{self.build:04d}"
+
+	def __str__(self) -> str:
+		ver_str = f"v{self.major}.{self.minor}.{self.patch}-{self.build}"
+		if self.hash:
+			ver_str = f"{ver_str}-{self.hash}"
+		return ver_str
+	
+	def __repr__(self) -> str:
+		return str(self)
+
+	def __eq__(self, other: object) -> bool:
+		return self.hash and other.hash and self.hash == other.hash
+	def __gt__(self, other: object) -> bool:
+		return self.pad_verion() > other.pad_verion()

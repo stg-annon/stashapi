@@ -8,6 +8,7 @@ from . import log as stash_logger
 from .types import PhashDistance
 from .classes import GQLWrapper
 from .classes import SQLiteWrapper
+from .classes import StashVersion
 
 class StashInterface(GQLWrapper):
 	port = ""
@@ -44,8 +45,7 @@ class StashInterface(GQLWrapper):
 
 		try:
 			# test query to ensure good connection
-			build = self.stash_version()
-			version = build["version"]
+			version = self.stash_version()
 		except Exception as e:
 			self.log.error(f"Could not connect to Stash at {self.url}")
 			self.log.error(e)
@@ -117,7 +117,7 @@ class StashInterface(GQLWrapper):
 
 	def stash_version(self):
 		result = self._callGraphQL("query StashVersion{ version { build_time hash version } }")
-		return result['version']		
+		return StashVersion(result["version"])
 
 	def get_sql_interface(self):
 		if "localhost" in self.url or "127.0.0.1" in self.url:
