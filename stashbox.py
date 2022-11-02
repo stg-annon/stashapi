@@ -119,7 +119,7 @@ class StashBoxInterface(GQLWrapper):
 		if fragment:
 			query = re.sub(r'\.\.\.SceneFragment', fragment, query)
 		
-		scene_query["page"] = 1
+		scene_query["page"] = scene_query.get("page", 1)
 		scene_query["per_page"] = 40
 		return self._paginate_query(query, scene_query, pages, callback)
 
@@ -178,12 +178,12 @@ class StashBoxInterface(GQLWrapper):
 		return existing
 
 
-	def edit_scene(self, stash_id:str, edit:dict, comment:str):
+	def edit_scene(self, stash_id:str, edit:dict, manual_comment:str):
 		if self.pending_edits_count(stash_id, StashboxTarget.SCENE) > 0:
 			log.warning(f'Edit not submited Scene:{stash_id} has pending edits')
 			return
 
-		comments = [comment]
+		comments = []
 		details = self.fetch_scene_edit_details(stash_id)
 		
 		if edit.get("tags"):
@@ -218,14 +218,14 @@ class StashBoxInterface(GQLWrapper):
 			mode = edit["urls"]["mode"]
 			if mode == "SET":
 				details["urls"] = passed_url_edits
-				comments.append("SET Performers")
+				comments.append("SET Url(s)")
 			if mode == "ADD":
 				details["urls"].extend(passed_url_edits)
-				comments.append(f"ADD {len(passed_url_edits)} URL(s)")
+				comments.append(f"ADD {len(passed_url_edits)} Url(s)")
 			if mode == "REMOVE":
 				remove_lookup = [url["url"] for url in passed_url_edits]
 				details["urls"] = [url for url in details["urls"] if url["url"] not in remove_lookup ]
-				comments.append(f"REMOVE {len(passed_url_edits)} Performer(s)")
+				comments.append(f"REMOVE {len(passed_url_edits)} Url(s)")
 			if mode == "REPLACE":
 				for url_edit in passed_url_edits:
 					for url in details["urls"]:
@@ -236,8 +236,12 @@ class StashBoxInterface(GQLWrapper):
 		for attr in ["code","date","details","director","duration","studio_id","title"]:
 			if edit.get(attr):
 				details[attr] = edit[attr]
+				comments.append(f"update/correct `{attr}`")
 
-		comment = "; ".join(comments)
+		comments = [f"* {c}" for c in comments]
+		comments.insert(0, manual_comment)
+		comment = "\n".join(comments)
+
 		query = """mutation SceneEdit($sceneData: SceneEditInput!) { sceneEdit(input: $sceneData) { id } }"""
 		input = {
 			"sceneData":{
