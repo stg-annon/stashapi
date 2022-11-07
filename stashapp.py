@@ -144,24 +144,25 @@ class StashInterface(GQLWrapper):
 		result = self._callGraphQL(query)
 		return result['configuration']
 
-	def metadata_scan(self, paths:list=[]):
+	def metadata_scan(self, paths:list=[], flags={}):
 		query = """
 		mutation metadataScan($input:ScanMetadataInput!) {
 			metadataScan(input: $input)
 		}
-		"""
-		variables = {
-			'input': {
-				'paths' : paths,
+		"""	
+		scan_metadata_input = {"paths": paths}
+		if flags:
+			scan_metadata_input.update(flags)
+		else:
+			scan_metadata_input.update({
 				'useFileMetadata': False,
 				'stripFileExtension': False,
 				'scanGeneratePreviews': False,
 				'scanGenerateImagePreviews': False,
 				'scanGenerateSprites': False,
 				'scanGeneratePhashes': True
-			}
-		}
-		result = self._callGraphQL(query, variables)
+			})
+		result = self._callGraphQL(query, {"input": scan_metadata_input})
 		return result
 
 	# Tag CRUD
