@@ -434,6 +434,18 @@ class StashInterface(GQLWrapper):
 			return result['findPerformers']['count'], result['findPerformers']['performers']
 		else:
 			return result['findPerformers']['performers']
+	def update_performers(self, bulk_performer_update_input:dict):
+		query = """
+			mutation BulkPerformerUpdate($input:BulkPerformerUpdateInput!) {
+				bulkPerformerUpdate(input: $input) {
+					id
+				}
+			}
+		"""
+		variables = {'input': bulk_performer_update_input}
+
+		result = self._callGraphQL(query, variables)
+		return result["bulkPerformerUpdate"]
 
 	# Studio CRUD
 	def create_studio(self, studio_create_input:dict) -> dict:
