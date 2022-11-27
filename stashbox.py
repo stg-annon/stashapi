@@ -33,6 +33,7 @@ class StashBoxInterface(GQLWrapper):
 		log = conn.get("logger", StashLogger)
 		
 		self.url = conn.get('endpoint', "https://stashdb.org/graphql")
+		self.endpoint = self.url
 
 		if not self.url:
 			raise Exception("REQUIRED key 'endpoint' not provided in connection dict")
