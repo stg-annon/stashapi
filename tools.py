@@ -27,15 +27,17 @@ def get_base64(image_path):
 	return f"data:image/jpeg;base64,{b64img_bytes.decode('utf-8')}"
 
 def human_bytes(size):
-	# 2**10 = 1024
 	size = int(size)
-	power = 2**10
+	power = 1024
 	n = 0
 	power_labels = {0 : '', 1: 'K', 2: 'M', 3: 'G', 4: 'T'}
 	while size > power:
 		size /= power
 		n += 1
 	return f"{size:.2f}{power_labels[n]}B"
+
+def human_bits(size):
+	return human_bytes(size/8)
 	
 def phash_distance(lhash, rhash):
 	assert len(lhash) == len(rhash)
