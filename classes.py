@@ -1,4 +1,4 @@
-import re, sys, sqlite3
+import re, sys, math, sqlite3
 import requests
 
 class GQLWrapper:
@@ -56,13 +56,17 @@ class GQLWrapper:
 				query += f"\n{self.fragments[fragment]}"
 			return self.__resolveFragments(query)
 
-	def _callGraphQL(self, query, variables=None):
+	def _callGraphQL(self, query, variables={}):
 
 		query = self.__resolveFragments(query)
 
 		json_request = {'query': query}
-		if variables is not None:
+		if variables:
 			json_request['variables'] = variables
+
+		per_page = variables.get("filter",{}).get("per_page",None)		
+		if per_page == -1:
+			return self._callGraphQLRecursive(query, variables)
 
 		response = requests.post(self.url, json=json_request, headers=self.headers, cookies=self.cookies)
 		
@@ -87,6 +91,33 @@ class GQLWrapper:
 		else:
 			self.log.error(f"{response.status_code} query failed. {query}. Variables: {variables}")
 		sys.exit()
+
+	def _callGraphQLRecursive(self, query, variables, pages=-1):
+
+		PER_PAGE = 1000 # set to max allowable
+
+		page = variables.get("filter",{}).get("page",1)
+
+		variables["filter"]["page"] = page
+		variables["filter"]["per_page"] = PER_PAGE
+
+		r = self._callGraphQL(query, variables)
+
+		queryType = list(r.keys())[0]
+		itemType = list(r[queryType].keys())[1]
+
+		if pages == -1:
+			pages = math.ceil(r[queryType]["count"] / PER_PAGE)
+
+		self.log.debug(f'received page {page}/{pages} for {queryType} query, {r[queryType]["count"]} {itemType} results')
+
+		if page < pages:
+			variables["filter"]["page"] = page + 1 
+			next_page = self._callGraphQLRecursive(query, variables, pages)
+			r[queryType][itemType].extend(next_page[queryType][itemType])
+
+		return r
+
 
 class SQLiteWrapper:
 	conn = None
