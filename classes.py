@@ -56,6 +56,117 @@ class GQLWrapper:
 				query += f"\n{self.fragments[fragment]}"
 			return self.__resolveFragments(query)
 
+	def _getFragmentsIntrospection(self, only_use_id_objects):
+
+		fragments = {}
+
+		query = """{ __schema { types { ...FullType } } }
+
+fragment FullType on __Type {
+  kind
+  name
+  description
+  fields(includeDeprecated: true) {
+	 name
+	 description
+	 args {
+		...InputValue
+	 }
+	 type {
+		...TypeRef
+	 }
+	 isDeprecated
+	 deprecationReason
+  }
+  inputFields {
+	 ...InputValue
+  }
+  interfaces {
+	 ...TypeRef
+  }
+  enumValues(includeDeprecated: true) {
+	 name
+	 description
+	 isDeprecated
+	 deprecationReason
+  }
+  possibleTypes {
+	 ...TypeRef
+  }
+}
+fragment InputValue on __InputValue {
+  name
+  description
+  type {
+	 ...TypeRef
+  }
+  defaultValue
+}
+fragment TypeRef on __Type {
+  kind
+  name
+  ofType {
+	 kind
+	 name
+	 ofType {
+		kind
+		name
+		ofType {
+		  kind
+		  name
+		  ofType {
+			 kind
+			 name
+			 ofType {
+				kind
+				name
+				ofType {
+				  kind
+				  name
+				  ofType {
+					 kind
+					 name
+				  }
+				}
+			 }
+		  }
+		}
+	 }
+  }
+}"""
+
+		stash_schema = self.call_gql(query)
+		stash_types = stash_schema.get('__schema',{}).get('types',[])
+
+		def has_object_name(type):
+			if type.get("kind") == "OBJECT":
+				return type["name"]
+			if type.get("type"):
+				return has_object_name(type["type"])
+			if type.get("ofType"):
+				return has_object_name(type["ofType"])
+
+		for type in stash_types:
+			if type["kind"] != "OBJECT":
+				continue
+			if not type['fields']:
+				continue
+
+			type_name = type["name"]
+			fragment = f"fragment {type_name} on {type_name} "+"{"
+			for field in type['fields']:
+				attr = field["name"]
+				field_type_name = has_object_name(field)
+				if field_type_name:
+					if field_type_name == type_name or field_type_name in only_use_id_objects:
+						attr += " { id }"
+					else:
+						attr += " { ..."+field_type_name+" }"
+				fragment += f"\n\t{attr}"
+			fragment += "\n}"
+			fragments[type_name] = fragment
+		return fragments
+
 	def _callGraphQL(self, query, variables={}):
 
 		query = self.__resolveFragments(query)
@@ -117,7 +228,6 @@ class GQLWrapper:
 			r[queryType][itemType].extend(next_page[queryType][itemType])
 
 		return r
-
 
 class SQLiteWrapper:
 	conn = None

@@ -2,7 +2,6 @@ import re, sys
 
 from requests.structures import CaseInsensitiveDict
 
-from . import stashapp_gql_fragments
 from . import log as stash_logger
 
 from .types import PhashDistance
@@ -53,11 +52,7 @@ class StashInterface(GQLWrapper):
 			
 		self.log.debug(f'Using stash ({version}) endpoint at {self.url}')
 
-		if fragments == []:
-			self.log.debug("Using DEVELOP fragments")
-			fragments.append(stashapp_gql_fragments.DEVELOP)
-
-		self.fragments = {}
+		self.fragments = self._getFragmentsIntrospection(["Scene","Studio","Performer","Image","Gallery"])
 		for fragment in fragments:
 			self.parse_fragments(fragment)
 
