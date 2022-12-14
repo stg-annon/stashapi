@@ -983,6 +983,39 @@ class StashInterface(GQLWrapper):
 			
 		result = self._callGraphQL(query, variables)
 		return result['scenesDestroy']
+	def merge_scenes(self, source, destination, values={}):
+
+
+
+		if isinstance(source, str):
+			source = int(source)
+		if isinstance(destination, str):
+			destination = int(destination)
+
+		if isinstance(source, int):
+			source = [source]
+
+		if not isinstance(source, list):
+			raise Exception("merge_scenes() source attribute must be a list of ints")
+		if not isinstance(destination, int):
+			raise Exception("merge_scenes() destination attribute must be an int")
+
+		query = """
+			mutation SceneMerge($merge_input: SceneMergeInput!) {
+				sceneMerge(input: $merge_input) {
+					id
+				}
+			}
+		"""
+		merge_input = {
+			"source": source,
+			"destination": destination,
+			"values": {"id":destination},
+		}
+		if values:
+			merge_input["values"] = values
+
+		return self._callGraphQL(query, {"merge_input":merge_input})["sceneMerge"]
 
 	# Markers CRUD
 	def find_scene_markers(self, scene_id, fragment=None) -> list:
@@ -1061,7 +1094,7 @@ class StashInterface(GQLWrapper):
 		for scene in scenes:
 			scene["stash_ids"] = [sid for sid in scene["stash_ids"] if sid["stash_id"] != stash_id ]
 			self.update_scene(scene)
-	def merge_scenes(self, target_scene_id:int, source_scene_ids:list, exclusions={}):
+	def merge_scenes_deprecated(self, target_scene_id:int, source_scene_ids:list, exclusions={}):
 
 		min_scene_fragment="""
 			title
