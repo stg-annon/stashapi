@@ -164,6 +164,37 @@ class StashInterface(GQLWrapper):
 		result = self._callGraphQL(query, {"input": scan_metadata_input})
 		return result
 
+	def metadata_clean(self, paths:list=[], dry_run=False):
+		if not paths:
+			return
+
+		query = """
+		mutation MetadataClean($input:CleanMetadataInput!) {
+			metadataClean(input: $input)
+		}
+		"""
+
+		clean_metadata_input = {
+			"paths": paths,
+			"dryRun": dry_run
+		}
+		result = self._callGraphQL(query, {"input": clean_metadata_input})
+		return result
+
+
+	def destroy_files(self, file_ids:list=[]):
+		if not file_ids:
+			return
+
+		query = """
+		mutation DeleteFiles($ids: [ID!]!) {
+			deleteFiles(ids: $ids)
+		}
+		"""
+		variables = {'ids': file_ids}
+		result = self._callGraphQL(query, variables)
+		return result["deleteFiles"]
+
 	# Tag CRUD
 	def create_tag(self, tag_in:dict) -> dict:
 		"""creates tag in stash
