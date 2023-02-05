@@ -91,14 +91,18 @@ class StashInterface(GQLWrapper):
 		return list(item_matches.values())
 
 	def __match_performer_alias(self, search, performers):
-		item_matches = {}
+		performer_matches = {}
 
 		# attempt to match exclusivly to primary name
-		for item in performers:
-			if re.match(rf'{search}$', item["name"], re.IGNORECASE):
-				self.log.info(f'matched performer "{search}" to "{item["name"]}" ({item["id"]}) using primary name')
-				item_matches[item["id"]] = item
-				return list(item_matches.values())
+		for p in performers:
+			if p.get("disambiguation"):
+				self.log.debug(f'ignore primary name with disambiguation "{p["name"]}" ({p["disambiguation"]}) pid:{p["id"]}')
+				continue
+
+			if re.match(rf'{search}$', p["name"], re.IGNORECASE):
+				self.log.info(f'matched performer "{search}" to "{p["name"]}" ({p["id"]}) using primary name')
+				performer_matches[p["id"]] = p
+				return list(performer_matches.values())
 
 		# no match on primary name attempt aliases
 		for item in performers:
@@ -110,8 +114,8 @@ class StashInterface(GQLWrapper):
 					parsed_alias = alias.split(":")[-1].strip()
 				if re.match(rf'{search}$', parsed_alias, re.IGNORECASE):
 					self.log.info(f'matched performer "{search}" to "{item["name"]}" ({item["id"]}) using alias')
-					item_matches[item["id"]] = item
-		return list(item_matches.values())
+					performer_matches[item["id"]] = item
+		return list(performer_matches.values())
 
 	def call_gql(self, query, variables={}):
 		return self._callGraphQL(query, variables)
