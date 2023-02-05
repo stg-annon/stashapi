@@ -49,7 +49,7 @@ class StashInterface(GQLWrapper):
 			self.log.error(f"Could not connect to Stash at {self.url}")
 			self.log.error(e)
 			sys.exit()
-			
+
 		self.log.debug(f'Using stash ({version}) endpoint at {self.url}')
 
 		self.fragments = self._getFragmentsIntrospection(["Scene","Studio","Performer","Image","Gallery"])
@@ -135,16 +135,16 @@ class StashInterface(GQLWrapper):
 				}
 			}
 		"""
-		
+
 		result = self._callGraphQL(query)
 		return result['configuration']
 
 	def metadata_scan(self, paths:list=[], flags={}):
 		query = """
-		mutation metadataScan($input:ScanMetadataInput!) {
+		mutation MetadataScan($input:ScanMetadataInput!) {
 			metadataScan(input: $input)
 		}
-		"""	
+		"""
 		scan_metadata_input = {"paths": paths}
 		if flags:
 			scan_metadata_input.update(flags)
@@ -261,7 +261,7 @@ class StashInterface(GQLWrapper):
 
 		Returns:
 			 _type_: list of tags, or tuple of (count, [tags])
-		"""		
+		"""
 
 		query = """
 			query FindTags($filter: FindFilterType, $tag_filter: TagFilterType) {
@@ -281,7 +281,7 @@ class StashInterface(GQLWrapper):
 			"filter": filter,
 			"tag_filter": f
 		}
-		
+
 		result = self._callGraphQL(query, variables)
 		if get_count:
 			return result["findTags"]["count"], result["findTags"]["tags"]
@@ -297,7 +297,7 @@ class StashInterface(GQLWrapper):
 
 		Returns:
 			 dict: stash performer object
-		"""		
+		"""
 		query = """
 			mutation($input: PerformerCreateInput!) {
 				performerCreate(input: $input) {
@@ -314,12 +314,12 @@ class StashInterface(GQLWrapper):
 		"""looks for performer from stash matching aliases
 
 		Args:
-			 performer_in (int, str, dict): int of performer id, str of performer name/alias, dict of performer oject 
+			 performer_in (int, str, dict): int of performer id, str of performer name/alias, dict of performer oject
 			 create (bool, optional): create performer if not found. Defaults to False.
 
 		Returns:
 			 dict: performer from stash
-		"""		
+		"""
 
 		# assume input is an ID if int
 		if isinstance(performer_in, int):
@@ -362,7 +362,7 @@ class StashInterface(GQLWrapper):
 		if len(performer_matches) > 1 and name.count(' ') == 0:
 			return None
 		elif len(performer_matches) > 0:
-			return performer_matches[0] 
+			return performer_matches[0]
 
 		if create:
 			self.log.info(f'Create missing performer: "{name}"')
@@ -403,7 +403,7 @@ class StashInterface(GQLWrapper):
 
 		Returns:
 			 _type_: list of performer objects or tuple with count and list (count, [performers])
-		"""		
+		"""
 
 		query =  """
 			query FindPerformers($filter: FindFilterType, $performer_filter: PerformerFilterType) {
@@ -417,7 +417,7 @@ class StashInterface(GQLWrapper):
 		"""
 		if fragment:
 			query = re.sub(r'\.\.\.Performer', fragment, query)
-		
+
 		filter["q"] = q
 		variables = {
 			"filter": filter,
@@ -451,7 +451,7 @@ class StashInterface(GQLWrapper):
 
 		Returns:
 			 dict: stash studio object
-		"""		
+		"""
 		query = """
 			mutation StudioCreate($input: StudioCreateInput!) {
 				studioCreate(input: $input) {
@@ -531,7 +531,7 @@ class StashInterface(GQLWrapper):
 
 		Returns:
 			 dict: stash studio object
-		"""		
+		"""
 
 		query = """
 			mutation StudioUpdate($input:StudioUpdateInput!) {
@@ -670,7 +670,7 @@ class StashInterface(GQLWrapper):
 			"filter": filter,
 			"movie_filter": f
 		}
-		
+
 		result = self._callGraphQL(query, variables)
 		if get_count:
 			return result['findMovies']['count'], result['findMovies']['movies']
@@ -820,10 +820,10 @@ class StashInterface(GQLWrapper):
 				"id": image_id
 			}
 		}
-			
+
 		result = self._callGraphQL(query, variables)
 		return result['imageDestroy']
-	
+
 	# BULK Images
 	def find_images(self, f:dict={}, filter:dict={"per_page": -1}, q="", fragment=None, get_count=False):
 		query = """
@@ -849,7 +849,7 @@ class StashInterface(GQLWrapper):
 		if get_count:
 			return result['findImages']['count'], result['findImages']['images']
 		else:
-			return result['findImages']['images']		
+			return result['findImages']['images']
 	def update_images(self, updates_input):
 		query = """
 			mutation BulkImageUpdate($input:BulkImageUpdateInput!) {
@@ -875,7 +875,7 @@ class StashInterface(GQLWrapper):
 				"ids": image_ids
 			}
 		}
-			
+
 		result = self._callGraphQL(query, variables)
 		return result['imagesDestroy']
 
@@ -923,10 +923,10 @@ class StashInterface(GQLWrapper):
 				"id": scene_id
 			}
 		}
-			
+
 		result = self._callGraphQL(query, variables)
 		return result['sceneDestroy']
-	
+
 	# BULK Scenes
 	def create_scenes(self, paths:list=[]):
 		return self.metadata_scan(paths)
@@ -949,7 +949,7 @@ class StashInterface(GQLWrapper):
 			"filter": filter,
 			"scene_filter": f
 		}
-			
+
 		result = self._callGraphQL(query, variables)
 		if get_count:
 			return result['findScenes']['count'], result['findScenes']['scenes']
@@ -980,12 +980,10 @@ class StashInterface(GQLWrapper):
 				"ids": scene_ids
 			}
 		}
-			
+
 		result = self._callGraphQL(query, variables)
 		return result['scenesDestroy']
 	def merge_scenes(self, source, destination, values={}):
-
-
 
 		if isinstance(source, str):
 			source = int(source)
@@ -1043,7 +1041,7 @@ class StashInterface(GQLWrapper):
 		"""
 		if fragment:
 			query = re.sub(r'\.\.\.SceneMarker', fragment, query)
-			
+
 		variables = { "marker_input": marker_create_input }
 		return self._callGraphQL(query, variables)["sceneMarkerCreate"]
 	def destroy_scene_marker(self, marker_id:int):
@@ -1053,7 +1051,7 @@ class StashInterface(GQLWrapper):
 			}
 		"""
 		self._callGraphQL(query, {"marker_id": marker_id})
-	
+
 	# BULK Markers
 	def destroy_scene_markers(self, scene_id:int):
 		scene_markers = self.find_scene_markers(scene_id, fragment="id")
@@ -1168,15 +1166,15 @@ class StashInterface(GQLWrapper):
 
 	# Scraper Operations
 	def reload_scrapers(self):
-		query = """ 
+		query = """
 			mutation ReloadScrapers {
 				reloadScrapers
 			}
 		"""
-		
+
 		result = self._callGraphQL(query)
 		return result["reloadScrapers"]
-	
+
 	def list_performer_scrapers(self, type):
 		query = """
 		query ListPerformerScrapers {
@@ -1283,7 +1281,7 @@ class StashInterface(GQLWrapper):
 			}
 		  }
 		"""
-		
+
 		variables = {
 			"source": {
 				"scraper_id": scraper_id
@@ -1395,7 +1393,7 @@ class StashInterface(GQLWrapper):
 		query = """
 			query($url: String!) {
 				scrapeGalleryURL(url: $url) {
-					...ScrapedGallery 
+					...ScrapedGallery
 				}
 			}
 		"""
@@ -1492,7 +1490,7 @@ class StashInterface(GQLWrapper):
 						name
 						endpoint
 						api_key
-					} 
+					}
 				}
 			}
 		}"""
