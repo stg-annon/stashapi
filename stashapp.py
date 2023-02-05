@@ -1042,13 +1042,12 @@ class StashInterface(GQLWrapper):
 				}
 			}
 		"""
+		values["id"] = destination
 		merge_input = {
 			"source": source,
 			"destination": destination,
-			"values": {"id":destination},
+			"values": values,
 		}
-		if values:
-			merge_input["values"] = values
 
 		return self._callGraphQL(query, {"merge_input":merge_input})["sceneMerge"]
 
