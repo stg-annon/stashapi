@@ -54,7 +54,7 @@ class ScrapeParser:
 		if tag.get("stored_id"):
 			tag_update["id"] = tag["stored_id"]
 		elif self.create_missing_tags:
-			return self.stash.find_tag(tag["name"], create=True)
+			return self.stash.find_tag({"name": tag.get("name")}, create=True)
 
 		return tag_update
 
@@ -125,8 +125,11 @@ class ScrapeParser:
 		if studio.get("stored_id"):
 			studio_update["id"] = studio["stored_id"]
 		elif self.create_missing_studios:
-			return self.stash.create_studio(studio)
-
+			return self.stash.create_studio({
+				"name"  : studio.get("name"),
+				"url"   : studio.get("url"),
+				"image" : studio.get("image"),
+			})
 		return studio_update
 
 	def scene_movie_input_from_scrape(self, movie):
@@ -282,7 +285,7 @@ class ScrapeParser:
 
 		if performer.get("gender"):
 			try:
-				performer_update["gender"] = Gender[performer["gender"]].value
+				performer_update["gender"] = Gender[performer["gender"].upper()].value
 			except:
 				log.warning(f'Cannot map performer Gender "{performer["gender"]}" for {performer["name"]}')
 
