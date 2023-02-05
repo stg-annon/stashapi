@@ -1132,63 +1132,6 @@ class StashInterface(GQLWrapper):
 		for scene in scenes:
 			scene["stash_ids"] = [sid for sid in scene["stash_ids"] if sid["stash_id"] != stash_id ]
 			self.update_scene(scene)
-	def merge_scenes_deprecated(self, target_scene_id:int, source_scene_ids:list, exclusions={}):
-
-		min_scene_fragment="""
-			title
-			details
-			url
-			date
-			rating
-			studio { id }
-			galleries { id }
-			performers { id }
-			tags { id }
-			movies { movie { id } scene_index }
-		"""
-
-		merged_markers = self.merge_scene_markers(target_scene_id, source_scene_ids)
-		self.log.info(f"Merged {len(merged_markers)} markers from {source_scene_ids} to {target_scene_id}")
-
-		target_meta = self.find_scene(target_scene_id, fragment=min_scene_fragment)
-
-		for source_id in source_scene_ids:
-			source_data = self.find_scene(source_id, fragment=min_scene_fragment)
-			scene_update = {
-				"ids": [target_scene_id],
-				"gallery_ids": {
-					 "ids": [ g["id"] for g in source_data["galleries"] if g["id"] not in exclusions.get("gallery_ids",[]) ],
-					 "mode": "ADD"
-				},
-				"performer_ids": {
-					 "ids": [ p["id"] for p in source_data["performers"] if p["id"] not in exclusions.get("performer_ids",[]) ],
-					 "mode": "ADD"
-				},
-				"tag_ids": {
-					 "ids": [ t["id"] for t in source_data["tags"] if t["id"] not in exclusions.get("tag_ids",[]) ],
-					 "mode": "ADD"
-				},
-				"movie_ids": {
-					 "ids": [ sm["movie"]["id"] for sm in source_data["movies"] ],
-					 "mode": "ADD"
-				},
-			}
-			if source_data.get("studio"):
-				scene_update["studio_id"] = source_data["studio"]["id"]
-
-
-			sdate = source_data.get("date")
-			tdate = target_meta.get("date", "9999-99-99")
-			if tdate == None:
-				tdate = "9999-99-99"
-			if sdate and tdate > sdate:
-				scene_update["date"] = source_data["date"]
-			if source_data.get("url"):
-				scene_update["url"] = source_data["url"]
-				
-			updated_scene_ids = self.update_scenes(scene_update)
-
-		return updated_scene_ids
 	def find_duplicate_scenes(self, distance: PhashDistance=PhashDistance.EXACT, fragment=None):
 		query = """
 			query FindDuplicateScenes($distance: Int) {
