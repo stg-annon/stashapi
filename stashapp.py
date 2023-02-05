@@ -237,11 +237,16 @@ class StashInterface(GQLWrapper):
 		name = None
 		if isinstance(tag_in, dict):
 			if tag_in.get("stored_id"):
-				return self.find_tag(int(tag_in["stored_id"]))
+				try:
+					stored_id = int(tag_in["stored_id"])
+					return self.find_tag(stored_id)
+				except:
+					del tag_in["stored_id"]
 			if tag_in.get("name"):
 				name = tag_in["name"]
 		if isinstance(tag_in, str):
 			name = tag_in
+			tag_in = {"name": name}
 
 		if not name:
 			self.log.warning(f'find_tag expects int, str, or dict not {type(tag_in)} "{tag_in}"')
@@ -253,7 +258,7 @@ class StashInterface(GQLWrapper):
 			if any(name.lower() == a.lower() for a in tag["aliases"] ):
 				return tag
 		if create:
-			return self.create_tag({"name":name})
+			return self.create_tag(tag_in)
 	def update_tag(self, tag_update):
 		query = """
 		mutation TagUpdate($input: TagUpdateInput!) {
