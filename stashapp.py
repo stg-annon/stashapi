@@ -56,6 +56,19 @@ class StashInterface(GQLWrapper):
 		for fragment in fragments:
 			self.parse_fragments(fragment)
 
+	def _parse_obj_for_ID(self, param, str_key="name"):
+		if isinstance(param, str):
+			try:
+				return int(param)
+			except:
+				return {str_key: param.strip()}
+		elif isinstance(param, dict):
+			if param.get("stored_id"):
+				return int(param["stored_id"])
+			if param.get("id"):
+				return int(param["id"])
+		return param
+
 	def __genric_find(self, query, item, fragment:tuple[str, str]=(None, None)):
 		item_id = None
 		if isinstance(item, dict):
@@ -505,63 +518,47 @@ class StashInterface(GQLWrapper):
 
 		result = self._callGraphQL(query, variables)
 		return result['studioCreate']
-	def find_studio(self, studio, create=False, domain_pattern=r'[^.]*\.[^.]{2,3}(?:\.[^.]{2,3})?$') -> dict:
+	def find_studio(self, studio, fragment=None, create=False) -> dict:
 		"""looks for studio from stash matching aliases and URLs if name is like a url
 
 		Args:
 			 studio (int, str, dict): int, str, dict of studio to search for
 			 create (bool, optional): create studio if not found. Defaults to False.
-			 domain_pattern (regexp, optional): pattern to use against name that will match a URL like "brazzers.com". Defaults to r'[^.]*\.[^.]{2,3}(?:\.[^.]{2,3})?$'.
-
 		Returns:
 			 dict: stash studio object
 		"""
-
-		# assume input is an ID if int
+		studio = self._parse_obj_for_ID(studio)
 		if isinstance(studio, int):
 			return self.__genric_find(
 				"query FindStudio($id: ID!) { findStudio(id: $id) { ...Studio } }",
 				studio,
+				[r'\.\.\.Studio', fragment]
 			)
-
-		name = None
-		if isinstance(studio, dict):
-			if studio.get("stored_id"):
-				return self.find_studio(int(studio["stored_id"]))
-			if studio.get("id"):
-				return self.find_studio(int(studio["id"]))
-			if studio.get("name"):
-				name = studio["name"]
-		if isinstance(studio, str):
-			name = studio
-
-		if not name:
+		if not studio:
 			self.log.warning(f'find_studio() expects int, str, or dict not {type(studio)} "{studio}"')
 			return
-		name = name.strip()
 
 		studio_matches = []
 
-		# studio name looks like a url match to URLs
-		if re.match(domain_pattern, name):
+		if studio.get("url"):
 			url_search = self.find_studios(f={
-				"url":{ "value": name, "modifier": "INCLUDES" }
-			})
-			for s in url_search:
-				if re.search(rf'{name}',s["url"]):
-					self.log.info(f'matched "{name}" to {s["url"]} using URL')
-					studio_matches.append(s)
+				"url":{ "value": studio["url"], "modifier": "INCLUDES" }
+			}, fragment="id name")
+			if len(url_search) == 1:
+				studio_matches.extend(url_search)
 
-		name_results = self.find_studios(q=name)
-		studio_matches.extend(self.__match_alias_item(name, name_results))
+		if studio.get("name"):
+			studio["name"] = studio["name"].strip()
+			name_results = self.find_studios(q=studio["name"], fragment="id name aliases")
+			studio_matches.extend(self.__match_alias_item(studio["name"], name_results))
 
-		if len(studio_matches) > 1 and name.count(' ') == 0:
+		if len(studio_matches) > 1 and studio["name"].count(' ') == 0:
 			return None
 		elif len(studio_matches) > 0:
-			return studio_matches[0] 
+			return self.find_studio(studio_matches[0]["id"], fragment=fragment)
 
 		if create:
-			self.log.info(f'Create missing studio: "{name}"')
+			self.log.info(f'Create missing studio: "{studio["name"]}"')
 			return self.create_studio(studio)
 	def update_studio(self, studio:dict):
 		"""update existing stash studio
