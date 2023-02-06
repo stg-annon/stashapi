@@ -442,6 +442,7 @@ class StashInterface(GQLWrapper):
 		result = self._callGraphQL(query, variables)
 		return result['performerUpdate']
 	# TODO destroy_performer()
+	# TODO merge_performers(self, source, destination, values={}):
 
 	# Performers CRUD
 	def find_performers(self, f:dict={}, filter:dict={"per_page": -1}, q="", fragment:dict=None, get_count:bool=False) -> list[dict]:
