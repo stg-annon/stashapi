@@ -195,12 +195,11 @@ fragment TypeRef on __Type {
 			fmt_error = f"{code}: {message} {path}".strip()
 			self.log.error(fmt_error)
 
-		if response.status_code == 200:
+		if response.status_code == 200 and content["data"] != None:
 			return content["data"]
 		elif response.status_code == 401:
 			self.log.error(f"401, Unauthorized. Could not access endpoint {self.url}. Did you provide an API key?")
-		else:
-			self.log.error(f"{response.status_code} query failed. {query}. Variables: {variables}")
+		self.log.error(f"{response.status_code} query failed.\n{rm_qury_whitespace(query)}\nVariables: {variables}")
 		sys.exit()
 
 	def _callGraphQLRecursive(self, query, variables, pages=-1):
@@ -289,3 +288,13 @@ class StashVersion:
 		return self.hash and other.hash and self.hash == other.hash
 	def __gt__(self, other: object) -> bool:
 		return self.pad_verion() > other.pad_verion()
+
+def rm_qury_whitespace(query):
+	whitespace = re.search(r'([\t ]+)(query|mutation)', query)
+	if whitespace:
+		whitespace = whitespace.group(1)
+		query_lines = []
+		for line in query.split("\n"):
+			query_lines.append(re.sub(whitespace, '', line, 1))
+		query = "\n".join(query_lines)
+	return query
