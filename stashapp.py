@@ -4,6 +4,7 @@ from requests.structures import CaseInsensitiveDict
 
 from . import log as stash_logger
 
+from .types import StashItem
 from .types import PhashDistance
 from .classes import GQLWrapper
 from .classes import SQLiteWrapper
@@ -1155,78 +1156,29 @@ class StashInterface(GQLWrapper):
 		result = self._callGraphQL(query)
 		return result["reloadScrapers"]
 
-	def list_performer_scrapers(self, type):
+	def list_scrapers(self, types:list[StashItem]):
 		query = """
-		query ListPerformerScrapers {
-			listPerformerScrapers {
+		query ListScrapers ($types: [ScrapeContentType!]!) {
+			listScrapers(types: $types) {
 			  id
 			  name
-			  performer {
-				supported_scrapes
-			  }
+			  performer { supported_scrapes }
+			  scene { supported_scrapes }
+			  gallery { supported_scrapes }
+			  movie { supported_scrapes }
 			}
 		  }
 		"""
-		ret = []
-		result = self._callGraphQL(query)
-		for r in result["listPerformerScrapers"]:
-			if type in r["performer"]["supported_scrapes"]:
-				ret.append(r["id"])
-		return ret
-	def list_scene_scrapers(self, type):
-		query = """
-		query listSceneScrapers {
-			listSceneScrapers {
-			  id
-			  name
-			  scene{
-				supported_scrapes
-			  }
-			}
-		  }
-		"""
-		ret = []
-		result = self._callGraphQL(query)
-		for r in result["listSceneScrapers"]:
-			if type in r["scene"]["supported_scrapes"]:
-				ret.append(r["id"])
-		return ret
-	def list_gallery_scrapers(self, type):
-		query = """
-		query ListGalleryScrapers {
-			listGalleryScrapers {
-			  id
-			  name
-			  gallery {
-				supported_scrapes
-			  }
-			}
-		  }
-		"""
-		ret = []
-		result = self._callGraphQL(query)
-		for r in result["listGalleryScrapers"]:
-			if type in r["gallery"]["supported_scrapes"]:
-				ret.append(r["id"])
-		return ret
-	def list_movie_scrapers(self, type):
-		query = """
-		query listMovieScrapers {
-			listMovieScrapers {
-			  id
-			  name
-			  movie {
-				supported_scrapes
-			  }
-			}
-		  }
-		"""
-		ret = []
-		result = self._callGraphQL(query)
-		for r in result["listMovieScrapers"]:
-			if type in r["movie"]["supported_scrapes"]:
-				ret.append(r["id"])
-		return ret
+		result = self._callGraphQL(query, {"types":[t.value for t in types]})
+		return result["listScrapers"]
+	def list_performer_scrapers(self):
+		return [{k: scraper[k] for k in ["id", "name", "performer"]} for scraper in self.list_scrapers([StashItem.PERFORMER])]
+	def list_scene_scrapers(self):
+		return [{k: scraper[k] for k in ["id", "name", "scene"]} for scraper in self.list_scrapers([StashItem.SCENE])]
+	def list_gallery_scrapers(self):
+		return [{k: scraper[k] for k in ["id", "name", "gallery"]} for scraper in self.list_scrapers([StashItem.GALLERY])]
+	def list_movie_scrapers(self):
+		return [{k: scraper[k] for k in ["id", "name", "movie"]} for scraper in self.list_scrapers([StashItem.MOVIE])]
 
 	# Fragment Scrape
 	def scrape_scene(self, scraper_id:int, scene):
