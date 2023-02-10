@@ -195,11 +195,14 @@ fragment TypeRef on __Type {
 			fmt_error = f"{code}: {message} {path}".strip()
 			self.log.error(fmt_error)
 
-		if response.status_code == 200 and content["data"] != None:
+		if content["data"] == None:
+			self.log.error("GQL data response is null")
+		elif response.status_code == 200:
 			return content["data"]
 		elif response.status_code == 401:
 			self.log.error(f"401, Unauthorized. Could not access endpoint {self.url}. Did you provide an API key?")
-		self.log.error(f"{response.status_code} query failed.\n{rm_qury_whitespace(query)}\nVariables: {variables}")
+		self.log.error(f"{response.status_code} query failed.")
+		self.log.debug(f"{rm_qury_whitespace(query)}\nVariables: {variables}")
 		sys.exit()
 
 	def _callGraphQLRecursive(self, query, variables, pages=-1):
