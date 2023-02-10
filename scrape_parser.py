@@ -32,6 +32,10 @@ class ScrapeParser:
 		if scraped_item["__typename"] == "ScrapedScene":
 			return self.scene_from_scrape(scraped_item)
 
+	def tag_ids_from_scrape(self, tags):
+		tag_ids = [self.tag_from_scrape(t) for t in tags]
+		return [t["id"] for t in tag_ids if t.get("id")]
+
 	def tag_from_scrape(self, tag):
 		"""
 		v0.12.0-40
@@ -56,6 +60,7 @@ class ScrapeParser:
 		elif self.create_missing_tags:
 			return self.stash.find_tag({"name": tag.get("name")}, create=True)
 
+		tag_update["name"] = tag["name"]
 		return tag_update
 
 	def gallery_from_scrape(self, gallery):
@@ -89,7 +94,7 @@ class ScrapeParser:
 		gallery_update = {}
 
 		if gallery.get("tags"):
-			gallery_update["tag_ids"] = [self.tag_from_scrape(t)["id"] for t in gallery["tags"]]
+			gallery_update["tag_ids"] = self.tag_ids_from_scrape(gallery["tags"]) 
 		if gallery.get("performers"):
 			gallery_update["performer_ids"] = [self.performer_from_scrape(p)["id"] for p in gallery["performers"]]
 		if gallery.get("studio"):
@@ -275,7 +280,7 @@ class ScrapeParser:
 			performer_update["image"] = performer["images"][0]
 			
 		if performer.get("tags"):
-			performer_update["tag_ids"] = [self.tag_from_scrape(t)["id"] for t in performer.get("tags")]
+			performer_update["tag_ids"] = self.tag_ids_from_scrape(performer["tags"])
 
 		if performer.get("weight"):
 			try:
@@ -340,7 +345,7 @@ class ScrapeParser:
 			scene_update["studio_id"] = self.studio_from_scrape(scene["studio"]).get("id")
 
 		if scene.get("tags"):
-			scene_update["tag_ids"] = [self.tag_from_scrape(t).get("id") for t in scene["tags"] if t]
+			scene_update["tag_ids"] = self.tag_ids_from_scrape(scene["tags"])
 
 		if scene.get("performers"):
 			scene_update["performer_ids"] = []
@@ -359,7 +364,6 @@ class ScrapeParser:
 				scene_update[attr] = scene[attr]
 
 		return scene_update
-
 
 	def localize_scraped_scene(self, scraped_scene):
 		# casts ScrapedScene to ScrapedScene while resolving aliases
