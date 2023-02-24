@@ -12,6 +12,7 @@ class GQLWrapper:
 		"DNT": "1"
 	}
 	cookies = {}
+	version = None
 
 	def __init__(self):
 		return
@@ -201,7 +202,7 @@ fragment TypeRef on __Type {
 			return content["data"]
 		elif response.status_code == 401:
 			self.log.error(f"401, Unauthorized. Could not access endpoint {self.url}. Did you provide an API key?")
-		self.log.error(f"{response.status_code} query failed.")
+		self.log.error(f"{response.status_code} query failed. {self.version}")
 		self.log.debug(f"{rm_qury_whitespace(query)}\nVariables: {variables}")
 		sys.exit()
 
