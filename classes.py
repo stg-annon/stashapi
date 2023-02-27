@@ -192,6 +192,9 @@ fragment TypeRef on __Type {
 			if len(message) > 2500:
 				message = f"{message[:2500]}..."
 			code = error.get("extensions", {}).get("code", "GRAPHQL_ERROR")
+			if message == "must not be null":
+				code = "DATABASE_ERROR"
+				self.log.error("Database potentally malformed check your DB file")
 			path = error.get("path", "")
 			fmt_error = f"{code}: {message} {path}".strip()
 			self.log.error(fmt_error)
