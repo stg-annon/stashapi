@@ -20,8 +20,8 @@ class GQLWrapper:
 	def parse_fragments(self, fragments_in):
 		fragments = {}
 		fragment_matches = re.finditer(r'fragment\s+([A-Za-z]+)\s+on\s+[A-Za-z]+(\s+)?{', fragments_in)
-		for fagment_match in fragment_matches:
-			start = fagment_match.end()
+		for fragment_match in fragment_matches:
+			start = fragment_match.end()
 			end = start
 
 			depth = 0
@@ -35,7 +35,7 @@ class GQLWrapper:
 					else:
 						end = i
 						break
-			fragments[fagment_match.group(1)] = fragments_in[fagment_match.start():end+1]
+			fragments[fragment_match.group(1)] = fragments_in[fragment_match.start():end+1]
 		self.fragments.update(fragments)
 		return fragments
 
@@ -194,7 +194,7 @@ fragment TypeRef on __Type {
 			code = error.get("extensions", {}).get("code", "GRAPHQL_ERROR")
 			if message == "must not be null":
 				code = "DATABASE_ERROR"
-				self.log.error("Database potentally malformed check your DB file")
+				self.log.error("Database potentially malformed check your DB file")
 			path = error.get("path", "")
 			fmt_error = f"{code}: {message} {path}".strip()
 			self.log.error(fmt_error)
@@ -240,12 +240,12 @@ class SQLiteWrapper:
 
 	def __init__(self, db_filepath) -> None:
 		## TODO generate uri for read-only connection, all write operations should be done from the API
-		## issuses with cross os paths parsing to uri skip for now, opt for warning message
+		## issues with cross os paths parsing to uri skip for now, opt for warning message
 		# db_filepath = Path(db_filepath)
 		# db_filepath = db_filepath.resolve()
 		# db_uri = f"{db_filepath.as_uri()}?mode=ro"
 
-		self.log.warning("SQL connetion should only be used for read-only operations, all write operations should be done from the API")
+		self.log.warning("SQL connection should only be used for read-only operations, all write operations should be done from the API")
 		self.conn = sqlite3.connect(db_filepath)
 
 	def query(self, query, args=(), one=False):
@@ -279,7 +279,7 @@ class StashVersion:
 		if m.get("HASH"):
 			self.hash = m["HASH"]
 
-	def pad_verion(self) -> str:
+	def pad_version(self) -> str:
 		return f"{self.major:04d}.{self.minor:04d}.{self.patch:04d}-{self.build:04d}"
 
 	def __str__(self) -> str:
@@ -294,9 +294,9 @@ class StashVersion:
 	def __eq__(self, other: object) -> bool:
 		return self.hash and other.hash and self.hash == other.hash
 	def __gt__(self, other: object) -> bool:
-		return self.pad_verion() > other.pad_verion()
+		return self.pad_version() > other.pad_version()
 
-def rm_qury_whitespace(query):
+def rm_query_whitespace(query):
 	whitespace = re.search(r'([\t ]+)(query|mutation)', query)
 	if whitespace:
 		whitespace = whitespace.group(1)

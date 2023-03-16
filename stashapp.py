@@ -70,7 +70,7 @@ class StashInterface(GQLWrapper):
 				return int(param["id"])
 		return param
 
-	def __genric_find(self, query, item, fragment:tuple[str, str]=(None, None)):
+	def __generic_find(self, query, item, fragment:tuple[str, str]=(None, None)):
 		item_id = None
 		if isinstance(item, dict):
 			if item.get("stored_id"):
@@ -243,7 +243,7 @@ class StashInterface(GQLWrapper):
 
 		# assume input is an ID if int
 		if isinstance(tag_in, int):
-			return self.__genric_find(
+			return self.__generic_find(
 				"query FindTag($id: ID!) { findTag(id: $id) { ...Tag } }",
 				tag_in
 			)
@@ -285,7 +285,7 @@ class StashInterface(GQLWrapper):
 
 		self._callGraphQL(query, variables)
 	def destroy_tag(self, tag_id:int):
-		"""deeltes tag from stash
+		"""deletes tag from stash
 
 		Args:
 			 tag_id (int, str): tag ID from stash
@@ -377,7 +377,7 @@ class StashInterface(GQLWrapper):
 
 		# assume input is an ID if int
 		if isinstance(performer_in, int):
-			return self.__genric_find(
+			return self.__generic_find(
 				"query FindPerformer($id: ID!) { findPerformer(id: $id) { ...Performer } }",
 				performer_in,
 			)
@@ -531,7 +531,7 @@ class StashInterface(GQLWrapper):
 		"""
 		studio = self._parse_obj_for_ID(studio)
 		if isinstance(studio, int):
-			return self.__genric_find(
+			return self.__generic_find(
 				"query FindStudio($id: ID!) { findStudio(id: $id) { ...Studio } }",
 				studio,
 				[r'\.\.\.Studio', fragment]
@@ -645,7 +645,7 @@ class StashInterface(GQLWrapper):
 	def find_movie(self, movie_in, create=False):
 		# assume input is an ID if int
 		if isinstance(movie_in, int):
-			return self.__genric_find(
+			return self.__generic_find(
 				"query FindMovie($id: ID!) { findMovie(id: $id) { ...Movie } }",
 				movie_in
 			)
@@ -722,7 +722,7 @@ class StashInterface(GQLWrapper):
 			return self.metadata_scan([path])
 	def find_gallery(self, gallery_in, fragment=None):
 		if isinstance(gallery_in, int):
-			return self.__genric_find(
+			return self.__generic_find(
 				"query FindGallery($id: ID!) { findGallery(id: $id) { ...Gallery } }",
 				gallery_in,
 				(r'\.\.\.Gallery', fragment)
@@ -815,7 +815,7 @@ class StashInterface(GQLWrapper):
 			return self.metadata_scan([path])
 	def find_image(self, image_in, fragment=None):
 		if isinstance(image_in, int):
-			return self.__genric_find(
+			return self.__generic_find(
 				"query FindImage($id: ID!) { findImage(id: $id) { ...Image } }",
 				image_in,
 				(r'\.\.\.Image', fragment),
