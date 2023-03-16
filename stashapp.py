@@ -4,8 +4,8 @@ from requests.structures import CaseInsensitiveDict
 
 from . import log as stash_logger
 
-from .types import StashItem
-from .types import PhashDistance
+from .stash_types import StashItem
+from .stash_types import PhashDistance
 from .classes import GQLWrapper
 from .classes import SQLiteWrapper
 from .classes import StashVersion

@@ -2,7 +2,7 @@ import datetime
 
 from . import log as StashLogger
 
-from .types import Gender
+from .stash_types import Gender
 
 class ScrapeParser:
 

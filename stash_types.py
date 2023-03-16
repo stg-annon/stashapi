@@ -1,22 +1,35 @@
 from enum import Enum, IntEnum
 
-class BulkUpdateIdMode(Enum):
+class StashEnum(Enum):
+	def __repr__(self) -> str:
+		return f"{self.__class__.__name__}.{self.name}"
+	def __str__(self) -> str:
+		return self.value
+
+class BulkUpdateIdMode(StashEnum):
 	SET = "SET"
 	ADD = "ADD"
 	REMOVE = "REMOVE"
 
-class ScrapeType(Enum):
+class ScrapeType(StashEnum):
 	NAME = "NAME"
 	FRAGMENT = "FRAGMENT"
 	URL = "URL"
 
-class StashItem(Enum):
+class ScrapeContentType(StashEnum):
+	GALLERY = "GALLERY"
+	MOVIE = "MOVIE"
+	PERFORMER = "PERFORMER"
+	SCENE = "SCENE"
+
+
+class StashItem(StashEnum):
 	SCENE = "SCENE"
 	GALLERY = "GALLERY"
 	PERFORMER = "PERFORMER"
 	MOVIE = "MOVIE"
 
-class Gender(Enum):
+class Gender(StashEnum):
 	MALE="MALE"
 	FEMALE="FEMALE"
 	TRANSGENDER_MALE="TRANSGENDER_MALE"
