@@ -338,6 +338,9 @@ class ScrapeParser:
 		"""
 		scene_update = {}
 		
+		if scene.get("code"):
+			scene_update["code"] = str(scene["code"])
+		
 		if scene.get("image"):
 			scene_update["cover_image"] = scene["image"]
 
@@ -354,7 +357,7 @@ class ScrapeParser:
 				if performer.get("id"):
 					scene_update["performer_ids"].append(performer["id"])
 				else:
-					log.debug(f"could not match {p}")
+					log.debug(f"could not match performer {p['name']}")
 
 		if scene.get("movies"):
 			scene_update["movies"] = [self.scene_movie_input_from_scrape(m) for m in scene["movies"] if m]
