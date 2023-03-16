@@ -1241,24 +1241,12 @@ class StashInterface(GQLWrapper):
 		scene_id = None
 		scene_input = {}
 
-		try:
-			if isinstance(scene, str):
-				scene_id = int(scene)
-			if isinstance(scene, int):
-				scene_id = scene
-			if isinstance(scene, dict):
-				scene_id = int(scene.get("id"))
-				scene_input = {
-					"title": scene["title"],
-					"details": scene["details"],
-					"url": scene["url"],
-					"date": scene["date"],
-					"remote_site_id": None
-				}
-			if not isinstance(scene_id, int):
-				raise Exception("scene_id must be an int")
-		except:
-			self.log.warning('Unexpected Object passed to scrape_single_scene')
+		sid = self._parse_obj_for_ID(scene)
+		if isinstance(sid, int):
+			scene_id = sid
+
+		if not scene_id:
+			self.log.warning('Unexpected Object passed to scrape_scene')
 			self.log.warning(f'Type: {type(scene)}')
 			self.log.warning(f'{scene}')
 
