@@ -108,7 +108,7 @@ class StashInterface(GQLWrapper):
 	def __match_performer_alias(self, search, performers):
 		performer_matches = {}
 
-		# attempt to match exclusivly to primary name
+		# attempt to match exclusively to primary name
 		for p in performers:
 			if p.get("disambiguation"):
 				self.log.debug(f'ignore primary name with disambiguation "{p["name"]}" ({p["disambiguation"]}) pid:{p["id"]}')
@@ -360,8 +360,8 @@ class StashInterface(GQLWrapper):
 			 f (TagFilterType, optional): See playground for details. Defaults to {}.
 			 filter (FindFilterType, optional): See playground for details. Defaults to {"per_page": -1}.
 			 q (str, optional): query string, same search bar in stash. Defaults to "".
-			 fragment (str, optional): override for gqlFragment. Defaults to "...Tag". example override 'fargment="id name"'
-			 get_count (bool, optional): returns tuple (count, [tags]) where count is the number of results from the query, useful when pageing. Defaults to False.
+			 fragment (str, optional): override for gqlFragment. Defaults to "...Tag". example override 'fragment="id name"'
+			 get_count (bool, optional): returns tuple (count, [tags]) where count is the number of results from the query, useful when paging. Defaults to False.
 
 		Returns:
 			 _type_: list of tags, or tuple of (count, [tags])
@@ -418,7 +418,7 @@ class StashInterface(GQLWrapper):
 		"""looks for performer from stash matching aliases
 
 		Args:
-			 performer (int, str, dict): int of performer id, str of performer name/alias, dict of performer oject
+			 performer (int, str, dict): int of performer id, str of performer name/alias, dict of performer object
 			 create (bool, optional): create performer if not found. Defaults to False.
 
 		Returns:
@@ -612,8 +612,8 @@ class StashInterface(GQLWrapper):
 			 f (PerformerFilterType, optional): See playground for details. Defaults to {}.
 			 filter (FindFilterType, optional): See playground for details. Defaults to {"per_page": -1}.
 			 q (str, optional): query string, same search bar in stash. Defaults to "".
-			 fragment (dict, optional):  override for gqlFragment. Defaults to "...Performer". example override 'fargment="id name"'
-			 get_count (bool, optional): returns tuple (count, [performers]) where count is the number of results from the query, useful when pageing. Defaults to False.
+			 fragment (dict, optional):  override for gqlFragment. Defaults to "...Performer". example override 'fragment="id name"'
+			 get_count (bool, optional): returns tuple (count, [performers]) where count is the number of results from the query, useful when paging. Defaults to False.
 
 		Returns:
 			 _type_: list of performer objects or tuple with count and list (count, [performers])
@@ -752,11 +752,11 @@ class StashInterface(GQLWrapper):
 			 f (StudioFilterType, optional): See playground for details. Defaults to {}.
 			 filter (FindFilterType, optional): See playground for details. Defaults to {"per_page": -1}.
 			 q (str, optional): query string, same search bar in stash. Defaults to "".
-			 fragment (_type_, optional): override for gqlFragment. Defaults to "...Studio". example override 'fargment="id name"'
-			 get_count (bool, optional): returns tuple (count, [studios]) where count is the number of results from the query, useful when pageing. Defaults to False.
+			 fragment (_type_, optional): override for gqlFragment. Defaults to "...Studio". example override 'fragment="id name"'
+			 get_count (bool, optional): returns tuple (count, [studios]) where count is the number of results from the query, useful when paging. Defaults to False.
 
 		Returns:
-			 _type_: list of studio ojbests from stash, or tuple (count, [studios])
+			 _type_: list of studio objects from stash, or tuple (count, [studios])
 		"""
 
 		query =  """
@@ -1532,7 +1532,7 @@ class StashInterface(GQLWrapper):
 			if sbox_endpoint in sbox_cfg["endpoint"]:
 				sbox_cfg["index"] = sbox_idx
 				return sbox_cfg
-		self.log.error(f'could not find stash-box conection to "{sbox_endpoint}"')
+		self.log.error(f'could not find stash-box connection to "{sbox_endpoint}"')
 		return {}
 	def get_stashbox_connections(self):
 		query = """
