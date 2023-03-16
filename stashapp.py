@@ -120,16 +120,31 @@ class StashInterface(GQLWrapper):
 				return list(performer_matches.values())
 
 		# no match on primary name attempt aliases
-		for item in performers:
-			if not item["aliases"]:
+		for p in performers:
+			aliases = []
+			# new versions of stash NOTE: wont be needed after performer alias matching
+			if p.get("alias_list"):
+				aliases = p["alias_list"]
+			# old versions of stash
+			if p.get("aliases"):
+				if not isinstance(p["aliases"], str):
+					self.log.warning(f'Expecting type str for performer aliases not {type(p["aliases"])}')
+					return
+				alias_delim = re.search(r'(\/|\n|,|;)', p["aliases"])
+				if alias_delim:
+					p["aliases"] = p["aliases"].split(alias_delim.group(1))
+				elif len(p["aliases"]) > 0:
+					p["aliases"] = [p["aliases"]]
+				else:
+					self.log.warning(f'Could not determine delim for aliases "{p["aliases"]}"')
+
+			if not aliases:
 				continue
-			for alias in item["aliases"]:
+			for alias in aliases:
 				parsed_alias = alias.strip()
-				if ":" in alias:
-					parsed_alias = alias.split(":")[-1].strip()
 				if re.match(rf'{search}$', parsed_alias, re.IGNORECASE):
-					self.log.info(f'matched performer "{search}" to "{item["name"]}" ({item["id"]}) using alias')
-					performer_matches[item["id"]] = item
+					self.log.info(f'matched performer "{search}" to "{p["name"]}" ({p["id"]}) using alias')
+					performer_matches[p["id"]] = p
 		return list(performer_matches.values())
 
 	def call_gql(self, query, variables={}):
