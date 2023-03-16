@@ -210,7 +210,7 @@ class StashInterface(GQLWrapper):
 				'scanGeneratePhashes': True
 			})
 		result = self._callGraphQL(query, {"input": scan_metadata_input})
-		return result
+		return result["metadataScan"]
 
 	def metadata_clean(self, paths:list=[], dry_run=False):
 		if not paths:
@@ -335,6 +335,22 @@ class StashInterface(GQLWrapper):
 		}}
 
 		self._callGraphQL(query, variables)
+	def destroy_tags(self, tag_ids:list[int]):
+		"""deletes tags from stash
+
+		Args:
+			 tag_ids ([int]): tag IDs from stash to delete
+		"""
+
+		query = """
+			mutation tagsDestroy($ids: [ID!]!) {
+				tagsDestroy(ids: $ids)
+			}
+		"""
+
+		self._callGraphQL(query, {'ids': tag_ids})
+
+
 
 	# BULK Tags
 	def find_tags(self, f:dict={}, filter:dict={"per_page": -1}, q:str="", fragment:str=None, get_count:bool=False) -> list[dict]:
@@ -476,8 +492,20 @@ class StashInterface(GQLWrapper):
 
 		result = self._callGraphQL(query, variables)
 		return result['performerUpdate']
-	# TODO destroy_performer()
 	# TODO merge_performers(self, source, destination, values={}):
+	def destroy_performer(self, performer_ids):
+		if isinstance(performer_ids, int):
+			performer_ids = [performer_ids]
+		if not isinstance(performer_ids, list):
+			raise Exception("destroy_gallery only accepts an int or list of ints")
+
+		query = """
+		mutation performersDestroy($performer_ids:[ID!]!) {
+			performersDestroy(ids: $performer_ids)
+		}
+		"""
+		result = self._callGraphQL(query, {"performer_ids": performer_ids})
+		return result['performersDestroy']
 
 	# Performers CRUD
 	def find_performers(self, f:dict={}, filter:dict={"per_page": -1}, q="", fragment:dict=None, get_count:bool=False) -> list[dict]:
@@ -953,9 +981,20 @@ class StashInterface(GQLWrapper):
 		return result['imagesDestroy']
 
 	# Scene CRUD
-	def create_scene(self, path:str=""):
-		if path:
-			return self.metadata_scan([path])
+	def create_scene(self, scene_create_input:dict={}):
+		query = """
+		query SceneCrate($input: SceneCreateInput!) {
+			sceneCreate(input: $input) {
+				id
+			}
+		}
+		"""
+
+		variables = {"input": scene_create_input}
+
+		result = self._callGraphQL(query, variables)
+		return result['sceneCreate']
+
 	def find_scene(self, id:int, fragment=None):
 		query = """
 		query FindScene($scene_id: ID) {
@@ -1001,8 +1040,11 @@ class StashInterface(GQLWrapper):
 		return result['sceneDestroy']
 
 	# BULK Scenes
-	def create_scenes(self, paths:list=[]):
-		return self.metadata_scan(paths)
+	def create_scenes(self, scene_create_inputs:list=[]):
+		responses = []
+		for input in scene_create_inputs:
+			responses.append(self.create_scene(input))
+		return responses
 	def find_scenes(self, f:dict={}, filter:dict={"per_page": -1}, q:str="", fragment=None, get_count=False):
 		query = """
 		query FindScenes($filter: FindFilterType, $scene_filter: SceneFilterType, $scene_ids: [Int!]) {
@@ -1330,57 +1372,17 @@ class StashInterface(GQLWrapper):
 
 	# URL Scrape
 	def scrape_scene_url(self, url):
-		query = """
-			query($url: String!) {
-				scrapeSceneURL(url: $url) {
-					...ScrapedScene
-				}
-			}
-		"""
-		variables = { 'url': url }
-		scraped_scene = self._callGraphQL(query, variables)['scrapeSceneURL']
-		if scraped_scene and not scraped_scene.get("url"):
-			scraped_scene["url"] = url
-		return scraped_scene
+		query = "query($url: String!) { scrapeSceneURL(url: $url) { ...ScrapedScene } }"
+		return self._callGraphQL(query, { 'url': url })['scrapeSceneURL']
 	def scrape_movie_url(self, url):
-		query = """
-			query($url: String!) {
-				scrapeMovieURL(url: $url) {
-					...ScrapedMovie
-				}
-			}
-		"""
-		variables = { 'url': url }
-		scraped_movie = self._callGraphQL(query, variables)['scrapeMovieURL']
-		if scraped_movie and not scraped_movie.get("url"):
-			scraped_movie["url"] = url
-		return scraped_movie
+		query = "query($url: String!) { scrapeMovieURL(url: $url) { ...ScrapedMovie } }"
+		return self._callGraphQL(query, { 'url': url })['scrapeMovieURL']
 	def scrape_gallery_url(self, url):
-		query = """
-			query($url: String!) {
-				scrapeGalleryURL(url: $url) {
-					...ScrapedGallery
-				}
-			}
-		"""
-		variables = { 'url': url }
-		scraped_gallery = self._callGraphQL(query, variables)['scrapeGalleryURL']
-		if scraped_gallery and not scraped_gallery.get("url"):
-			scraped_gallery["url"] = url
-		return scraped_gallery
+		query = "query($url: String!) { scrapeGalleryURL(url: $url) { ...ScrapedGallery } }"
+		return self._callGraphQL(query, { 'url': url })['scrapeGalleryURL']
 	def scrape_performer_url(self, url):
-		query = """
-			query($url: String!) {
-				scrapePerformerURL(url: $url) {
-					...ScrapedPerformer
-				}
-			}
-		"""
-		variables = { 'url': url }
-		scraped_performer = self._callGraphQL(query, variables)['scrapePerformerURL']
-		if scraped_performer and not scraped_performer.get("url"):
-			scraped_performer["url"] = url
-		return scraped_performer
+		query = "query($url: String!) { scrapePerformerURL(url: $url) { ...ScrapedPerformer } }"
+		return self._callGraphQL(query, { 'url': url })['scrapePerformerURL']
 
 	#Identify
 	def get_identify_config(self):
