@@ -414,63 +414,42 @@ class StashInterface(GQLWrapper):
 
 		result = self._callGraphQL(query, variables)
 		return result['performerCreate']
-	def find_performer(self, performer_in, create=False) -> dict:
+	def find_performer(self, performer, create=False, fragment=None) -> dict:
 		"""looks for performer from stash matching aliases
 
 		Args:
-			 performer_in (int, str, dict): int of performer id, str of performer name/alias, dict of performer oject
+			 performer (int, str, dict): int of performer id, str of performer name/alias, dict of performer oject
 			 create (bool, optional): create performer if not found. Defaults to False.
 
 		Returns:
 			 dict: performer from stash
 		"""
-
+		performer = self._parse_obj_for_ID(performer)
 		# assume input is an ID if int
-		if isinstance(performer_in, int):
+		if isinstance(performer, int):
 			return self.__generic_find(
 				"query FindPerformer($id: ID!) { findPerformer(id: $id) { ...Performer } }",
-				performer_in,
+				performer,
+				[r'\.\.\.Performer', fragment]
 			)
-
-		name = None
-		if isinstance(performer_in, dict):
-			if performer_in.get("stored_id"):
-				return self.find_performer(int(performer_in["stored_id"]))
-			if performer_in.get("name"):
-				name = performer_in["name"]
-		if isinstance(performer_in, str):
-			name = performer_in
-
-		if not name:
-			self.log.warning(f'find_performer() expects int, str, or dict not {type(performer_in)} "{performer_in}"')
+		if not performer:
+			self.log.warning(f'find_performer() expects int, str, or dict not {type(performer)} "{performer}"')
 			return
 
-		name = name.strip()
-		performer_in = {"name": name}
+		performer_search = self.find_performers(q=performer["name"], fragment="id name alias_list")
+		performer_matches = self.__match_performer_alias(performer["name"], performer_search)
 
-		performers = self.find_performers(q=name)
-		for p in performers:
-			if not p.get("aliases"):
-				continue
-			alias_delim = re.search(r'(\/|\n|,|;)', p["aliases"])
-			if alias_delim:
-				p["aliases"] = p["aliases"].split(alias_delim.group(1))
-			elif len(p["aliases"]) > 0:
-				p["aliases"] = [p["aliases"]]
-			else:
-				self.log.warning(f'Could not determine delim for aliases "{p["aliases"]}"')
-
-		performer_matches = self.__match_performer_alias(name, performers)
+		# self.log.warning(performer_matches)
 
 		# none if multiple results from a single name performer
-		if len(performer_matches) > 1 and name.count(' ') == 0:
+		if len(performer_matches) > 1 and performer["name"].count(' ') == 0:
 			return None
 		elif len(performer_matches) > 0:
-			return performer_matches[0]
+			return self.find_performer(performer_matches[0]["id"])
 
 		if create:
-			self.log.info(f'Create missing performer: "{name}"')
-			return self.create_performer(performer_in)
+			self.log.info(f'Create missing performer: "{performer["name"]}"')
+			return self.create_performer(performer)
 	def update_performer(self, performer_in:dict) -> dict:
 		"""updates existing performer
 
