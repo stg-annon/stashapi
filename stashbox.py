@@ -27,10 +27,10 @@ class StashBoxInterface(GQLWrapper):
 	cookies = {}
 
 	def __init__(self, conn={}, fragments:list[str]=[stashbox_gql_fragments.DEVELOP]):
-		global log
 
 		conn = CaseInsensitiveDict(conn)
-		log = conn.get("logger", StashLogger)
+		
+		self.log = conn.get("Logger", StashLogger)
 		
 		self.url = conn.get('endpoint', "https://stashdb.org/graphql")
 		self.endpoint = self.url
@@ -53,9 +53,9 @@ class StashBoxInterface(GQLWrapper):
 		try:
 			# test query to check connection
 			r = self._callGraphQL("query Me{me {name email}}")
-			log.debug(f'Connected to "{self.url}" as {r["me"]["name"]} ({r["me"]["email"]})')
+			self.log.debug(f'Connected to "{self.url}" as {r["me"]["name"]} ({r["me"]["email"]})')
 		except Exception as e:
-			log.exit(f"Could not connect to Stash-Box at {self.url}", e)
+			self.log.exit(f"Could not connect to Stash-Box at {self.url}", e)
 
 		self.fragments = {}
 		for fragment in fragments:
@@ -98,7 +98,6 @@ class StashBoxInterface(GQLWrapper):
 		result = self._callGraphQL(query, {"id":scene_id})
 		return result["findScene"]
 
-
 	def find_scenes_count(self, scene_query):
 		query = """query FindScenes($input: SceneQueryInput!) {
 			queryScenes(input: $input) {
@@ -139,7 +138,9 @@ class StashBoxInterface(GQLWrapper):
 		if pages == -1: # set to all pages if -1
 			pages = math.ceil(result["count"] / type_input["per_page"])
 
-		log.debug(f'received page {type_input["page"]}/{pages} for {queryType} query')
+
+		self.log.progress(float(type_input["page"])/float(pages))
+		self.log.debug(f'received page {type_input["page"]}/{pages} for {queryType} query')
 
 		if type_input.get("page") < pages:
 			type_input["page"] = type_input["page"] + 1 
@@ -178,10 +179,9 @@ class StashBoxInterface(GQLWrapper):
 		
 		return existing
 
-
 	def edit_scene(self, stash_id:str, edit:dict, manual_comment:str):
 		if self.pending_edits_count(stash_id, StashboxTarget.SCENE) > 0:
-			log.warning(f'Edit not submited Scene:{stash_id} has pending edits')
+			self.log.warning(f'Edit not submited Scene:{stash_id} has pending edits')
 			return
 
 		comments = []
@@ -246,7 +246,7 @@ class StashBoxInterface(GQLWrapper):
 		query = """mutation SceneEdit($sceneData: SceneEditInput!) { sceneEdit(input: $sceneData) { id } }"""
 		input = {
 			"sceneData":{
-				"edit": {"id":stash_id, "operation":"MODIFY", "comment":comment},
+				"edit": {"bot":True, "id":stash_id, "operation":"MODIFY", "comment":comment},
 				"details": details
 			}
 		}
