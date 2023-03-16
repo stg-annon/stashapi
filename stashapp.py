@@ -471,7 +471,6 @@ class StashInterface(GQLWrapper):
 
 		result = self._callGraphQL(query, variables)
 		return result['performerUpdate']
-	# TODO merge_performers(self, source, destination, values={}):
 	def destroy_performer(self, performer_ids):
 		if isinstance(performer_ids, int):
 			performer_ids = [performer_ids]
@@ -485,6 +484,125 @@ class StashInterface(GQLWrapper):
 		"""
 		result = self._callGraphQL(query, {"performer_ids": performer_ids})
 		return result['performersDestroy']
+	def merge_performers(self, source, destination, values={}):
+
+		performer_update_fragment = """
+			id
+			name
+			disambiguation
+			url
+			twitter
+			instagram
+			gender
+			birthdate
+			death_date
+			ethnicity
+			country
+			eye_color
+			height_cm
+			measurements
+			fake_tits
+			career_length
+			tattoos
+			piercings
+			alias_list
+			favorite
+			tags { id }
+			stash_ids { endpoint stash_id }
+			rating
+			rating100
+			details
+			hair_color
+			weight
+			ignore_auto_tag
+		"""
+
+		if isinstance(source, str):
+			source = int(source)
+		if isinstance(destination, str):
+			destination = int(destination)
+
+		if isinstance(source, int):
+			source = [source]
+
+		if not isinstance(source, list):
+			raise Exception("merge_performers() source attribute must be a list of ints")
+		if not isinstance(destination, int):
+			raise Exception("merge_performers() destination attribute must be an int")
+
+		destination = self.find_performer(destination, fragment=performer_update_fragment)
+		sources = [self.find_performer(pid) for pid in source]
+
+		performer_update = {}
+		for attr in destination:
+			if attr == "tags":
+				performer_update["tag_ids"] = [t["id"] for t in destination["tags"]]
+			else:
+				performer_update[attr] = destination[attr]		
+
+		def pick_string(s1, s2):
+			if len(s1.replace(" ", "")) > len(s2.replace(" ", "")):
+				return s1
+			else:
+				return s2
+		ignore_attrs = ["id","name"]
+		use_longest_string = [
+			"disambiguation",
+			"measurements",
+			"career_length",
+			"tattoos",
+			"piercings",
+			"details",
+		]
+		for d_attr in performer_update:
+			if d_attr in ignore_attrs:
+				continue
+			for source in sources:
+				if d_attr in use_longest_string:
+					performer_update[d_attr] = pick_string(performer_update[d_attr], source[d_attr])
+					continue
+				if d_attr == "stash_ids":
+					existing_ids = [id["stash_id"] for id in performer_update["stash_ids"]]
+					performer_update["stash_ids"].extend([id for id in performer_update["stash_ids"] if id["stash_id"] not in existing_ids])
+					continue
+				if d_attr == "tags":
+					performer_update["tag_ids"].extend([t["id"] for t in source["tags"]])
+					performer_update["tag_ids"] = list(set(performer_update["tag_ids"]))
+					continue
+				if d_attr == "alias_list":
+					performer_update["alias_list"].append(source["name"])
+					performer_update["alias_list"].extend(source["alias_list"])
+					performer_update["alias_list"] = list(set(performer_update["alias_list"]))
+					continue
+				if not performer_update[d_attr] and source[d_attr]:
+					performer_update[d_attr] = source[d_attr]
+		performer_update["alias_list"] = [a for a in performer_update["alias_list"] if a != performer_update["name"]]
+		
+		self.update_performer(performer_update)
+
+		source_ids = [p["id"] for p in sources]
+		# reassign items with performers
+		scenes = self.find_scenes(f={"performers": {"value":source_ids, "modifier":"INCLUDES"}}, fragment="id")
+		if scenes:
+			self.update_scenes({
+				"ids": [s["id"] for s in scenes],
+				"performer_ids": {
+					"ids": [destination["id"]],
+					"mode": "ADD"
+				}
+			})
+
+		galleries = self.find_galleries(f={"performers": {"value":source_ids, "modifier":"INCLUDES"}}, fragment="id")
+		if galleries:
+			self.update_galleries({
+				"ids": [g["id"] for g in galleries],
+				"performer_ids": {
+					"ids": [destination["id"]],
+					"mode": "ADD"
+				}
+			})
+
+		self.destroy_performer(source_ids)
 
 	# Performers CRUD
 	def find_performers(self, f:dict={}, filter:dict={"per_page": -1}, q="", fragment:dict=None, get_count:bool=False) -> list[dict]:
