@@ -1,4 +1,4 @@
-import re, sys
+import re, sys, time, traceback
 
 from requests.structures import CaseInsensitiveDict
 
@@ -49,6 +49,7 @@ class StashInterface(GQLWrapper):
 		except Exception as e:
 			self.log.error(f"Could not connect to Stash at {self.url}")
 			self.log.error(e)
+			self.log.error(traceback.format_exc())
 			sys.exit()
 
 		self.log.debug(f'Using stash ({version}) endpoint at {self.url}')
@@ -156,6 +157,24 @@ class StashInterface(GQLWrapper):
 
 		result = self._callGraphQL(query)
 		return result['configuration']
+
+	def find_job(self, job_id):
+		query = "query FindJob($input:FindJobInput!) { findJob(input: $input){ ...Job } }"
+		result = self._callGraphQL(query, {"input": {"id":job_id}})
+		return result["findJob"]
+	
+	def wait_for_job(self, job_id, status="FINISHED", period=1.5, timeout=120):
+		timeout_value = time.time() + timeout
+		while time.time() < timeout_value:
+			job = self.find_job(job_id)
+			if not job:
+				return False
+			if job["status"] == status:
+				return True
+			if job["status"] in ["FINISHED", "CANCELLED"]:
+				return False
+			time.sleep(period)
+		raise Exception("Hit timeout waiting for Job to complete")
 
 	def metadata_scan(self, paths:list=[], flags={}):
 		query = """
