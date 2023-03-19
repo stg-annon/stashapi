@@ -1,4 +1,4 @@
-import base64
+import base64, math 
 from collections import defaultdict
 
 def defaultify(d:dict, default=None):
@@ -26,18 +26,20 @@ def get_base64(image_path):
 		return None
 	return f"data:image/jpeg;base64,{b64img_bytes.decode('utf-8')}"
 
-def human_bytes(size):
-	size = int(size)
-	power = 1024
-	n = 0
-	power_labels = {0 : '', 1: 'K', 2: 'M', 3: 'G', 4: 'T'}
-	while size > power:
-		size /= power
-		n += 1
-	return f"{size:.2f}{power_labels[n]}B"
+def si_prefix(size, round):
+	power_labels = {3:'K', 6:'M', 9:'G', 12:'T'}
+	log_s = int(math.log(size,10))
+	use_power = [p for p in power_labels.keys() if p <= log_s]
+	if not use_power:
+		return f"{size:.{round}f}"
+	use_power = max(use_power)
+	size = size / 10**use_power
+	return f"{size:.{round}f}{power_labels[use_power]}"
 
-def human_bits(size):
-	return human_bytes(size/8)
+def human_bytes(size, round=1):
+	return f"{si_prefix(size, round)}B"
+def human_bits(size, round=1):
+	return f"{si_prefix(size, round)}b"
 	
 def phash_distance(lhash, rhash):
 	assert len(lhash) == len(rhash)
