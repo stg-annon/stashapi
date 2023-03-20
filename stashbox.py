@@ -86,6 +86,34 @@ class StashBoxInterface(GQLWrapper):
 		}
 		return self._callGraphQL(query, variables)["queryEdits"]["count"]
 
+	def get_tag(self, tag_id, fragment=None):
+		query = """query FindTag($id: ID!) {
+			findTag(id: $id) {
+				...TagFragment
+			}
+		}"""
+		if fragment:
+			query = re.sub(r'\.\.\.TagFragment', fragment, query)
+
+		result = self._callGraphQL(query, {"id":tag_id})
+		return result["findTag"]
+
+	def find_tags(self, tag_query, fragment=None, pages=-1, callback=None):
+		query = """query Tags($input: TagQueryInput!){
+			queryTags(input: $input){
+				count
+				tags{
+					...TagFragment
+				}
+			}
+		}"""
+		if fragment:
+			query = re.sub(r'\.\.\.TagFragment', fragment, query)
+		
+		tag_query["page"] = tag_query.get("page", 1)
+		tag_query["per_page"] = 40
+		return self._paginate_query(query, tag_query, pages, callback)
+
 	def find_scene(self, scene_id, fragment=None):
 		query = """query FindScene($id: ID!) {
 			findScene(id: $id) {
