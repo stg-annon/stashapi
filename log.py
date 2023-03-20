@@ -10,6 +10,20 @@
 
 import re, sys, json
 
+from enum import Enum
+class StashLogLevel(Enum):
+	DEFAULT     = 0
+	TRACE       = 1
+	DEBUG       = 2
+	INFO        = 3
+	WARNING     = 4
+	ERROR       = 5
+	def __lt__(self, other):
+		return self.value < other.value
+# level can be set to disable lower level logs
+LEVEL = StashLogLevel.DEFAULT
+# disables logging progress bar, indented for use when running in console to avoid spam
+DISABLE_PROGRESS = False
 
 def __log(level_char: bytes, s):
 	if not level_char:
@@ -30,21 +44,31 @@ def __log(level_char: bytes, s):
 		print(level_char, line, file=sys.stderr, flush=True)
 
 def trace(s):
+	if StashLogLevel.TRACE < LEVEL:
+		return
 	__log(b't', s)
 
 def debug(s):
+	if StashLogLevel.DEBUG < LEVEL:
+		return
 	__log(b'd', s)
 
 def info(s):
+	if StashLogLevel.INFO < LEVEL:
+		return
 	__log(b'i', s)
 
 def warning(s):
+	if StashLogLevel.WARNING < LEVEL:
+		return
 	__log(b'w', s)
 
 def error(s):
 	__log(b'e', s)
 
 def progress(p):
+	if DISABLE_PROGRESS:
+		return
 	progress = min(max(0, p), 1)
 	__log(b'p', str(progress))
 
