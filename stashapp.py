@@ -875,7 +875,7 @@ class StashInterface(GQLWrapper):
 		else:
 			return result['findMovies']['movies']
 
-	#Gallery CRUD
+	# Gallery CRUD
 	def create_gallery(self, path:str=""):
 		if path:
 			return self.metadata_scan([path])
@@ -928,6 +928,53 @@ class StashInterface(GQLWrapper):
 		}
 		result = self._callGraphQL(query, variables)
 		return result['galleryDestroy']
+
+	# Gallery Images
+	def update_gallery_images(self, gallery_images_input):
+		mode = gallery_images_input.get("mode")
+		if not mode:
+			raise Exception("update_gallery_images() expects mode argument")
+		mode = mode.strip().upper()
+		if mode == "ADD":
+			return self.add_gallery_images(gallery_images_input["id"], gallery_images_input["image_ids"])
+		if mode == "REMOVE":
+			return self.remove_gallery_images(gallery_images_input["id"], gallery_images_input["image_ids"])
+		if mode == "SET":
+			gallery_images = self.find_images({
+				"galleries": {"value":gallery_images_input["id"],
+		  		"modifier":"INCLUDES_ALL"}},
+				fragment="id"
+			)
+			# remove all existing images
+			self.remove_gallery_images(gallery_images_input["id"], [f["id"] for f in gallery_images])
+			# set gallery images to input or return if no value provided
+			if not gallery_images_input.get("image_ids"):
+				return
+			return self.add_gallery_images(gallery_images_input["id"], gallery_images_input["image_ids"])
+	def remove_gallery_images(self, gallery_id, image_ids):
+		query = """
+			mutation RemoveGalleryImages($gallery_id: ID!, $image_ids: [ID!]!) {
+				removeGalleryImages(input: { gallery_id: $gallery_id, image_ids: $image_ids }) 
+			}
+		"""
+		variables = {
+			'gallery_id': gallery_id,
+			'image_ids': image_ids
+		}
+		result = self._callGraphQL(query, variables)
+		return result["removeGalleryImages"]
+	def add_gallery_images(self, gallery_id, image_ids):
+		query = """
+			mutation AddGalleryImages($gallery_id: ID!, $image_ids: [ID!]!) {
+				addGalleryImages(input: { gallery_id: $gallery_id, image_ids: $image_ids })
+			}
+		"""
+		variables = {
+			'gallery_id': gallery_id,
+			'image_ids': image_ids
+		}
+		result = self._callGraphQL(query, variables)
+		return result["addGalleryImages"]
 
 	# BULK Gallery
 	def find_galleries(self, f:dict={}, filter:dict={"per_page": -1}, q="", fragment=None, get_count=False):
