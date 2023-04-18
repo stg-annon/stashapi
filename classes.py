@@ -156,6 +156,8 @@ fragment TypeRef on __Type {
 			type_name = type["name"]
 			fragment = f"fragment {type_name} on {type_name} "+"{"
 			for field in type['fields']:
+				if field.get("isDeprecated"):
+					continue
 				attr = field["name"]
 				field_type_name = has_object_name(field)
 				if field_type_name:
