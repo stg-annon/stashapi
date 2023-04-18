@@ -979,20 +979,20 @@ class StashInterface(GQLWrapper):
 				image_in,
 				(r'\.\.\.Image', fragment),
 			)
-
+		image_id = None
 		if isinstance(image_in, dict):
 			if image_in.get("stored_id"):
-				return self.find_tag(int(image_in["stored_id"]))
+				image_id = int(image_in["stored_id"])
 			if image_in.get("id"):
-				return self.find_tag(int(image_in["id"]))
-
+				image_id = int(image_in["id"])
 		if isinstance(image_in, str):
 			try:
-				return self.find_tag(int(image_in))
+				image_id = int(image_in)
 			except:
 				self.log.warning(f"could not parse {image_in} to Image ID (int)")
+		if image_id:
+			return self.find_image(image_id, fragment)
 
-		self.log.warning(f'find_image expects int, str, or dict not {type(image_in)} "{image_in}"')
 	def update_image(self, update_input):
 		query = """
 			mutation ImageUpdate($input:ImageUpdateInput!) {
