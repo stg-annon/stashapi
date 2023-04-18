@@ -185,6 +185,12 @@ fragment TypeRef on __Type {
 		response = requests.post(self.url, json=json_request, headers=self.headers, cookies=self.cookies)
 		
 		try:
+			return self._handleGQLResponse(response)
+		except:
+			self.log.debug(f"{rm_query_whitespace(query)}\nVariables: {variables}")
+
+	def _handleGQLResponse(self, response):
+		try:
 			content = response.json()
 		except ValueError:
 			content = {}
@@ -207,9 +213,9 @@ fragment TypeRef on __Type {
 			return content["data"]
 		elif response.status_code == 401:
 			self.log.error(f"401, Unauthorized. Could not access endpoint {self.url}. Did you provide an API key?")
-		self.log.error(f"{response.status_code} query failed. {self.version}")
-		self.log.debug(f"{rm_qury_whitespace(query)}\nVariables: {variables}")
-		sys.exit()
+		error_msg = f"{response.status_code} query failed. {self.version}"
+		self.log.error(error_msg)
+		raise Exception(error_msg)
 
 	def _callGraphQLRecursive(self, query, variables, pages=-1):
 
