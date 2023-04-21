@@ -976,6 +976,42 @@ class StashInterface(GQLWrapper):
 		result = self._callGraphQL(query, variables)
 		return result["addGalleryImages"]
 
+	# Gallery Chapters
+	def create_gallery_chapter(self, chapter_data):
+		query = """
+			mutation GalleryChapterCreate($input:GalleryChapterCreateInput!) {
+				galleryChapterCreate(input: $input) {
+					id
+				}
+			}
+		"""
+		variables = {'input': chapter_data}
+		result = self._callGraphQL(query, variables)
+		return result["galleryChapterCreate"]["id"]
+	def update_gallery_chapter(self, chapter_data):
+		query = """
+			mutation GalleryChapterUpdate($input:GalleryChapterUpdateInput!) {
+				galleryChapterUpdate(input: $input) {
+					id
+				}
+			}
+		"""
+		variables = {'input': chapter_data}
+		result = self._callGraphQL(query, variables)
+		return result["galleryChapterUpdate"]["id"]
+	def destroy_gallery_chapter(self, chapter_id):
+		query = """
+			mutation GalleryChapterDestroy($chapter_id:ID!) {
+				galleryChapterDestroy(id: $chapter_id) {
+					id
+				}
+			}
+		"""
+		variables = {'chapter_id': chapter_id}
+		result = self._callGraphQL(query, variables)
+		return result["galleryChapterDestroy"]["id"]
+
+
 	# BULK Gallery
 	def find_galleries(self, f:dict={}, filter:dict={"per_page": -1}, q="", fragment=None, get_count=False):
 		query = """
