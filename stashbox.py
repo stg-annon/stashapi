@@ -182,6 +182,25 @@ class StashBoxInterface(GQLWrapper):
 		scene_query["per_page"] = 40
 		return self._paginate_query(query, scene_query, pages, callback)
 
+	def find_drafts(self):
+		query = """query FindDrafts{
+			findDrafts{
+				...Draft
+			}
+		}"""
+		return self._callGraphQL(query)["findDrafts"]
+
+	def get_draft_data(self, draft_id):
+		query = """query FindDraftData($draft_id: ID!){
+			findDraft(id: $draft_id){
+				data {
+				  ... on PerformerDraft { ...PerformerDraft }
+				  ... on SceneDraft { ...SceneDraft }
+				}
+			}
+		}"""
+		return self._callGraphQL(query, {"draft_id": draft_id})["findDraft"]
+
 	# returns items up to specified page, -1 for all pages (default: -1)
 	def _paginate_query(self, query, type_input, pages=-1, callback=None):
 		result = self._callGraphQL(query, {"input": type_input})
