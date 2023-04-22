@@ -140,7 +140,7 @@ fragment TypeRef on __Type {
 		stash_types = stash_schema.get('__schema',{}).get('types',[])
 
 		def has_object_name(type):
-			if type.get("kind") == "OBJECT":
+			if type.get("kind") in ["OBJECT", "UNION"]:
 				return type["name"]
 			if type.get("type"):
 				return has_object_name(type["type"])
@@ -168,6 +168,42 @@ fragment TypeRef on __Type {
 				fragment += f"\n\t{attr}"
 			fragment += "\n}"
 			fragments[type_name] = fragment
+
+		#Handle UNION Fragments as well
+		for type in stash_types:
+			if type["kind"] != "UNION":
+				continue
+			if not type["possibleTypes"]:
+				continue
+			type_name = type["name"]
+			fragment = f"fragment {type_name} on {type_name} "+"{"
+			for field in type['possibleTypes']:
+				if field.get("isDeprecated"):
+					continue
+				attr = "... on " + field["name"]
+				field_type_name = has_object_name(field)
+				if field_type_name:
+					if field_type_name == type_name or field_type_name in only_use_id_objects:
+						attr += " { id }"
+					else:
+						attr += "{"
+						#Search for the object used in the UNION. Basically the loop above, but limited to one Object
+						objectType = [x for x in stash_types if x["kind"] == "OBJECT" and x["fields"] and x["name"] == field_type_name][0]
+						for objectField in objectType["fields"]:
+							if field.get("isDeprecated"):
+								continue
+							attr += "\n\t" + objectField["name"]
+							objectField_type_name = has_object_name(objectField)
+							if objectField_type_name:
+								if objectField_type_name in only_use_id_objects:
+									attr += " { id }"
+								else:
+									attr += " { ..."+objectField_type_name+" }"
+						attr += "}"
+				fragment += f"\n\t{attr}"
+			fragment += "\n}"
+			fragments[type_name] = fragment
+
 		return fragments
 
 	def _callGraphQL(self, query, variables={}):
