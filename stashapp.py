@@ -116,7 +116,7 @@ class StashInterface(GQLWrapper):
 				continue
 
 			if re.match(rf'{search}$', p["name"], re.IGNORECASE):
-				self.log.info(f'matched performer "{search}" to "{p["name"]}" ({p["id"]}) using primary name')
+				self.log.debug(f'matched performer "{search}" to "{p["name"]}" ({p["id"]}) using primary name')
 				performer_matches[p["id"]] = p
 				return list(performer_matches.values())
 
@@ -205,10 +205,12 @@ class StashInterface(GQLWrapper):
 			scan_metadata_input.update({
 				'useFileMetadata': False,
 				'stripFileExtension': False,
+				'scanGenerateCovers': True,
 				'scanGeneratePreviews': False,
 				'scanGenerateImagePreviews': False,
 				'scanGenerateSprites': False,
-				'scanGeneratePhashes': True
+				'scanGeneratePhashes': True,
+				'scanGenerateThumbnails': False
 			})
 		result = self._callGraphQL(query, {"input": scan_metadata_input})
 		return result["metadataScan"]
