@@ -90,6 +90,7 @@ class StashInterface(GQLWrapper):
 		return result[queryType]
 
 	def __match_alias_item(self, search, items):
+		search = re.escape(search)
 		item_matches = {}
 		for item in items:
 			if re.match(rf'{search}$', item["name"], re.IGNORECASE):
