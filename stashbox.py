@@ -1,4 +1,4 @@
-import re, math, json, copy
+import re, math, requests
 from enum import Enum
 
 from requests.structures import CaseInsensitiveDict
@@ -7,6 +7,7 @@ from .classes import GQLWrapper
 from . import stashbox_gql_fragments
 from . import log as StashLogger
 
+from .tools import file_to_base64, url_to_base64
 
 class StashboxTarget(Enum):
 	SCENE = "SCENE"
@@ -60,6 +61,36 @@ class StashBoxInterface(GQLWrapper):
 		self.fragments = {}
 		for fragment in fragments:
 			self.parse_fragments(fragment)
+
+	def create_image(self, b64image=None, path=None, url=None):
+		if path:
+			b64image = file_to_base64(path)
+		elif url:
+			b64image = url_to_base64(url)
+		if not b64image:
+			raise Exception("StashBoxInterface.create_image() requires one kwarg to be defined")
+
+		import base64
+		from urllib3 import encode_multipart_formdata
+		
+		m = re.search(r'data:(?P<mime>.+?);base64,(?P<img_data>.+)',b64image)
+		mime = m.group("mime")
+		b64bytes = m.group("img_data").encode("utf-8")
+		if not mime:
+			self.log.warning("could not determine MIME type defaulting to jpeg")
+			mime = 'image/jpeg'
+
+		body, multipart_header = encode_multipart_formdata({
+			'operations':'{"operationName":"AddImage","variables":{"imageData":{"file":null}},"query":"mutation AddImage($imageData: ImageCreateInput!) {imageCreate(input: $imageData) {id url}}"}',
+			'map':'{"1":["variables.imageData.file"]}',
+			'1': ('1.jpg', base64.decodebytes(b64bytes), mime)
+		})
+
+		request_headers = self.headers.copy()
+		request_headers.update({"Content-Type":multipart_header})
+		
+		response = requests.post(self.url, data=body, headers=request_headers, cookies=self.cookies)
+		return self._handleGQLResponse(response)["imageCreate"]
 
 	def get_scene_last_updated(self, scene_id):
 		query = """query sceneLastUpdated($id: ID!) {
@@ -209,7 +240,7 @@ class StashBoxInterface(GQLWrapper):
 
 	def edit_scene(self, stash_id:str, edit:dict, manual_comment:str):
 		if self.pending_edits_count(stash_id, StashboxTarget.SCENE) > 0:
-			self.log.warning(f'Edit not submited Scene:{stash_id} has pending edits')
+			self.log.warning(f'Edit not submitted Scene:{stash_id} has pending edits')
 			return
 
 		comments = []
