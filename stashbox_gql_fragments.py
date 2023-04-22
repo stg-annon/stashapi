@@ -144,4 +144,96 @@ fragment EditFragment on Edit {
 	user { name }
 	vote_count
 }
+fragment Draft on Draft {
+	created
+	expires
+	id
+}
+fragment PerformerDraft on PerformerDraft {
+	id
+	name
+	aliases
+	gender
+	birthdate
+	urls
+	ethnicity
+	country
+	eye_color
+	hair_color
+	height
+	measurements
+	breast_type
+	tattoos
+	piercings
+	career_start_year
+	career_end_year
+	image {
+		...ImageFragment
+		__typename
+	}
+	__typename
+}
+fragment SceneDraft on SceneDraft {
+	id
+	title
+	code
+	details
+	director
+	date
+	url {
+		...URLFragment
+		__typename
+	}
+	studio {
+		... on Studio {
+		...StudioFragment
+		__typename
+		}
+		... on DraftEntity {
+		draftID: id
+		name
+		__typename
+		}
+		__typename
+	}
+	performers {
+		... on Performer {
+		...PerformerFragment
+		__typename
+		}
+		... on DraftEntity {
+		draftID: id
+		name
+		__typename
+		}
+		__typename
+	}
+	tags {
+		... on Tag {
+		...TagFragment
+		__typename
+		}
+		... on DraftEntity {
+		draftID: id
+		name
+		__typename
+		}
+		__typename
+	}
+	fingerprints {
+		hash
+		algorithm
+		duration
+		__typename
+	}
+	image {
+		...ImageFragment
+		__typename
+	}
+	__typename
+	}
+	__typename
+	}
+	__typename
+}
 """
