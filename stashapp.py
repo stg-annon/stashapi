@@ -192,28 +192,29 @@ class StashInterface(GQLWrapper):
 			time.sleep(period)
 		raise Exception("Hit timeout waiting for Job to complete")
 
+	def get_configuration_defaults(self, default_field):
+		query= "query ConfigurationDefaults { configuration { defaults { "+default_field+" } } }"
+		result = self._callGraphQL(query)
+		return result['configuration']['defaults']
+
 	def metadata_scan(self, paths:list=[], flags={}):
-		query = """
-		mutation MetadataScan($input:ScanMetadataInput!) {
-			metadataScan(input: $input)
-		}
-		"""
+		query = "mutation MetadataScan($input:ScanMetadataInput!) { metadataScan(input: $input) }"
 		scan_metadata_input = {"paths": paths}
 		if flags:
 			scan_metadata_input.update(flags)
 		else:
-			scan_metadata_input.update({
-				'useFileMetadata': False,
-				'stripFileExtension': False,
-				'scanGenerateCovers': True,
-				'scanGeneratePreviews': False,
-				'scanGenerateImagePreviews': False,
-				'scanGenerateSprites': False,
-				'scanGeneratePhashes': True,
-				'scanGenerateThumbnails': False
-			})
+			scan_metadata_input.update(self.get_configuration_defaults("scan { ...ScanMetadataOptions }").get("scan",{}))
 		result = self._callGraphQL(query, {"input": scan_metadata_input})
 		return result["metadataScan"]
+	
+	def metadata_generate(self, flags={}):
+		query = "mutation MetadataGenerate($input:GenerateMetadataInput!) { metadataGenerate(input: $input) }"
+		if flags:
+			generate_metadata_input = flags
+		else:
+			generate_metadata_input = self.get_configuration_defaults("generate { ...GenerateMetadataOptions }")["generate"]
+		result = self._callGraphQL(query, {"input": generate_metadata_input})
+		return result["metadataGenerate"]
 
 	def metadata_clean(self, paths:list=[], dry_run=False):
 		if not paths:
