@@ -36,12 +36,16 @@ class StashInterface(GQLWrapper):
 			self.cookies['session'] = conn['SessionCookie']['Value']
 
 		scheme = conn.get('Scheme', 'http')
-		domain = conn.get('Domain', 'localhost')
+		if conn.get('Domain'):
+			self.log.warning("conn['domain'] is deprecated use 'Host' instead")
+			host = conn['Domain']
+		else:
+			host = conn.get('Host', 'localhost')
 
 		self.port = conn.get('Port', 9999)
 
 		# Stash GraphQL endpoint
-		self.url = f'{scheme}://{domain}:{self.port}/graphql'
+		self.url = f'{scheme}://{host}:{self.port}/graphql'
 
 		try:
 			# test query to ensure good connection
