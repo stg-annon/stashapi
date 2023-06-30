@@ -37,10 +37,13 @@ class StashInterface(GQLWrapper):
 
 		scheme = conn.get('Scheme', 'http')
 		if conn.get('Domain'):
-			self.log.warning("conn['domain'] is deprecated use 'Host' instead")
+			self.log.warning("conn['Domain'] is deprecated use conn['Host'] instead")
 			host = conn['Domain']
 		else:
 			host = conn.get('Host', 'localhost')
+
+		if host == "0.0.0.0":
+			host = "127.0.0.1"
 
 		self.port = conn.get('Port', 9999)
 
