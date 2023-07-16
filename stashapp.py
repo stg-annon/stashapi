@@ -402,6 +402,22 @@ class StashInterface(GQLWrapper):
 			return result["findTags"]["count"], result["findTags"]["tags"]
 		else:
 			return result["findTags"]["tags"]
+	def merge_tags(self, source_ids:list, destination_id):
+		"""merges tag ids in source_ids into tag with destination_id
+
+		Args:
+			source_ids: List of tags IDs to be merged
+			destination_id: ID of tag that other tags will be merged into
+
+		"""
+		query = """mutation($source: [ID!]!, $destination: ID!) { tagsMerge(input: {source: $source, destination: $destination}) { ...Tag }}"""
+
+		variables = {
+			'source': source_ids,
+			'destination': destination_id
+		}
+		result = self._callGraphQL(query, variables)
+		return result['tagsMerge']
 
 	# Performer CRUD
 	def create_performer(self, performer_in:dict) -> dict:
