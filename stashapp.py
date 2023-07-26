@@ -771,6 +771,21 @@ class StashInterface(GQLWrapper):
 		return result["studioUpdate"]
 	# TODO destroy_studio()
 
+	# Studio Utils
+	def find_studio_hierarchy(self, studio, fragment=None, hierarchy=[]):
+		s = self.find_studio(studio, "id parent_studio { id }")
+		hierarchy.append(self.find_studio(studio, fragment))
+		if s.get("parent_studio") == None:
+			# invert hierarchy so root is at idx 0
+			return hierarchy[::-1]
+		else:
+			return self.find_studio_hierarchy(s["parent_studio"], fragment, hierarchy)
+	def find_studio_root(self, studio, fragment=None):
+		s = self.find_studio(studio, "id parent_studio { id }")
+		if s.get("parent_studio"):
+			return self.find_studio_root(s["parent_studio"])
+		return self.find_studio(s, fragment)
+
 	# BULK Studios
 	def find_studios(self, f:dict={}, filter:dict={"per_page": -1}, q:str="", fragment:str=None, get_count:bool=False):
 		"""get studios matching filter/query
