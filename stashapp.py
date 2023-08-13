@@ -788,10 +788,8 @@ class StashInterface(GQLWrapper):
 		s = self.find_studio(studio, "id parent_studio { id }")
 		hierarchy.append(self.find_studio(studio, fragment))
 		if s.get("parent_studio") == None:
-			# invert hierarchy so root is at idx 0
-			return hierarchy[::-1]
-		else:
-			return self.find_studio_hierarchy(s["parent_studio"], fragment, hierarchy)
+			return hierarchy[::-1] # invert hierarchy so root is at idx 0
+		return self.find_studio_hierarchy(s["parent_studio"], fragment, hierarchy)
 	def find_studio_root(self, studio, fragment=None):
 		s = self.find_studio(studio, "id parent_studio { id }")
 		if s.get("parent_studio"):
@@ -1581,16 +1579,16 @@ class StashInterface(GQLWrapper):
 	# URL Scrape
 	def scrape_scene_url(self, url):
 		query = "query($url: String!) { scrapeSceneURL(url: $url) { ...ScrapedScene } }"
-		return self._callGraphQL(query, { 'url': url })['scrapeSceneURL']
+		return self._callGraphQL(query, {"url": url})['scrapeSceneURL']
 	def scrape_movie_url(self, url):
 		query = "query($url: String!) { scrapeMovieURL(url: $url) { ...ScrapedMovie } }"
-		return self._callGraphQL(query, { 'url': url })['scrapeMovieURL']
+		return self._callGraphQL(query, {"url": url})['scrapeMovieURL']
 	def scrape_gallery_url(self, url):
 		query = "query($url: String!) { scrapeGalleryURL(url: $url) { ...ScrapedGallery } }"
-		return self._callGraphQL(query, { 'url': url })['scrapeGalleryURL']
+		return self._callGraphQL(query, {"url": url})['scrapeGalleryURL']
 	def scrape_performer_url(self, url):
 		query = "query($url: String!) { scrapePerformerURL(url: $url) { ...ScrapedPerformer } }"
-		return self._callGraphQL(query, { 'url': url })['scrapePerformerURL']
+		return self._callGraphQL(query, {"url": url})['scrapePerformerURL']
 
 	#Identify
 	def get_identify_config(self):
