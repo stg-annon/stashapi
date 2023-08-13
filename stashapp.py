@@ -61,7 +61,19 @@ class StashInterface(GQLWrapper):
 
 		self.log.debug(f'Using stash ({version}) endpoint at {self.url}')
 
-		self.fragments = self._getFragmentsIntrospection(["Scene","Studio","Performer","Image","Gallery"])
+		global_overrides = {
+			"Scene": "{ id }",
+			"Studio": "{ id }",
+			"Performer": "{ id }",
+			"Image": "{ id }",
+			"Gallery": "{ id }",
+		}
+		fragment_overrides = {
+			"ScrapedStudio": {"parent": "{ stored_id }"},
+			"Tag": {"parents": "{ id }", "children": "{ id }"},
+			"Studio": {"parent_studio": "{ id }"}
+		}
+		self.fragments = self._getFragmentsIntrospection(global_overrides, fragment_overrides)
 		for fragment in fragments:
 			self.parse_fragments(fragment)
 

@@ -57,7 +57,13 @@ class GQLWrapper:
 				query += f"\n{self.fragments[fragment]}"
 			return self.__resolveFragments(query)
 
-	def _getFragmentsIntrospection(self, only_use_id_objects):
+	def _getFragmentsIntrospection(self, global_overrides, fragment_overrides={}):
+		"""Automatically generates fragments for GQL endpoint via introspection
+
+		@global_overrides: overrides for any occurrence of these objects within any fragment
+		@fragment_overrides: dict of fragments with defined overrides for specified fields
+		"""
+
 
 		fragments = {}
 
@@ -154,15 +160,19 @@ fragment TypeRef on __Type {
 				continue
 
 			type_name = type["name"]
-			fragment = f"fragment {type_name} on {type_name} "+"{"
+			fragment_override = fragment_overrides.get(type_name, {})
+
+			fragment = "fragment "+type_name+" on "+type_name+" {"
 			for field in type['fields']:
 				if field.get("isDeprecated"):
 					continue
 				attr = field["name"]
 				field_type_name = has_object_name(field)
 				if field_type_name:
-					if field_type_name == type_name or field_type_name in only_use_id_objects:
-						attr += " { id }"
+					if field_type_name in global_overrides:
+						attr += " "+global_overrides[field_type_name]
+					elif field["name"] in fragment_override:
+						attr += " "+fragment_override[field["name"]]
 					else:
 						attr += " { ..."+field_type_name+" }"
 				fragment += f"\n\t{attr}"
@@ -183,8 +193,10 @@ fragment TypeRef on __Type {
 				attr = "... on " + field["name"]
 				field_type_name = has_object_name(field)
 				if field_type_name:
-					if field_type_name == type_name or field_type_name in only_use_id_objects:
-						attr += " { id }"
+					if field_type_name in global_overrides:
+						attr += " "+global_overrides[field_type_name]
+					elif field["name"] in fragment_override:
+						attr += " "+fragment_override[field["name"]]
 					else:
 						attr += "{"
 						#Search for the object used in the UNION. Basically the loop above, but limited to one Object
@@ -195,8 +207,10 @@ fragment TypeRef on __Type {
 							attr += "\n\t" + objectField["name"]
 							objectField_type_name = has_object_name(objectField)
 							if objectField_type_name:
-								if objectField_type_name in only_use_id_objects:
-									attr += " { id }"
+								if objectField_type_name in global_overrides:
+									attr += " "+global_overrides[objectField_type_name]
+								elif objectField["name"] in fragment_override:
+									attr += " "+fragment_override[objectField["name"]]
 								else:
 									attr += " { ..."+objectField_type_name+" }"
 						attr += "}"
