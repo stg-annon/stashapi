@@ -1491,19 +1491,19 @@ class StashInterface(GQLWrapper):
 		return [{k: scraper[k] for k in ["id", "name", "movie"]} for scraper in self.list_scrapers([StashItem.MOVIE])]
 
 	# Fragment Scrape
-	def scrape_scene(self, scraper_id:int, scene):
+	def scrape_scene(self, source, input):
 
-		scene_id = None
-		scene_input = {}
+		if isinstance(source, str):
+			source = {"scraper_id": source}
+		if isinstance(input, str):
+			source = {"scene_id": input}
 
-		sid = self._parse_obj_for_ID(scene)
-		if isinstance(sid, int):
-			scene_id = sid
-
-		if not scene_id:
-			self.log.warning('Unexpected Object passed to scrape_scene')
-			self.log.warning(f'Type: {type(scene)}')
-			self.log.warning(f'{scene}')
+		if not isinstance(source, dict):
+			self.log.warning('Unexpected Object passed to source, expecting "ScraperSourceInput" or string of scraper_id')
+			return None
+		if not isinstance(input, dict):
+			self.log.warning('Unexpected Object passed to input, expecting "ScrapeSingleSceneInput" or string of scene_id')
+			return None
 
 		query = """query ScrapeSingleScene($source: ScraperSourceInput!, $input: ScrapeSingleSceneInput!) {
 			scrapeSingleScene(source: $source, input: $input) {
@@ -1511,21 +1511,7 @@ class StashInterface(GQLWrapper):
 			}
 		  }
 		"""
-
-		variables = {
-			"source": {
-				"scraper_id": scraper_id
-			},
-			"input": {
-				"query": None,
-				"scene_id": scene_id,
-				"scene_input": scene_input
-			}
-		}
-		result = self._callGraphQL(query, variables)
-		if not result:
-			return None
-		scraped_scene_list = result["scrapeSingleScene"]
+		scraped_scene_list = self._callGraphQL(query, {"source": source, "input": input})["scrapeSingleScene"]
 		if len(scraped_scene_list) == 0:
 			return None
 		else:
