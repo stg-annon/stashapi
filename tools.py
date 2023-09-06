@@ -38,20 +38,31 @@ def file_to_base64(image_path):
 		return None
 	return f"data:{mime};base64,{b64img_bytes.decode('utf-8')}"
 
-def si_prefix(size, round):
-	power_labels = {3:'K', 6:'M', 9:'G', 12:'T'}
-	log_s = int(math.log(size,10))
-	use_power = [p for p in power_labels.keys() if p <= log_s]
-	if not use_power:
-		return f"{size:.{round}f}"
-	use_power = max(use_power)
-	size = size / 10**use_power
-	return f"{size:.{round}f}{power_labels[use_power]}"
+def si_prefix(value, round):
+	SI_PREFIX_UNITS = u"yzafpnµm kMGTPEZY"
 
-def human_bytes(size, round=1):
-	return f"{si_prefix(size, round)}B"
-def human_bits(size, round=1):
-	return f"{si_prefix(size, round)}b"
+	tens_exponent = int(math.log(value,10))
+	units_mid = (len(SI_PREFIX_UNITS)-1) // 2
+	si_level = tens_exponent // 3
+	try:
+		prefix =  SI_PREFIX_UNITS[si_level+units_mid]
+	except:
+		prefix = f"e{tens_exponent}"
+
+	value /= 10 ** tens_exponent
+	return f"{value:.{round}f}{prefix}"
+
+def human_bytes(value, round=1):
+	try:
+		return f"{si_prefix(value, round)}B"
+	except:
+		return f"{value:.{round}f}B"
+	
+def human_bits(value, round=1):
+	try:
+		return f"{si_prefix(value, round)}b"
+	except:
+		return f"{value:.{round}f}b"
 	
 def phash_distance(lhash, rhash):
 	assert len(lhash) == len(rhash)
