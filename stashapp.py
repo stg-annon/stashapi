@@ -928,9 +928,19 @@ class StashInterface(GQLWrapper):
 			return result['findMovies']['movies']
 
 	# Gallery CRUD
-	def create_gallery(self, path:str=""):
-		if path:
-			return self.metadata_scan([path])
+	def create_gallery(self, gallery_create_input:dict):
+		query =  """
+		query GalleryCreate($input: GalleryCreateInput!) {
+			galleryCreate(input: $input) {
+				id
+			}
+		}
+		"""
+		variables = {"input": gallery_create_input}
+
+		result = self._callGraphQL(query, variables)
+		return result['galleryCreate']['id']
+	
 	def find_gallery(self, gallery_in, fragment=None):
 		if isinstance(gallery_in, int):
 			return self.__generic_find(
@@ -1242,6 +1252,21 @@ class StashInterface(GQLWrapper):
 
 		result = self._callGraphQL(query, variables)
 		return result['findScene']
+	def find_scene_by_hash(self, hash_input:dict, fragment=None):
+		query = """
+		query FindSceneByHash($hash_input: SceneHashInput!) {
+			findSceneByHash(input: $hash_input) {
+				...Scene
+			}
+		}
+		"""
+		if fragment:
+			query = re.sub(r'\.\.\.Scene', fragment, query)
+
+		variables = {"hash_input": hash_input}
+
+		result = self._callGraphQL(query, variables)
+		return result['findSceneByHash']
 	def update_scene(self, update_input):
 		query = """
 			mutation sceneUpdate($input:SceneUpdateInput!) {
