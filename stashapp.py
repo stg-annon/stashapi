@@ -1012,6 +1012,8 @@ class StashInterface(GQLWrapper):
 		return result['galleryDestroy']
 
 	# Gallery Images
+	def find_gallery_images(self, gallery_id, fragment=None):
+		return self.find_images(f={"galleries": {"value": [gallery_id],"modifier":"INCLUDES_ALL"}}, fragment=fragment)
 	def update_gallery_images(self, gallery_images_input):
 		mode = gallery_images_input.get("mode")
 		if not mode:
@@ -1435,6 +1437,13 @@ class StashInterface(GQLWrapper):
 
 		variables = { "marker_input": marker_create_input }
 		return self._callGraphQL(query, variables)["sceneMarkerCreate"]
+	def update_scene_marker(self, scene_marker_update:dict):
+		query = """
+			mutation SceneMarkerUpdate($input: SceneMarkerUpdateInput!) {
+				sceneMarkerUpdate(input: $input)
+			}
+		"""
+		self._callGraphQL(query, {"input": scene_marker_update})
 	def destroy_scene_marker(self, marker_id:int):
 		query = """
 			mutation DestroySceneMarkers($marker_id: ID!) {
