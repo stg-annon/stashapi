@@ -1440,7 +1440,9 @@ class StashInterface(GQLWrapper):
 	def update_scene_marker(self, scene_marker_update:dict):
 		query = """
 			mutation SceneMarkerUpdate($input: SceneMarkerUpdateInput!) {
-				sceneMarkerUpdate(input: $input)
+				sceneMarkerUpdate(input: $input) {
+					id
+				}
 			}
 		"""
 		self._callGraphQL(query, {"input": scene_marker_update})
