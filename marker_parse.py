@@ -123,15 +123,15 @@ def import_scene_markers(stash:StashInterface, scraped_markers, stash_scene_id, 
 	Import scraped scene markers into a scene of a given StashInstance
 
 	:param stash: a StashInterface instance to connect to
-	:param scraped_markers: a List of dicts that contain the following attrabutes
+	:param scraped_markers: a List of dicts that contain the following attributes
 		{
-			"seconds": <int>, <float>, <string> value parseable to float (REQUIRED)
+			"seconds": <int>, <float>, <string> value parsable to float (REQUIRED)
 			"primary_tag": <string> tag name (REQUIRED)
 			"tags": [<string> tag name]
 			"title": <string> title of marker
 		}
 	:param stash_scene_id: the SceneID of the Stash Scene from to apply the markers to
-	:param closest_allowed_common_marker: markers are cosidered a match when they have the same primary_tag and seconds is +/- this value (Default 15)
+	:param closest_allowed_common_marker: markers are considered a match when they have the same primary_tag and seconds is +/- this value (Default 15)
 	"""
 
 	mapped_markers = [Marker.from_scrape(m, stash_scene_id, stash) for m in scraped_markers]
