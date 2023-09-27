@@ -6,6 +6,21 @@ class StashEnum(Enum):
 	def __str__(self) -> str:
 		return self.value
 
+class CriterionModifier(str, StashEnum):
+	EQUALS = "EQUALS"
+	NOT_EQUALS = "NOT_EQUALS"
+	GREATER_THAN = "GREATER_THAN"
+	LESS_THAN = "LESS_THAN"
+	IS_NULL = "IS_NULL"
+	NOT_NULL = "NOT_NULL"
+	INCLUDES_ALL = "INCLUDES_ALL"
+	INCLUDES = "INCLUDES"
+	EXCLUDES = "EXCLUDES"
+	MATCHES_REGEX = "MATCHES_REGEX"
+	NOT_MATCHES_REGEX = "NOT_MATCHES_REGEX"
+	BETWEEN = "BETWEEN"
+	NOT_BETWEEN = "NOT_BETWEEN"
+
 class BulkUpdateIdMode(StashEnum):
 	SET = "SET"
 	ADD = "ADD"
