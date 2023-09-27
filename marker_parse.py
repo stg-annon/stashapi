@@ -120,7 +120,7 @@ def merge_markers(marker_list, distance=15):
 
 def import_scene_markers(stash:StashInterface, scraped_markers, stash_scene_id, closest_allowed_common_marker:int=15):
 	"""
-	Import scraped scene markers into a scene of a given StashInstance
+	Import scraped scene markers into a scene of a given StashInterface
 
 	:param stash: a StashInterface instance to connect to
 	:param scraped_markers: a List of dicts that contain the following attributes
