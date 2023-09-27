@@ -1,4 +1,4 @@
-import base64, math
+import base64, hashlib, math, re
 from collections import defaultdict
 
 def defaultify(d:dict, default=None):
@@ -10,6 +10,18 @@ def defaultify(d:dict, default=None):
 def clean_dict(to_clean):
 # returns dictionary where values are not None
 	return {k:v for k,v in to_clean.items() if v and "__" not in k}
+
+def sha256(pth, return_object=False, buffer=65536):
+	sha256_value = hashlib.sha256()
+	with open(pth, 'rb') as f:
+		while True:
+			data = f.read(buffer)
+			if not data:
+				break
+			sha256_value.update(data)
+	if return_object:
+		return sha256_value
+	return sha256_value.hexdigest()
 
 def get_base64(pth):
 	"""deprecated use file_to_base64() instead"""
