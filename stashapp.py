@@ -1577,31 +1577,30 @@ class StashInterface(GQLWrapper):
 			return None
 		else:
 			return scraped_scene_list[0]
-	def scrape_gallery(self, scraper_id:int, gallery):
-		query = """query ScrapeGallery($scraper_id: ID!, $gallery: GalleryUpdateInput!) {
-			scrapeGallery(scraper_id: $scraper_id, gallery: $gallery) {
+	def scrape_gallery(self, source, input):
+		if isinstance(source, str):
+			source = {"scraper_id": source}
+		if isinstance(input, str):
+			input = {"gallery_id": input}
+
+		if not isinstance(source, dict):
+			self.log.warning(f'Unexpected Object passed to source {type(source)}{source}\n, expecting "ScraperSourceInput" or string of scraper_id')
+			return None
+		if not isinstance(input, dict):
+			self.log.warning(f'Unexpected Object passed to input {type(input)}{input}\n, expecting "ScrapeSingleGalleryInput" or string of scene_id')
+			return None
+
+		query = """query ScrapeSingleGallery($source: ScraperSourceInput!, $input: ScrapeSingleGalleryInput!) {
+			scrapeSingleGallery(source: $source, input: $input) {
 			  ...ScrapedGallery
 			}
 		  }
 		"""
-		variables = {
-			"scraper_id": scraper_id,
-			"gallery": {
-				"id": gallery["id"],
-				"title": gallery["title"],
-				"url": gallery["url"],
-				"date": gallery["date"],
-				"details": gallery["details"],
-				"rating": gallery["rating"],
-				"scene_ids": [],
-				"studio_id": None,
-				"tag_ids": [],
-				"performer_ids": [],
-			}
-		}
-
-		result = self._callGraphQL(query, variables)
-		return result["scrapeGallery"]
+		scraped_gallery_list = self._callGraphQL(query, {"source": source, "input": input})["scrapeSingleGallery"]
+		if len(scraped_gallery_list) == 0:
+			return None
+		else:
+			return scraped_gallery_list[0]
 	def scrape_performer(self, scraper_id:int, performer):
 		query = """query ScrapePerformer($scraper_id: ID!, $performer: ScrapedPerformerInput!) {
 			scrapePerformer(scraper_id: $scraper_id, performer: $performer) {
