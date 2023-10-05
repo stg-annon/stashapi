@@ -393,8 +393,6 @@ class StashInterface(GQLWrapper):
 
 		self._callGraphQL(query, {'ids': tag_ids})
 
-
-
 	# BULK Tags
 	def find_tags(self, f:dict={}, filter:dict={"per_page": -1}, q:str="", fragment:str=None, get_count:bool=False) -> list[dict]:
 		"""gets tags matching filter/query
@@ -498,10 +496,8 @@ class StashInterface(GQLWrapper):
 		performer_search = self.find_performers(q=performer["name"], fragment="id name alias_list")
 		performer_matches = self.__match_performer_alias(performer["name"], performer_search)
 
-		# self.log.warning(performer_matches)
-
-		# none if multiple results from a single name performer
-		if len(performer_matches) > 1 and performer["name"].count(' ') == 0:
+		# return none if multiple alias results
+		if len(performer_matches) > 1:
 			return None
 		elif len(performer_matches) > 0:
 			return self.find_performer(performer_matches[0]["id"])
