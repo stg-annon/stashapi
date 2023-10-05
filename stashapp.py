@@ -543,7 +543,7 @@ class StashInterface(GQLWrapper):
 		"""
 		result = self._callGraphQL(query, {"performer_ids": performer_ids})
 		return result['performersDestroy']
-	def merge_performers(self, source, destination, values={}):
+	def merge_performers(self, source:list, destination, values={}):
 
 		performer_update_fragment = """
 			id
@@ -568,7 +568,6 @@ class StashInterface(GQLWrapper):
 			favorite
 			tags { id }
 			stash_ids { endpoint stash_id }
-			rating
 			rating100
 			details
 			hair_color
@@ -633,7 +632,7 @@ class StashInterface(GQLWrapper):
 					performer_update["alias_list"].extend(source["alias_list"])
 					performer_update["alias_list"] = list(set(performer_update["alias_list"]))
 					continue
-				if not performer_update[d_attr] and source[d_attr]:
+				if not performer_update[d_attr] and d_attr in source and source[d_attr]:
 					performer_update[d_attr] = source[d_attr]
 		performer_update["alias_list"] = [a for a in performer_update["alias_list"] if a != performer_update["name"]]
 		
@@ -650,11 +649,19 @@ class StashInterface(GQLWrapper):
 					"mode": "ADD"
 				}
 			})
-
 		galleries = self.find_galleries(f={"performers": {"value":source_ids, "modifier":"INCLUDES"}}, fragment="id")
 		if galleries:
 			self.update_galleries({
 				"ids": [g["id"] for g in galleries],
+				"performer_ids": {
+					"ids": [destination["id"]],
+					"mode": "ADD"
+				}
+			})
+		images = self.find_images(f={"performers": {"value":source_ids, "modifier":"INCLUDES"}}, fragment="id")
+		if images:
+			self.update_images({
+				"ids": [i["id"] for i in images],
 				"performer_ids": {
 					"ids": [destination["id"]],
 					"mode": "ADD"
