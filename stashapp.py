@@ -1553,17 +1553,16 @@ class StashInterface(GQLWrapper):
 
 	# Fragment Scrape
 	def scrape_scene(self, source, input):
-
 		if isinstance(source, str):
 			source = {"scraper_id": source}
 		if isinstance(input, str):
-			source = {"scene_id": input}
+			input = {"scene_id": input}
 
 		if not isinstance(source, dict):
-			self.log.warning('Unexpected Object passed to source, expecting "ScraperSourceInput" or string of scraper_id')
+			self.log.warning(f'Unexpected Object passed to source {type(source)}{source}\n, expecting "ScraperSourceInput" or string of scraper_id')
 			return None
 		if not isinstance(input, dict):
-			self.log.warning('Unexpected Object passed to input, expecting "ScrapeSingleSceneInput" or string of scene_id')
+			self.log.warning(f'Unexpected Object passed to input {type(input)}{input}\n, expecting "ScrapeSingleSceneInput" or string of scene_id')
 			return None
 
 		query = """query ScrapeSingleScene($source: ScraperSourceInput!, $input: ScrapeSingleSceneInput!) {
