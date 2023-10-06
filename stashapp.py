@@ -953,7 +953,7 @@ class StashInterface(GQLWrapper):
 	# Gallery CRUD
 	def create_gallery(self, gallery_create_input:dict):
 		query =  """
-		query GalleryCreate($input: GalleryCreateInput!) {
+		mutation GalleryCreate($input: GalleryCreateInput!) {
 			galleryCreate(input: $input) {
 				id
 			}
