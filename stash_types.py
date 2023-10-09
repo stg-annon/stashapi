@@ -5,8 +5,10 @@ class StashEnum(Enum):
 		return f"{self.__class__.__name__}.{self.name}"
 	def __str__(self) -> str:
 		return self.value
+	def serialize(self):
+		return self.value
 
-class CriterionModifier(str, StashEnum):
+class CriterionModifier(StashEnum):
 	EQUALS = "EQUALS"
 	NOT_EQUALS = "NOT_EQUALS"
 	GREATER_THAN = "GREATER_THAN"
@@ -45,14 +47,14 @@ class StashItem(StashEnum):
 	MOVIE = "MOVIE"
 
 class Gender(StashEnum):
-	MALE="MALE"
-	FEMALE="FEMALE"
-	TRANSGENDER_MALE="TRANSGENDER_MALE"
-	TRANSGENDER_FEMALE="TRANSGENDER_FEMALE"
-	INTERSEX="INTERSEX"
-	NON_BINARY="NON_BINARY"
+	MALE = "MALE"
+	FEMALE = "FEMALE"
+	TRANSGENDER_MALE = "TRANSGENDER_MALE"
+	TRANSGENDER_FEMALE = "TRANSGENDER_FEMALE"
+	INTERSEX = "INTERSEX"
+	NON_BINARY = "NON_BINARY"
 
-class PhashDistance(IntEnum):
+class PhashDistance(StashEnum):
 	EXACT = 0
 	HIGH = 4
 	MEDIUM = 8

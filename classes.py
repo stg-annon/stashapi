@@ -1,6 +1,8 @@
 import re, sys, math, sqlite3
 import requests
 
+from .stash_types import StashEnum
+
 class GQLWrapper:
 	port = ""
 	url = ""
@@ -226,7 +228,7 @@ fragment TypeRef on __Type {
 
 		json_request = {'query': query}
 		if variables:
-			json_request['variables'] = variables
+			json_request['variables'] = serialize_dict(variables)
 
 		per_page = variables.get("filter",{}).get("per_page",None)		
 		if per_page == -1:
@@ -363,3 +365,18 @@ def rm_query_whitespace(query):
 			query_lines.append(re.sub(whitespace, '', line, 1))
 		query = "\n".join(query_lines)
 	return query
+
+def serialize_dict(input_dict):
+	for key, value in input_dict.items():
+		input_dict[key] = type_transformer(value)
+		if isinstance(value, dict):
+			serialize_dict(value)
+		elif isinstance(value, list):
+			for item in value:
+				if isinstance(item, dict):
+					serialize_dict(item)
+
+def type_transformer(value):
+	if isinstance(value, StashEnum):
+		return value.serialize()
+	return value
