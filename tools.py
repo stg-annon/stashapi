@@ -11,6 +11,29 @@ def clean_dict(to_clean):
 # returns dictionary where values are not None
 	return {k:v for k,v in to_clean.items() if v and "__" not in k}
 
+def str_compare(s1, s2, ignore_case=True):
+	import string
+	# remove punctuation
+	punctuation = re.compile(f'[{string.punctuation}]')
+	s1 = re.sub(punctuation, ' ', s1)
+	s2 = re.sub(punctuation, ' ', s2)
+	
+	# normalize whitespace
+	whitespace = re.compile(f'[{string.whitespace}]+')
+	s1 = re.sub(whitespace, ' ', s1)
+	s2 = re.sub(whitespace, ' ', s2)
+
+	# remove leading and trailing whitespace
+	s1 = s1.strip(string.whitespace)
+	s2 = s2.strip(string.whitespace)
+
+	# force lowercase
+	if ignore_case:
+		s1 = s1.lower()
+		s2 = s2.lower()
+
+	return s1 == s2
+
 def sha256(pth, return_object=False, buffer=65536):
 	sha256_value = hashlib.sha256()
 	with open(pth, 'rb') as f:

@@ -4,6 +4,8 @@ from requests.structures import CaseInsensitiveDict
 
 from . import log as stash_logger
 
+from .tools import str_compare
+
 from .stash_types import StashItem
 from .stash_types import PhashDistance
 from .classes import GQLWrapper
@@ -342,12 +344,19 @@ class StashInterface(GQLWrapper):
 		if not name:
 			self.log.warning(f'find_tag expects int, str, or dict not {type(tag_in)} "{tag_in}"')
 			return
-
-		for tag in self.find_tags(q=name):
-			if tag["name"].lower() == name.lower():
-				return tag
-			if any(name.lower() == a.lower() for a in tag["aliases"] ):
-				return tag
+		
+		matches = set()
+		for tag in self.find_tags(q=name, fragment="id name aliases"):
+			if str_compare(tag["name"], name):
+				matches.add(tag["id"])
+			if any(str_compare(alias, name) for alias in tag["aliases"] ):
+				matches.add(tag["id"])
+		matches = list(matches)
+		if len(matches) > 1:
+			self.log.warning(f"Matched multiple tags with '{name}' {matches}")
+			return
+		if len(matches) == 1:
+			return self.find_tag(int(matches[0]))
 		if create:
 			return self.create_tag(tag_in)
 	def update_tag(self, tag_update):
