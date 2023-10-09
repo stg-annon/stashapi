@@ -493,7 +493,7 @@ class StashInterface(GQLWrapper):
 			self.log.warning(f'find_performer() expects int, str, or dict not {type(performer)} "{performer}"')
 			return
 
-		performer_search = self.find_performers(q=performer["name"], fragment="id name alias_list")
+		performer_search = self.find_performers(q=performer["name"], fragment="id name disambiguation alias_list")
 		performer_matches = self.__match_performer_alias(performer["name"], performer_search)
 
 		# return none if multiple alias results
@@ -963,7 +963,6 @@ class StashInterface(GQLWrapper):
 
 		result = self._callGraphQL(query, variables)
 		return result['galleryCreate']['id']
-	
 	def find_gallery(self, gallery_in, fragment=None):
 		if isinstance(gallery_in, int):
 			return self.__generic_find(
