@@ -228,7 +228,8 @@ fragment TypeRef on __Type {
 
 		json_request = {'query': query}
 		if variables:
-			json_request['variables'] = serialize_dict(variables)
+			serialize_dict(variables)
+			json_request['variables'] = variables
 
 		per_page = variables.get("filter",{}).get("per_page",None)		
 		if per_page == -1:
