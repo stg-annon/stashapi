@@ -4,10 +4,9 @@ from enum import Enum
 from requests.structures import CaseInsensitiveDict
 
 from .classes import GQLWrapper
-from . import stashbox_gql_fragments
 from . import log as StashLogger
 
-from .tools import file_to_base64, url_to_base64
+from .tools import file_to_base64, url_to_base64, str_compare
 
 class StashboxTarget(Enum):
 	SCENE = "SCENE"
@@ -27,7 +26,7 @@ class StashBoxInterface(GQLWrapper):
 	}
 	cookies = {}
 
-	def __init__(self, conn={}, fragments:list[str]=[stashbox_gql_fragments.DEVELOP]):
+	def __init__(self, conn={}, fragments:list[str]=[]):
 
 		conn = CaseInsensitiveDict(conn)
 		
@@ -58,9 +57,54 @@ class StashBoxInterface(GQLWrapper):
 		except Exception as e:
 			self.log.exit(f"Could not connect to Stash-Box at {self.url}", e)
 
-		self.fragments = {}
+		global_overrides = {
+			"Scene": "{ id }",
+			"Studio": "{ id name }",
+			"Performer": "{ id }",
+			"Edit": "{ id }",
+			"Tag": "{ id name }",
+			"URL": "{ type url }",
+		}
+		fragment_overrides = {}
+		self.fragments = self._getFragmentsIntrospection(global_overrides, fragment_overrides)
 		for fragment in fragments:
 			self.parse_fragments(fragment)
+
+	def _paginate_query(self, query, type_input, pages=-1, callback=None):
+		"""auto paginate graphql query and return pages results
+
+		Args:
+			query (str): graphql query string
+			type_input (dict): graphql query input
+			pages (int, optional): number of pages to get results for, -1 for all pages. Defaults to -1.
+			callback (_function_, optional): callback function to run results against between page calls. Defaults to None.
+
+		Returns:
+			dict: all results from query up to specified page
+		"""
+		result = self._callGraphQL(query, {"input": type_input})
+
+		queryType = list(result.keys())[0]
+		result = result[queryType]
+
+		itemType = list(result.keys())[1]
+		items = result[itemType]
+		if callback != None:
+			callback(items)
+
+		if pages == -1: # set to all pages if -1
+			pages = math.ceil(result["count"] / type_input["per_page"])
+
+
+		self.log.progress(float(type_input["page"])/float(pages))
+		self.log.debug(f'received page {type_input["page"]}/{pages} for {queryType} query')
+
+		if type_input.get("page") < pages:
+			type_input["page"] = type_input["page"] + 1 
+			next_page = self._paginate_query(query, type_input, pages, callback)
+			items.extend(next_page)
+
+		return items
 
 	def create_image(self, b64image=None, path=None, url=None):
 		if path:
@@ -92,19 +136,9 @@ class StashBoxInterface(GQLWrapper):
 		response = requests.post(self.url, data=body, headers=request_headers, cookies=self.cookies)
 		return self._handleGQLResponse(response)["imageCreate"]
 
-	def get_scene_last_updated(self, scene_id):
-		query = """query sceneLastUpdated($id: ID!) {
-			findScene(id: $id) {
-				id
-				updated
-				deleted
-			}
-		}"""
-
-		result = self._callGraphQL(query, {"id": scene_id})
-		return result["findScene"]
-
 	def pending_edits_count(self, stash_id, target_type):
+		"""returns how many pending edits a target has"""
+
 		query = """query PendingEditsCount($type: TargetTypeEnum!, $id: ID!) {
 			queryEdits(input: {target_type: $type, target_id: $id, status: PENDING, per_page: 1}) {
 				count
@@ -117,146 +151,33 @@ class StashBoxInterface(GQLWrapper):
 		}
 		return self._callGraphQL(query, variables)["queryEdits"]["count"]
 
-	def get_tag(self, tag_id, fragment=None):
-		query = """query FindTag($id: ID!) {
-			findTag(id: $id) {
-				...TagFragment
-			}
-		}"""
-		if fragment:
-			query = re.sub(r'\.\.\.TagFragment', fragment, query)
-
-		result = self._callGraphQL(query, {"id":tag_id})
-		return result["findTag"]
-
-	def find_tags(self, tag_query, fragment=None, pages=-1, callback=None):
-		query = """query Tags($input: TagQueryInput!){
-			queryTags(input: $input){
-				count
-				tags{
-					...TagFragment
-				}
-			}
-		}"""
-		if fragment:
-			query = re.sub(r'\.\.\.TagFragment', fragment, query)
-		
-		tag_query["page"] = tag_query.get("page", 1)
-		tag_query["per_page"] = 40
-		return self._paginate_query(query, tag_query, pages, callback)
-
+	# SCENES
 	def find_scene(self, scene_id, fragment=None):
 		query = """query FindScene($id: ID!) {
 			findScene(id: $id) {
-				...SceneFragment
+				...Scene
 			}
 		}"""
 		if fragment:
-			query = re.sub(r'\.\.\.SceneFragment', fragment, query)
+			query = re.sub(r'\.\.\.Scene', fragment, query)
 
 		result = self._callGraphQL(query, {"id":scene_id})
 		return result["findScene"]
-
-	def find_scenes_count(self, scene_query):
-		query = """query FindScenes($input: SceneQueryInput!) {
-			queryScenes(input: $input) {
-				count
-				scenes { id }
-			}
-		}"""
-		return self._callGraphQL(query, {"input":scene_query})["queryScenes"]["count"]
-
-	def find_scenes(self, scene_query, fragment=None, pages=-1, callback=None):
+	def find_scenes(self, scene_query={}, fragment=None, pages=-1, callback=None):
 		query = """query FindScenes($input: SceneQueryInput!) {
 			queryScenes(input: $input) {
 				count
 				scenes {
-					...SceneFragment
+					...Scene
 				}
 			}
 		}"""
 		if fragment:
-			query = re.sub(r'\.\.\.SceneFragment', fragment, query)
+			query = re.sub(r'\.\.\.Scene', fragment, query)
 		
 		scene_query["page"] = scene_query.get("page", 1)
 		scene_query["per_page"] = 40
 		return self._paginate_query(query, scene_query, pages, callback)
-
-	def find_drafts(self):
-		query = """query FindDrafts{
-			findDrafts{
-				...Draft
-			}
-		}"""
-		return self._callGraphQL(query)["findDrafts"]
-
-	def get_draft_data(self, draft_id):
-		query = """query FindDraftData($draft_id: ID!){
-			findDraft(id: $draft_id){
-				data {
-				  ... on PerformerDraft { ...PerformerDraft }
-				  ... on SceneDraft { ...SceneDraft }
-				}
-			}
-		}"""
-		return self._callGraphQL(query, {"draft_id": draft_id})["findDraft"]
-
-	# returns items up to specified page, -1 for all pages (default: -1)
-	def _paginate_query(self, query, type_input, pages=-1, callback=None):
-		result = self._callGraphQL(query, {"input": type_input})
-
-		queryType = list(result.keys())[0]
-		result = result[queryType]
-
-		itemType = list(result.keys())[1]
-		items = result[itemType]
-		if callback != None:
-			callback(items)
-
-		if pages == -1: # set to all pages if -1
-			pages = math.ceil(result["count"] / type_input["per_page"])
-
-
-		self.log.progress(float(type_input["page"])/float(pages))
-		self.log.debug(f'received page {type_input["page"]}/{pages} for {queryType} query')
-
-		if type_input.get("page") < pages:
-			type_input["page"] = type_input["page"] + 1 
-			next_page = self._paginate_query(query, type_input, pages, callback)
-			items.extend(next_page)
-
-		return items
-
-	def find_site_id(self, site_name):
-		query = """query FindSiteId{ querySites{ count sites{ id name url } } }"""
-		result = self._callGraphQL(query)
-		for site in result["querySites"]["sites"]:
-			if site["name"].upper() == site_name.upper():
-				return site["id"]
-
-	def fetch_scene_edit_details(self, stash_id):
-		existing = self.find_scene(stash_id, fragment="...SceneEditFragment")
-		
-		# cast existing meta to SceneEditDetailsInput
-		existing["studio_id"] = existing["studio"]["id"]
-		del existing["studio"]
-
-		existing["image_ids"] = [ i["id"] for i in existing["images"] ]
-		del existing["images"]
-
-		existing["tag_ids"] = [ t["id"] for t in existing["tags"] ]
-		del existing["tags"]
-		
-		for p in existing["performers"]:
-			p["performer_id"] = p["performer"]["id"]
-			del p["performer"]
-			
-		for url in existing["urls"]:
-			url["site_id"] = url["site"]["id"]
-			del url["site"]
-		
-		return existing
-
 	def edit_scene(self, stash_id:str, edit:dict, manual_comment:str):
 		if self.pending_edits_count(stash_id, StashboxTarget.SCENE) > 0:
 			self.log.warning(f'Edit not submitted Scene:{stash_id} has pending edits')
@@ -331,6 +252,122 @@ class StashBoxInterface(GQLWrapper):
 
 		result = self._callGraphQL(query, input)
 		return result["sceneEdit"]
+	def fetch_scene_edit_details(self, stash_id):
+		slim_scene_edit_details = """
+			title
+			date
+			duration
+			director
+			code
+			details
+			studio { id }
+			performers {
+				performer { id }
+				as
+			}
+			images { id }
+			tags { id }
+			urls {
+				url
+				site { id }
+			}
+		"""
+		existing = self.find_scene(stash_id, fragment=slim_scene_edit_details)
+		
+		# cast existing meta to SceneEditDetailsInput
+		existing["studio_id"] = existing["studio"]["id"]
+		del existing["studio"]
 
-	def callGQL(self, q, v):
-		return self._callGraphQL(q, v)
+		existing["image_ids"] = [ i["id"] for i in existing["images"] ]
+		del existing["images"]
+
+		existing["tag_ids"] = [ t["id"] for t in existing["tags"] ]
+		del existing["tags"]
+		
+		for p in existing["performers"]:
+			p["performer_id"] = p["performer"]["id"]
+			del p["performer"]
+			
+		for url in existing["urls"]:
+			url["site_id"] = url["site"]["id"]
+			del url["site"]
+		
+		return existing
+
+	# PERFORMERS
+	# TODO find_performer()
+	def find_performers(self, performer_query={}, fragment=None, pages=-1, callback=None):
+		query = """query FindPerformers($input: PerformerQueryInput!) {
+			queryPerformers(input: $input) {
+				count
+				performers {
+					...Performer
+				}
+			}
+		}"""
+		if fragment:
+			query = re.sub(r'\.\.\.Performer', fragment, query)
+		
+		performer_query["page"] = performer_query.get("page", 1)
+		performer_query["per_page"] = 40
+		return self._paginate_query(query, performer_query, pages, callback)
+
+	# TAGS
+	def get_tag(self, tag_id, fragment=None):
+		query = """query FindTag($id: ID!) {
+			findTag(id: $id) {
+				...Tag
+			}
+		}"""
+		if fragment:
+			query = re.sub(r'\.\.\.Tag', fragment, query)
+
+		result = self._callGraphQL(query, {"id":tag_id})
+		return result["findTag"]
+	def find_tags(self, tag_query, fragment=None, pages=-1, callback=None):
+		query = """query Tags($input: TagQueryInput!){
+			queryTags(input: $input){
+				count
+				tags{
+					...Tag
+				}
+			}
+		}"""
+		if fragment:
+			query = re.sub(r'\.\.\.Tag', fragment, query)
+		
+		tag_query["page"] = tag_query.get("page", 1)
+		tag_query["per_page"] = 40
+		return self._paginate_query(query, tag_query, pages, callback)
+
+	# DRAFTS
+	def find_drafts(self):
+		query = """query FindDrafts{
+			findDrafts{
+				...Draft
+			}
+		}"""
+		return self._callGraphQL(query)["findDrafts"]
+	def get_draft_data(self, draft_id):
+		query = """query FindDraftData($draft_id: ID!){
+			findDraft(id: $draft_id){
+				data {
+				  ... on PerformerDraft { ...PerformerDraft }
+				  ... on SceneDraft { ...SceneDraft }
+				}
+			}
+		}"""
+		return self._callGraphQL(query, {"draft_id": draft_id})["findDraft"]
+
+	# SITES
+	def find_site(self, site_name):
+		query = """query FindSiteId{ querySites{ count sites{ id name url } } }"""
+		result = self._callGraphQL(query)
+		matches = []
+		for site in result["querySites"]["sites"]:
+			if str_compare(site["name"], site_name):
+				matches.append(site)
+		if len(matches) > 1:
+			self.log.warning(f"matched site search '{site_name}' to multiple ({len(matches)}) sites")
+		if len(matches) == 1:
+			return matches[0]
