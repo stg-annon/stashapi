@@ -890,12 +890,13 @@ class StashInterface(GQLWrapper):
 		variables = {'input': movie_in}
 		result = self._callGraphQL(query, variables)
 		return result['movieCreate']
-	def find_movie(self, movie_in, create=False):
+	def find_movie(self, movie_in, fragment=None, create=False):
 		# assume input is an ID if int
 		if isinstance(movie_in, int):
 			return self.__generic_find(
 				"query FindMovie($id: ID!) { findMovie(id: $id) { ...Movie } }",
-				movie_in
+				movie_in,
+				(r'\.\.\.Movie', fragment)
 			)
 
 		name = None
@@ -910,7 +911,6 @@ class StashInterface(GQLWrapper):
 			name = movie_in
 
 		movies = self.find_movies(q=name)
-
 		movie_matches = self.__match_alias_item(name, movies)
 
 		if len(movie_matches) > 0:
