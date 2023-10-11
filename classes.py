@@ -239,9 +239,10 @@ fragment TypeRef on __Type {
 			serialize_dict(variables)
 			json_request['variables'] = variables
 
-		per_page = variables.get("filter",{}).get("per_page",None)		
-		if per_page == -1:
-			return self._callGraphQLRecursive(query, variables)
+		# recursive call no longer needed as -1 has been fixed in stash
+		# per_page = variables.get("filter",{}).get("per_page",None)		
+		# if per_page == -1:
+		# 	return self._callGraphQLRecursive(query, variables)
 
 		response = requests.post(self.url, json=json_request, headers=self.headers, cookies=self.cookies)
 		
