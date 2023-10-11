@@ -1,4 +1,4 @@
-import re, sys, math, sqlite3
+import re, math, sqlite3
 import requests
 
 from .stash_types import StashEnum
@@ -62,9 +62,17 @@ class GQLWrapper:
 	def _getFragmentsIntrospection(self, global_overrides, fragment_overrides={}):
 		"""Automatically generates fragments for GQL endpoint via introspection
 
-		@global_overrides: overrides for any occurrence of these objects within any fragment
-		@fragment_overrides: dict of fragments with defined overrides for specified fields
-		"""
+		Args:
+			global_overrides (dict, optional): mapping of objects and their fragments, any occurrence of these objects will use the defined fragment instead of a generated one
+			fragment_overrides (dict, optional): mapping of objects and specific attributes to override attributes to override. Defaults to {}.
+
+		Examples:
+			$ global_overrides = { "Scene": "{ id }" }
+			$ fragment_overrides = { "ScrapedStudio": {"parent": "{ stored_id }"} }
+
+		Returns:
+			dict: mapping of fragment names and values
+		"""		
 
 
 		fragments = {}
@@ -144,7 +152,7 @@ fragment TypeRef on __Type {
   }
 }"""
 
-		stash_schema = self.call_gql(query)
+		stash_schema = self._callGraphQL(query)
 		stash_types = stash_schema.get('__schema',{}).get('types',[])
 
 		def has_object_name(type):
