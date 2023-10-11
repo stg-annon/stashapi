@@ -184,6 +184,9 @@ class StashInterface(GQLWrapper):
 			raise Exception(f"cannot create sql interface on a non local stash instance ({self.url})")
 
 	def graphql_configuration(self):
+		self.log.warning("Deprecated graphql_configuration() use get_configuration()")
+		return self.graphql_configuration()
+	def get_configuration(self, fragment=None):
 		query = """
 			query Configuration {
 				configuration {
@@ -191,6 +194,8 @@ class StashInterface(GQLWrapper):
 				}
 			}
 		"""
+		if fragment:
+			query = re.sub(r'\.\.\.ConfigResult', fragment, query)
 
 		result = self._callGraphQL(query)
 		return result['configuration']
