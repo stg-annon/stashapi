@@ -8,6 +8,8 @@ from . import log as StashLogger
 
 from .tools import file_to_base64, url_to_base64, str_compare
 
+STASH_ID_PATTERN = r'(?:[0-9a-fA-F]){8}-(?:[0-9a-fA-F]){4}-(?:[0-9a-fA-F]){4}-(?:[0-9a-fA-F]){4}-(?:[0-9a-fA-F]){12}'
+
 class StashboxTarget(Enum):
 	SCENE = "SCENE"
 	STUDIO = "STUDIO"
@@ -65,10 +67,52 @@ class StashBoxInterface(GQLWrapper):
 			"Tag": "{ id name }",
 			"URL": "{ type url }",
 		}
-		fragment_overrides = {}
+		fragment_overrides = {
+			"Studio": { "performers": None }
+		}
 		self.fragments = self._getFragmentsIntrospection(global_overrides, fragment_overrides)
 		for fragment in fragments:
 			self.parse_fragments(fragment)
+
+	def __match_search_item(self, input, __find, search_attr="name"):
+		search = None
+		if isinstance(input, dict) and input.get(search_attr):
+			search = input[search_attr]
+		if isinstance(input, str):
+			search = input
+		if not search:
+			self.log.warning(f"could not find a string search target from '{input}'")
+			return
+		
+		matches = set()
+		for tag in __find(search):
+			if str_compare(tag[search_attr], search):
+				matches.add(tag["id"])
+			if tag.get("aliases") and any(str_compare(alias, search) for alias in tag["aliases"] ):
+				matches.add(tag["id"])
+		matches = list(matches)
+		if len(matches) > 1:
+			self.log.warning(f"Matched multiple tags with '{search}' {matches}")
+			return
+		if len(matches) == 1:
+			return matches[0]
+
+	def __find_by_id(self, query, item, fragment:tuple[str, str]=(None, None)):
+		item_id = None
+		if isinstance(item, dict):
+			if item.get("id") and isinstance(item["id"], str):
+				item = item["id"]
+		if isinstance(item, str):
+			if re.match(STASH_ID_PATTERN, item):
+				item_id = item
+		if not item_id:
+			return
+		pattern, substitution = fragment
+		if substitution:
+			query = re.sub(pattern, substitution, query)
+		result = self._callGraphQL(query,  {"id":item_id})
+		queryType = list(result.keys())[0]
+		return result[queryType]
 
 	def _paginate_query(self, query, type_input, pages=-1, callback=None):
 		"""auto paginate graphql query and return pages results
@@ -95,9 +139,9 @@ class StashBoxInterface(GQLWrapper):
 		if pages == -1: # set to all pages if -1
 			pages = math.ceil(result["count"] / type_input["per_page"])
 
-
-		self.log.progress(float(type_input["page"])/float(pages))
-		self.log.debug(f'received page {type_input["page"]}/{pages} for {queryType} query')
+		if pages > 1:
+			self.log.progress(float(type_input["page"])/float(pages))
+			self.log.debug(f'received page {type_input["page"]}/{pages} for {queryType} query')
 
 		if type_input.get("page") < pages:
 			type_input["page"] = type_input["page"] + 1 
@@ -295,7 +339,20 @@ class StashBoxInterface(GQLWrapper):
 		return existing
 
 	# PERFORMERS
-	# TODO find_performer()
+	def find_performer(self, performer_in, fragment=None):
+		performer = self.__find_by_id(
+			"query FindPerformer($id: ID!) { findPerformer(id: $id) { ...Performer }}",
+			performer_in,
+			[r'\.\.\.Performer', fragment]
+		)
+		if performer != None:
+			return performer
+		
+		def find_query(search):
+			return self.find_performers({"names": f'"{search}"'}, fragment="id name aliases")
+		match = self.__match_search_item(performer_in, find_query)
+		if match:
+			return self.find_performer(match)
 	def find_performers(self, performer_query={}, fragment=None, pages=-1, callback=None):
 		query = """query FindPerformers($input: PerformerQueryInput!) {
 			queryPerformers(input: $input) {
@@ -313,17 +370,20 @@ class StashBoxInterface(GQLWrapper):
 		return self._paginate_query(query, performer_query, pages, callback)
 
 	# TAGS
-	def get_tag(self, tag_id, fragment=None):
-		query = """query FindTag($id: ID!) {
-			findTag(id: $id) {
-				...Tag
-			}
-		}"""
-		if fragment:
-			query = re.sub(r'\.\.\.Tag', fragment, query)
-
-		result = self._callGraphQL(query, {"id":tag_id})
-		return result["findTag"]
+	def find_tag(self, tag_in, fragment=None):
+		tag = self.__find_by_id(
+			"query FindTag($id: ID!) { findTag(id: $id) { ...Tag }}",
+			tag_in,
+			[r'\.\.\.Tag', fragment]
+		)
+		if tag != None:
+			return tag
+		
+		def find_query(search):
+			return self.find_tags({"names": search}, fragment="id name aliases")
+		match = self.__match_search_item(tag_in, find_query)
+		if match:
+			return self.find_tag(match)
 	def find_tags(self, tag_query, fragment=None, pages=-1, callback=None):
 		query = """query Tags($input: TagQueryInput!){
 			queryTags(input: $input){
@@ -358,6 +418,37 @@ class StashBoxInterface(GQLWrapper):
 			}
 		}"""
 		return self._callGraphQL(query, {"draft_id": draft_id})["findDraft"]
+
+	# STUDIOS
+	def find_studio(self, studio_in, fragment=None):
+		studio = self.__find_by_id(
+			"query FindStudio($id: ID!) { findStudio(id: $id) { ...Studio }}",
+			studio_in,
+			[r'\.\.\.Studio', fragment]
+		)
+		if studio != None:
+			return studio
+		
+		def find_query(search):
+			return self.find_studios({"name": f'"{search}"'}, fragment="id name")
+		match = self.__match_search_item(studio_in, find_query)
+		if match:
+			return self.find_studio(match)
+	def find_studios(self, studio_query={}, fragment=None, pages=-1, callback=None):
+		query = """query FindStudios($input: StudioQueryInput!) {
+			queryStudios(input: $input) {
+				count
+				studios {
+					...Studio
+				}
+			}
+		}"""
+		if fragment:
+			query = re.sub(r'\.\.\.Studio', fragment, query)
+		
+		studio_query["page"] = studio_query.get("page", 1)
+		studio_query["per_page"] = 40
+		return self._paginate_query(query, studio_query, pages, callback)
 
 	# SITES
 	def find_site(self, site_name):
