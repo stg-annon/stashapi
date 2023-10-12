@@ -150,13 +150,18 @@ class StashBoxInterface(GQLWrapper):
 
 		return items
 
-	def create_image(self, b64image=None, path=None, url=None):
-		if path:
-			b64image = file_to_base64(path)
-		elif url:
-			b64image = url_to_base64(url)
+	def upload_image(self, image_in):
+		from pathlib import Path
+
+		if re.search(r';base64',image_in):
+			b64image = image_in
+		if re.match(r'^http', image_in):
+			b64image = url_to_base64(image_in)
+		if Path(image_in).exists():
+			b64image = file_to_base64(image_in)
+
 		if not b64image:
-			raise Exception("StashBoxInterface.create_image() requires one kwarg to be defined")
+			raise Exception("StashBoxInterface.create_image() requires a base64 string, url, or filepath")
 
 		import base64
 		from urllib3 import encode_multipart_formdata
