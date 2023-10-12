@@ -182,6 +182,8 @@ fragment TypeRef on __Type {
 					if field_type_name in global_overrides:
 						attr += " "+global_overrides[field_type_name]
 					elif field["name"] in fragment_override:
+						if fragment_override[field["name"]] == None:
+							continue
 						attr += " "+fragment_override[field["name"]]
 					else:
 						attr += " { ..."+field_type_name+" }"
@@ -206,9 +208,11 @@ fragment TypeRef on __Type {
 					if field_type_name in global_overrides:
 						attr += " "+global_overrides[field_type_name]
 					elif field["name"] in fragment_override:
+						if fragment_override[field["name"]] == None:
+							continue
 						attr += " "+fragment_override[field["name"]]
 					else:
-						attr += "{"
+						attr += " {"
 						#Search for the object used in the UNION. Basically the loop above, but limited to one Object
 						objectType = [x for x in stash_types if x["kind"] == "OBJECT" and x["fields"] and x["name"] == field_type_name][0]
 						for objectField in objectType["fields"]:
@@ -220,6 +224,8 @@ fragment TypeRef on __Type {
 								if objectField_type_name in global_overrides:
 									attr += " "+global_overrides[objectField_type_name]
 								elif objectField["name"] in fragment_override:
+									if fragment_override[objectField["name"]] == None:
+										continue
 									attr += " "+fragment_override[objectField["name"]]
 								else:
 									attr += " { ..."+objectField_type_name+" }"
