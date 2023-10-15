@@ -273,6 +273,7 @@ class StashInterface(GQLWrapper):
 		result = self._callGraphQL(query, variables)
 		return result["deleteFiles"]
 
+	# PLUGINS
 	def configure_plugin(self, plugin_id, values:dict):
 		query = """
 			mutation ConfigurePlugin($plugin_id: ID!, $input: Map!) {
@@ -292,7 +293,31 @@ class StashInterface(GQLWrapper):
 		if single_plugin:
 			return resp[single_plugin]
 		return resp
-	
+	def run_plugin_task(self, plugin_id, task_name, args={}):
+		query = """mutation RunPluginTask($plugin_id: ID!, $task_name: String!, $args: [PluginArgInput!]) {
+			runPluginTask(plugin_id: $plugin_id, task_name: $task_name, args: $args)
+		}"""
+		args_list = []
+		for k,v in args.items():
+			if isinstance(v, str):
+				value = {"str": v}
+			elif isinstance(v, int):
+				value = {"i": v}
+			elif isinstance(v, bool):
+				value = {"b": v}
+			elif isinstance(v, float):
+				value = {"f": v}
+			else:
+				continue
+			args_list.append({"key":k, "value": value})
+		
+		variables = {
+			"plugin_id": plugin_id,
+			"task_name": task_name,
+			"args": args_list,
+		}
+		return self._callGraphQL(query, variables)["runPluginTask"]
+
 	# Tag CRUD
 	def create_tag(self, tag_in:dict) -> dict:
 		"""creates tag in stash
