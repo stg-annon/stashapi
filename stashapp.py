@@ -364,7 +364,7 @@ class StashInterface(GQLWrapper):
 			if tag_in.get("name"):
 				name = tag_in["name"]
 		if isinstance(tag_in, str):
-			name = tag_in
+			name = tag_in.strip()
 			tag_in = {"name": name}
 
 		if not name:
@@ -380,8 +380,7 @@ class StashInterface(GQLWrapper):
 		matches = list(matches)
 		if len(matches) > 1:
 			self.log.warning(f"Matched multiple tags with {name=} {matches}")
-			return
-		if len(matches) == 1:
+		if len(matches) >= 1:
 			return self.find_tag(int(matches[0]))
 		if create:
 			self.log.info(f"Could not find tag with {name=} creating")
