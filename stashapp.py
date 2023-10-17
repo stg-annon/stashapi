@@ -373,9 +373,9 @@ class StashInterface(GQLWrapper):
 		
 		matches = set()
 		for tag in self.find_tags(q=name, fragment="id name aliases"):
-			if str_compare(tag["name"], name):
+			if str_compare(tag["name"], name, ignore_case=True):
 				matches.add(tag["id"])
-			if any(str_compare(alias, name) for alias in tag["aliases"] ):
+			if any(str_compare(alias, name, ignore_case=True) for alias in tag["aliases"]):
 				matches.add(tag["id"])
 		matches = list(matches)
 		if len(matches) > 1:
