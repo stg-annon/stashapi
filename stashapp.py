@@ -373,17 +373,18 @@ class StashInterface(GQLWrapper):
 		
 		matches = set()
 		for tag in self.find_tags(q=name, fragment="id name aliases"):
-			if str_compare(tag["name"], name, ignore_case=True):
+			if str_compare(tag["name"], name):
 				matches.add(tag["id"])
-			if any(str_compare(alias, name, ignore_case=True) for alias in tag["aliases"]):
+			if any(str_compare(alias, name) for alias in tag["aliases"]):
 				matches.add(tag["id"])
 		matches = list(matches)
 		if len(matches) > 1:
-			self.log.warning(f"Matched multiple tags with '{name}' {matches}")
+			self.log.warning(f"Matched multiple tags with {name=} {matches}")
 			return
 		if len(matches) == 1:
 			return self.find_tag(int(matches[0]))
 		if create:
+			self.log.info(f"Could not find tag with {name=} creating")
 			return self.create_tag(tag_in)
 	def update_tag(self, tag_update):
 		query = """
