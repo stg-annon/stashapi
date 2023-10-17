@@ -311,6 +311,11 @@ fragment TypeRef on __Type {
 
 		return r
 
+	def callGQL(self, query, variables={}):
+		self._callGraphQL(query, variables)
+	def call_gql(self, query, variables={}):
+		return self._callGraphQL(query, variables)
+
 class SQLiteWrapper:
 	conn = None
 

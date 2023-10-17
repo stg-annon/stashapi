@@ -169,9 +169,6 @@ class StashInterface(GQLWrapper):
 					performer_matches[p["id"]] = p
 		return list(performer_matches.values())
 
-	def call_gql(self, query, variables={}):
-		return self._callGraphQL(query, variables)
-
 	def stash_version(self):
 		result = self._callGraphQL("query StashVersion{ version { build_time hash version } }")
 		return StashVersion(result["version"])
