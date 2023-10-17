@@ -2,7 +2,7 @@ import re, sys, time, traceback
 
 from requests.structures import CaseInsensitiveDict
 
-from . import log as stash_logger
+from .log import StashLogger
 
 from .tools import str_compare
 
@@ -27,7 +27,7 @@ class StashInterface(GQLWrapper):
 	def __init__(self, conn:dict={}, fragments:list[str]=[]):
 		conn = CaseInsensitiveDict(conn)
 
-		self.log = conn.get("Logger", stash_logger)
+		self.log = conn.get("Logger", StashLogger())
 
 		if conn.get("ApiKey"):
 			self.headers["ApiKey"] = conn["ApiKey"]
@@ -58,8 +58,7 @@ class StashInterface(GQLWrapper):
 		except Exception as e:
 			self.log.error(f"Could not connect to Stash at {self.url}")
 			self.log.error(e)
-			self.log.error(traceback.format_exc())
-			sys.exit()
+			raise
 
 		self.log.debug(f'Using stash ({version}) endpoint at {self.url}')
 
