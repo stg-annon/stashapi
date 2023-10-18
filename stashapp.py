@@ -1522,7 +1522,7 @@ class StashInterface(GQLWrapper):
 	# Scene Utils
 	def destroy_scene_stash_id(self, stash_id):
 		scenes = self.find_scenes(f={
-			"stash_id": {
+			"stash_id_endpoint": {
 				"value": stash_id,
 				"modifier": "EQUALS"
 			}
