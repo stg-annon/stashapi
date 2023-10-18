@@ -135,7 +135,7 @@ class StashInterface(GQLWrapper):
 				self.log.debug(f'ignore primary name with disambiguation "{p["name"]}" ({p["disambiguation"]}) pid:{p["id"]}')
 				continue
 
-			if re.match(rf'{search}$', p["name"], re.IGNORECASE):
+			if str_compare(search, p["name"]):
 				self.log.debug(f'matched performer "{search}" to "{p["name"]}" ({p["id"]}) using primary name')
 				performer_matches[p["id"]] = p
 				return list(performer_matches.values())
@@ -163,7 +163,7 @@ class StashInterface(GQLWrapper):
 				continue
 			for alias in aliases:
 				parsed_alias = alias.strip()
-				if re.match(rf'{search}$', parsed_alias, re.IGNORECASE):
+				if str_compare(search, parsed_alias):
 					self.log.info(f'matched performer "{search}" to "{p["name"]}" ({p["id"]}) using alias')
 					performer_matches[p["id"]] = p
 		return list(performer_matches.values())
@@ -533,8 +533,8 @@ class StashInterface(GQLWrapper):
 
 		# return none if multiple alias results
 		if len(performer_matches) > 1:
-			return None
-		elif len(performer_matches) > 0:
+			self.log.warning(f"Multiple matches for {performer['name']} returning first result")
+		if len(performer_matches) > 0:
 			return self.find_performer(performer_matches[0]["id"])
 
 		if create:
