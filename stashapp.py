@@ -702,14 +702,14 @@ class StashInterface(GQLWrapper):
 		self.destroy_performer(source_ids)
 
 	# Performers CRUD
-	def find_performers(self, f:dict={}, filter:dict={"per_page": -1}, q="", fragment:dict=None, get_count:bool=False) -> list[dict]:
+	def find_performers(self, f:dict={}, filter:dict={"per_page": -1}, q="", fragment:str=None, get_count:bool=False) -> list[dict]:
 		"""get performers matching filter/query
 
 		Args:
 			 f (PerformerFilterType, optional): See playground for details. Defaults to {}.
 			 filter (FindFilterType, optional): See playground for details. Defaults to {"per_page": -1}.
 			 q (str, optional): query string, same search bar in stash. Defaults to "".
-			 fragment (dict, optional):  override for gqlFragment. Defaults to "...Performer". example override 'fragment="id name"'
+			 fragment (str, optional):  override for gqlFragment. Defaults to "...Performer". example override 'fragment="id name"'
 			 get_count (bool, optional): returns tuple (count, [performers]) where count is the number of results from the query, useful when paging. Defaults to False.
 
 		Returns:
