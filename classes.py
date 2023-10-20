@@ -15,6 +15,7 @@ class GQLWrapper:
 	}
 	cookies = {}
 	version = None
+	verify_ssl = True
 
 	def __init__(self):
 		return
@@ -250,7 +251,7 @@ fragment TypeRef on __Type {
 		# if per_page == -1:
 		# 	return self._callGraphQLRecursive(query, variables)
 
-		response = requests.post(self.url, json=json_request, headers=self.headers, cookies=self.cookies)
+		response = requests.post(self.url, json=json_request, headers=self.headers, cookies=self.cookies, verify=self.verify_ssl)
 		
 		try:
 			return self._handleGQLResponse(response)
