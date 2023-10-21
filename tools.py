@@ -53,10 +53,10 @@ def get_base64(pth):
 
 def url_to_base64(url):
 	import requests
-	return base64.b64encode(requests.get(url).content)
+	b64img_bytes = base64.b64encode(requests.get(url).content)
+	return f"data:image/jpeg;base64,{b64img_bytes.decode('utf-8')}"
 
 def file_to_base64(image_path):
-
 	from pathlib import Path
 	import mimetypes
 	"""get base64 encoded image from local image path
@@ -70,8 +70,6 @@ def file_to_base64(image_path):
 	mime =  mimetypes.types_map.get(Path(image_path).suffix, 'image/jpeg')
 	with open(image_path, "rb") as img:
 		b64img_bytes = base64.b64encode(img.read())
-	if not b64img_bytes:
-		return None
 	return f"data:{mime};base64,{b64img_bytes.decode('utf-8')}"
 
 def si_prefix(value, round):
