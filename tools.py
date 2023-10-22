@@ -72,29 +72,32 @@ def file_to_base64(image_path):
 		b64img_bytes = base64.b64encode(img.read())
 	return f"data:{mime};base64,{b64img_bytes.decode('utf-8')}"
 
-def si_prefix(value, round):
+def si_prefix(value, round, preferred_prefix=''):
 	SI_PREFIX_UNITS = u"yzafpnµm kMGTPEZY"
 
-	tens_exponent = int(math.log(value,10))
 	units_mid = (len(SI_PREFIX_UNITS)-1) // 2
+	if preferred_index := SI_PREFIX_UNITS.index(preferred_prefix):
+		tens_exponent = 3*(preferred_index-units_mid)
+	else:
+		tens_exponent = int(math.log(value,10))
 	si_level = tens_exponent // 3
 	try:
 		prefix =  SI_PREFIX_UNITS[si_level+units_mid]
 	except:
 		prefix = f"e{tens_exponent}"
 
-	value /= 10 ** tens_exponent
+	value /= 10 ** (si_level*3)
 	return f"{value:.{round}f}{prefix}"
 
-def human_bytes(value, round=1):
+def human_bytes(value, round=1, prefix=''):
 	try:
-		return f"{si_prefix(value, round)}B"
+		return f"{si_prefix(value, round, prefix)}B"
 	except:
 		return f"{value:.{round}f}B"
 	
-def human_bits(value, round=1):
+def human_bits(value, round=1, prefix=''):
 	try:
-		return f"{si_prefix(value, round)}b"
+		return f"{si_prefix(value, round, prefix)}b"
 	except:
 		return f"{value:.{round}f}b"
 	
