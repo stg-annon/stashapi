@@ -67,12 +67,14 @@ class GQLWrapper:
 			global_overrides (dict, optional): mapping of objects and their fragments, any occurrence of these objects will use the defined fragment instead of a generated one
 			fragment_overrides (dict, optional): mapping of objects and specific attributes to override attributes to override. Defaults to {}.
 
-		Examples:
-			$ global_overrides = { "Scene": "{ id }" }
-			$ fragment_overrides = { "ScrapedStudio": {"parent": "{ stored_id }"} }
-
 		Returns:
 			dict: mapping of fragment names and values
+
+		Examples:
+		.. code-block:: python
+			global_overrides = { "Scene": "{ id }" }
+			fragment_overrides = { "ScrapedStudio": {"parent": "{ stored_id }"} }
+
 		"""		
 
 
@@ -257,6 +259,7 @@ fragment TypeRef on __Type {
 			return self._handleGQLResponse(response)
 		except:
 			self.log.debug(f"{rm_query_whitespace(query)}\nVariables: {variables}")
+			raise
 
 	def _handleGQLResponse(self, response):
 		try:
@@ -278,10 +281,15 @@ fragment TypeRef on __Type {
 
 		if content["data"] == None:
 			self.log.error("GQL data response is null")
-		elif response.status_code == 200:
-			return content["data"]
 		elif response.status_code == 401:
 			self.log.error(f"401, Unauthorized. Could not access endpoint {self.url}. Did you provide an API key?")
+		elif response.status_code == 200:
+			data = content["data"]
+			query_type = list(data.keys())[0]
+			if not data.get(query_type):
+				self.log.debug(content)
+				raise Exception(f"{query_type} returned no data")
+			return content["data"]
 		error_msg = f"{response.status_code} query failed. {self.version}"
 		self.log.error(error_msg)
 		raise Exception(error_msg)
