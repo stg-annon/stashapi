@@ -279,7 +279,7 @@ fragment TypeRef on __Type {
 			fmt_error = f"{code}: {message} {path}".strip()
 			self.log.error(fmt_error)
 
-		if content["data"] == None:
+		if content.get("data") == None:
 			self.log.error("GQL data response is null")
 		elif response.status_code == 401:
 			self.log.error(f"401, Unauthorized. Could not access endpoint {self.url}. Did you provide an API key?")
@@ -290,7 +290,7 @@ fragment TypeRef on __Type {
 				self.log.debug(content)
 				raise Exception(f"{query_type} returned no data")
 			return content["data"]
-		error_msg = f"{response.status_code} query failed. {self.version}"
+		error_msg = f"{response.status_code} {response.reason} query failed. {self.version}"
 		self.log.error(error_msg)
 		raise Exception(error_msg)
 
