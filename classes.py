@@ -279,16 +279,14 @@ fragment TypeRef on __Type {
 			fmt_error = f"{code}: {message} {path}".strip()
 			self.log.error(fmt_error)
 
-		if content.get("data") == None:
-			self.log.error("GQL data response is null")
-		elif response.status_code == 401:
-			self.log.error(f"401, Unauthorized. Could not access endpoint {self.url}. Did you provide an API key?")
+		if response.status_code == 401:
+			if "session" in self.cookies:
+				self.log.error(f"{response.status_code} {response.reason}. Could not access endpoint {self.url} Are you running a proxy? check your proxy settings.")
+			else:
+				self.log.error(f"{response.status_code} {response.reason}. Could not access endpoint {self.url}. Did you provide an API key? ")
+		elif content.get("data") == None:
+			self.log.error(f"{response.status_code} {response.reason} GQL data response is null")
 		elif response.status_code == 200:
-			data = content["data"]
-			query_type = list(data.keys())[0]
-			if not data.get(query_type):
-				self.log.debug(content)
-				raise Exception(f"{query_type} returned no data")
 			return content["data"]
 		error_msg = f"{response.status_code} {response.reason} query failed. {self.version}"
 		self.log.error(error_msg)
