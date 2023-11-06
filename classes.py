@@ -1,4 +1,4 @@
-import re, math, sqlite3
+import re, math
 import requests
 
 from .stash_types import StashEnum
@@ -319,28 +319,9 @@ fragment TypeRef on __Type {
 		return r
 
 	def callGQL(self, query, variables={}):
-		self._callGraphQL(query, variables)
+		return self._callGraphQL(query, variables)
 	def call_gql(self, query, variables={}):
 		return self._callGraphQL(query, variables)
-
-class SQLiteWrapper:
-	conn = None
-
-	def __init__(self, db_filepath) -> None:
-		## TODO generate uri for read-only connection, all write operations should be done from the API
-		## issues with cross os paths parsing to uri skip for now, opt for warning message
-		# db_filepath = Path(db_filepath)
-		# db_filepath = db_filepath.resolve()
-		# db_uri = f"{db_filepath.as_uri()}?mode=ro"
-
-		self.log.warning("SQL connection should only be used for read-only operations, all write operations should be done from the API")
-		self.conn = sqlite3.connect(db_filepath)
-
-	def query(self, query, args=(), one=False):
-		cur = self.conn.cursor()
-		cur.execute(query, args)
-		r = [dict((cur.description[i][0], value) for i, value in enumerate(row)) for row in cur.fetchall()]
-		return (r[0] if r else None) if one else r
 
 class StashVersion:
 

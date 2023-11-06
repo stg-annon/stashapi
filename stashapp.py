@@ -8,8 +8,8 @@ from .tools import str_compare
 
 from .stash_types import StashItem
 from .stash_types import PhashDistance
+from .stash_types import OnMultipleMatch
 from .classes import GQLWrapper
-from .classes import SQLiteWrapper
 from .classes import StashVersion
 
 class StashInterface(GQLWrapper):
@@ -54,13 +54,13 @@ class StashInterface(GQLWrapper):
 
 		try:
 			# test query to ensure good connection
-			version = self.stash_version()
+			self.version = self.stash_version()
 		except Exception as e:
 			self.log.error(f"Could not connect to Stash at {self.url}")
 			self.log.error(e)
 			raise
 
-		self.log.debug(f'Using stash ({version}) endpoint at {self.url}')
+		self.log.debug(f'Using stash ({self.version}) endpoint at {self.url}')
 
 		global_overrides = {
 			"Scene": "{ id }",
@@ -173,11 +173,7 @@ class StashInterface(GQLWrapper):
 		return StashVersion(result["version"])
 
 	def get_sql_interface(self):
-		if "localhost" in self.url or "127.0.0.1" in self.url:
-			sql_file = self.call_gql("query dbPath{configuration{general{databasePath}}}")
-			return SQLiteWrapper(sql_file["configuration"]["general"]["databasePath"])
-		else:
-			raise Exception(f"cannot create sql interface on a non local stash instance ({self.url})")
+		self.log.warning("Deprecated use api SQL mutations")
 
 	def graphql_configuration(self):
 		self.log.warning("Deprecated graphql_configuration() use get_configuration()")
@@ -335,7 +331,7 @@ class StashInterface(GQLWrapper):
 		variables = {'input': tag_in}
 		result = self._callGraphQL(query, variables)
 		return result["tagCreate"]
-	def find_tag(self, tag_in, create=False) -> dict:
+	def find_tag(self, tag_in, create=False, on_multiple=OnMultipleMatch.RETURN_FIRST) -> dict:
 		"""looks for tag from stash matching aliases
 
 		Args:
@@ -379,7 +375,15 @@ class StashInterface(GQLWrapper):
 				matches.add(tag["id"])
 		matches = list(matches)
 		if len(matches) > 1:
-			self.log.warning(f"Matched multiple tags with {name=} {matches}")
+			warn_msg = f"Matched multiple tags with {name=} {matches}"
+			if on_multiple == OnMultipleMatch.RETURN_NONE:
+				self.log.warning(f"{warn_msg} returning None")
+				return None
+			if on_multiple == OnMultipleMatch.RETURN_LIST:
+				self.log.warning(f"{warn_msg} returning all matches")
+				return [self.find_tag(t["id"]) for t in matches]
+			if on_multiple == OnMultipleMatch.RETURN_FIRST:
+				self.log.warning(f"{warn_msg} returning first match")
 		if len(matches) >= 1:
 			return self.find_tag(int(matches[0]))
 		if create:
@@ -483,6 +487,12 @@ class StashInterface(GQLWrapper):
 		}
 		result = self._callGraphQL(query, variables)
 		return result['tagsMerge']
+	def map_tag_ids(self, tags_input, create=False):
+		tag_ids = []
+		for tag_input in tags_input:
+			if tag_id := self.find_tag(tag_input, create=create, on_multiple=OnMultipleMatch.RETURN_NONE):
+				tag_ids.append(tag_id)
+		return tag_ids
 
 	# Performer CRUD
 	def create_performer(self, performer_in:dict) -> dict:
@@ -506,7 +516,7 @@ class StashInterface(GQLWrapper):
 
 		result = self._callGraphQL(query, variables)
 		return result['performerCreate']
-	def find_performer(self, performer, create=False, fragment=None) -> dict:
+	def find_performer(self, performer, create=False, fragment=None, on_multiple=OnMultipleMatch.RETURN_FIRST) -> dict:
 		"""looks for performer from stash matching aliases
 
 		Args:
@@ -531,9 +541,16 @@ class StashInterface(GQLWrapper):
 		performer_search = self.find_performers(q=performer["name"], fragment="id name disambiguation alias_list")
 		performer_matches = self.__match_performer_alias(performer["name"], performer_search)
 
-		# return none if multiple alias results
 		if len(performer_matches) > 1:
-			self.log.warning(f"Multiple matches for {performer['name']} returning first result")
+			warn_msg = f"Matched multiple Performers to '{performer['name']}'"
+			if on_multiple == OnMultipleMatch.RETURN_NONE:
+				self.log.warning(f"{warn_msg} returning None")
+				return None
+			if on_multiple == OnMultipleMatch.RETURN_LIST:
+				self.log.warning(f"{warn_msg} returning all matches")
+				return [self.find_performer(p["id"]) for p in performer_matches]
+			if on_multiple == OnMultipleMatch.RETURN_FIRST:
+				self.log.warning(f"{warn_msg} returning first match")
 		if len(performer_matches) > 0:
 			return self.find_performer(performer_matches[0]["id"])
 
@@ -752,6 +769,12 @@ class StashInterface(GQLWrapper):
 
 		result = self._callGraphQL(query, variables)
 		return result["bulkPerformerUpdate"]
+	def map_performer_ids(self, performers_input, create=False):
+		performer_ids = []
+		for performer_input in performers_input:
+			if performer := self.find_performer(performer_input, create=create, fragment="id", on_multiple=OnMultipleMatch.RETURN_NONE):
+				performer_ids.append(performer["id"])
+		return performer_ids
 
 	# Studio CRUD
 	def create_studio(self, studio_create_input:dict) -> dict:
@@ -1326,7 +1349,7 @@ class StashInterface(GQLWrapper):
 
 		result = self._callGraphQL(query, variables)
 		return result['findSceneByHash']
-	def update_scene(self, update_input):
+	def update_scene(self, update_input:dict, create=False):
 		query = """
 			mutation sceneUpdate($input:SceneUpdateInput!) {
 				sceneUpdate(input: $input) {
@@ -1334,6 +1357,15 @@ class StashInterface(GQLWrapper):
 				}
 			}
 		"""
+		if update_input.get("tags"):
+			self.log.debug("sceneUpdate expects 'tag_ids' not 'tags', automatically mapping...")
+			update_input["tag_ids"] = self.map_tag_ids(update_input["tags"], create=create)
+			del update_input["tags"]
+		if update_input.get("performers"):
+			self.log.debug("sceneUpdate expects 'performer_ids' not 'performers', automatically mapping...")
+			update_input["performer_ids"] = self.map_performer_ids(update_input["performers"], create=create)
+			del update_input["performers"]
+
 		variables = {'input': update_input}
 
 		result = self._callGraphQL(query, variables)

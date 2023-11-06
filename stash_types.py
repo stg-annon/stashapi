@@ -59,3 +59,8 @@ class PhashDistance(StashEnum):
 	HIGH = 4
 	MEDIUM = 8
 	LOW = 10
+
+class OnMultipleMatch(Enum):
+	RETURN_NONE = 0
+	RETURN_LIST = 1
+	RETURN_FIRST = 2
