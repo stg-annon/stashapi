@@ -285,9 +285,13 @@ class StashInterface(GQLWrapper):
 		if init_defaults:
 			values.update(plugin_values)
 		plugin_values.update(values)
-		self._callGraphQL(query, {"plugin_id": plugin_id, "input": plugin_values})
-	def find_plugin_config(self, plugin_ids=[]):
-		query="""query FilterFindPluginConfig($input: [String!]){ configuration { plugins (include: $input) } }"""
+		return self._callGraphQL(query, {"plugin_id": plugin_id, "input": plugin_values})["configurePlugin"]
+	def find_plugin_config(self, plugin_id, defaults={}):
+		if defaults:
+			return self.configure_plugin(plugin_id, defaults, init_defaults=True)
+		return self.find_plugins_config(plugin_id)
+	def find_plugins_config(self, plugin_ids=[]):
+		query="""query FindPluginConfig($input: [String!]){ configuration { plugins (include: $input) } }"""
 		if isinstance(plugin_ids, str):
 			plugin_ids = [plugin_ids]
 		config = self._callGraphQL(query, {"input": plugin_ids})["configuration"]["plugins"]
