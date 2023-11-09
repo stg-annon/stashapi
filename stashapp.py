@@ -275,13 +275,15 @@ class StashInterface(GQLWrapper):
 		return result["deleteFiles"]
 
 	# PLUGINS
-	def configure_plugin(self, plugin_id, values:dict):
+	def configure_plugin(self, plugin_id, values:dict, init_defaults=False):
 		query = """
 			mutation ConfigurePlugin($plugin_id: ID!, $input: Map!) {
 				configurePlugin(plugin_id: $plugin_id, input: $input)
 			}
 		"""
-		plugin_values = self.find_plugin_config(plugin_id)
+		plugin_values = self.find_plugin_config(plugin_id).get(plugin_id, {})
+		if init_defaults:
+			values.update(plugin_values)
 		plugin_values.update(values)
 		self._callGraphQL(query, {"plugin_id": plugin_id, "input": plugin_values})
 	def find_plugin_config(self, plugin_ids=[]):
