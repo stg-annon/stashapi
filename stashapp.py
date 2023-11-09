@@ -173,7 +173,16 @@ class StashInterface(GQLWrapper):
 		return StashVersion(result["version"])
 
 	def get_sql_interface(self):
-		self.log.warning("Deprecated use api SQL mutations")
+		self.log.warning("Deprecated use api SQL mutations (sql_query, sql_commit)")
+	def sql_query(self, sql:str, args:list=[]):
+		query = "mutation SQLquery($sql_query:String!, $sql_args:[Any]) { querySQL(sql: $sql_query, args: $sql_args){ ...SQLQueryResult } }"
+		result = self._callGraphQL(query, {"sql_query": sql, "sql_args": args})
+		return result["querySQL"]
+	def sql_commit(self, sql:str, args:list=[]):
+		query = "mutation SQLcommit($sql_query:String!, $sql_args:[Any]) { execSQL(sql: $sql_query, args: $sql_args){ ...SQLExecResult } }"
+		result = self._callGraphQL(query, {"sql_query": sql, "sql_args": args})
+		return result["execSQL"]
+
 
 	def graphql_configuration(self):
 		self.log.warning("Deprecated graphql_configuration() use get_configuration()")
