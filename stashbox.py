@@ -40,12 +40,15 @@ class StashBoxInterface(GQLWrapper):
 		if not self.url:
 			raise Exception("REQUIRED key 'endpoint' not provided in connection dict")
 
+		if "metadataapi.net" in self.url:
+			self.log.warning("metadataapi.net is not an actual Stash-Box instance, things may not work as expected, use their API")
+
 		stash = conn.get("stash")
 		if stash:
 			c = stash.get_stashbox_connection(self.url)	
 			api_key = c.get("api_key")
 			if not api_key:
-				raise Exception(f"Could not find api_key for '{self.url}' with prorivded stash connection")
+				raise Exception(f"Could not find api_key for '{self.url}' with provided stash connection")
 		else:
 			api_key = conn.get('api_key', None)
 			if not api_key:
@@ -282,6 +285,10 @@ class StashBoxInterface(GQLWrapper):
 							url["url"] = url_edit["url"]
 							comments.append(f'REPLACE {url_edit["target_url"]} with {url_edit["url"]}')
 
+		if edit.get("image"):
+			cdn_image = self.upload_image(edit["image"])
+			details["image_ids"] = [cdn_image["id"]]
+
 		for attr in ["code","date","details","director","duration","studio_id","title"]:
 			if edit.get(attr):
 				details[attr] = edit[attr]
@@ -389,7 +396,7 @@ class StashBoxInterface(GQLWrapper):
 		match = self.__match_search_item(tag_in, find_query)
 		if match:
 			return self.find_tag(match)
-	def find_tags(self, tag_query, fragment=None, pages=-1, callback=None):
+	def find_tags(self, tag_query={}, fragment=None, pages=-1, callback=None):
 		query = """query Tags($input: TagQueryInput!){
 			queryTags(input: $input){
 				count
