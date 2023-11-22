@@ -186,7 +186,7 @@ class StashInterface(GQLWrapper):
 
 	def graphql_configuration(self):
 		self.log.warning("Deprecated graphql_configuration() use get_configuration()")
-		return self.graphql_configuration()
+		return self.get_configuration()
 	def get_configuration(self, fragment=None):
 		query = """
 			query Configuration {
