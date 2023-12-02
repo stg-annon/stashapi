@@ -72,7 +72,8 @@ class StashInterface(GQLWrapper):
 		fragment_overrides = {
 			"ScrapedStudio": {"parent": "{ stored_id }"},
 			"Tag": {"parents": "{ id }", "children": "{ id }"},
-			"Studio": {"parent_studio": "{ id }"}
+			"Studio": {"parent_studio": "{ id }"},
+			"VideoFile": { "fingerprint": None },
 		}
 		self.fragments = self._getFragmentsIntrospection(global_overrides, fragment_overrides)
 		for fragment in fragments:
