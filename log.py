@@ -93,7 +93,7 @@ class StashLogger:
 		}))
 		sys.exit()
 		
-	def result(self, data):
+	def result(self, data=None):
 		"""used to return data to stash from a scraper"""
 		if data:
 			print(json.dumps(data))
@@ -162,7 +162,7 @@ def exit(msg=None, err=None):
 	}))
 	sys.exit()
 	
-def result(data):
+def result(data=None):
 	"""used to return data to stash from a scraper"""
 	if data:
 		print(json.dumps(data))
