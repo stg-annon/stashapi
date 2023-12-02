@@ -180,13 +180,13 @@ fragment TypeRef on __Type {
 				if field.get("isDeprecated"):
 					continue
 				attr = field["name"]
+				if fragment_override.get(field["name"],"") == None:
+					continue
 				field_type_name = has_object_name(field)
 				if field_type_name:
 					if field_type_name in global_overrides:
 						attr += " "+global_overrides[field_type_name]
 					elif field["name"] in fragment_override:
-						if fragment_override[field["name"]] == None:
-							continue
 						attr += " "+fragment_override[field["name"]]
 					else:
 						attr += " { ..."+field_type_name+" }"
@@ -206,13 +206,13 @@ fragment TypeRef on __Type {
 				if field.get("isDeprecated"):
 					continue
 				attr = "... on " + field["name"]
+				if fragment_override.get(field["name"],"") == None:
+					continue
 				field_type_name = has_object_name(field)
 				if field_type_name:
 					if field_type_name in global_overrides:
 						attr += " "+global_overrides[field_type_name]
 					elif field["name"] in fragment_override:
-						if fragment_override[field["name"]] == None:
-							continue
 						attr += " "+fragment_override[field["name"]]
 					else:
 						attr += " {"
@@ -222,13 +222,13 @@ fragment TypeRef on __Type {
 							if field.get("isDeprecated"):
 								continue
 							attr += "\n\t" + objectField["name"]
+							if fragment_override.get(objectField["name"],"") == None:
+								continue
 							objectField_type_name = has_object_name(objectField)
 							if objectField_type_name:
 								if objectField_type_name in global_overrides:
 									attr += " "+global_overrides[objectField_type_name]
 								elif objectField["name"] in fragment_override:
-									if fragment_override[objectField["name"]] == None:
-										continue
 									attr += " "+fragment_override[objectField["name"]]
 								else:
 									attr += " { ..."+objectField_type_name+" }"
