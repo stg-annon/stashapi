@@ -278,7 +278,17 @@ class StashInterface(GQLWrapper):
 		return result["deleteFiles"]
 
 	# PLUGINS
-	def configure_plugin(self, plugin_id, values:dict, init_defaults=False):
+	def configure_plugin(self, plugin_id, values:dict, init_defaults=False) -> dict:
+		"""Set plugin configuration values
+
+		Args:
+			plugin_id (str): the name of the config.yml file
+			values (dict): plugin configuration values to set
+			init_defaults (bool, optional): use values to initialize configuration values, existing configuration will override passed values. Defaults to False.
+
+		Returns:
+			dict: current plugin configuration values
+		"""
 		query = """
 			mutation ConfigurePlugin($plugin_id: ID!, $input: Map!) {
 				configurePlugin(plugin_id: $plugin_id, input: $input)
@@ -289,11 +299,28 @@ class StashInterface(GQLWrapper):
 			values.update(plugin_values)
 		plugin_values.update(values)
 		return self._callGraphQL(query, {"plugin_id": plugin_id, "input": plugin_values})["configurePlugin"]
-	def find_plugin_config(self, plugin_id, defaults={}):
+	def find_plugin_config(self, plugin_id, defaults={}) -> dict:
+		"""finds config for a single plugin
+
+		Args:
+			plugin_id (str): the name of the config.yml file
+			defaults (dict, optional): pass default values to initialize plugin defaults. Defaults to {}.
+
+		Returns:
+			dict: current plugin configuration values
+		"""		
 		if defaults:
 			return self.configure_plugin(plugin_id, defaults, init_defaults=True)
 		return self.find_plugins_config(plugin_id)
 	def find_plugins_config(self, plugin_ids=[]):
+		"""finds multiple plugins configuration values
+
+		Args:
+			plugin_ids (list, str, optional): List or string of plugin IDs to retrieve, returns all plugins and values by default. Defaults to [].
+
+		Returns:
+			dict: map of plugins and their values or just the plugin values if just one plugin ID is passed
+		"""
 		query="""query FindPluginConfig($input: [String!]){ configuration { plugins (include: $input) } }"""
 		if isinstance(plugin_ids, str):
 			plugin_ids = [plugin_ids]
@@ -302,6 +329,16 @@ class StashInterface(GQLWrapper):
 			return config.get(plugin_ids[0], {})
 		return config
 	def run_plugin_task(self, plugin_id, task_name, args={}):
+		"""Queues a plugin task to run
+		
+		Args:
+			plugin_id (ID): plugin_id
+			task_name (str): plugin task to perform
+			args (dict, optional): arguments to pass to plugin. Defaults to {}.
+
+		Returns:
+			ID: task ID
+		"""
 		query = """mutation RunPluginTask($plugin_id: ID!, $task_name: String!, $args: [PluginArgInput!]) {
 			runPluginTask(plugin_id: $plugin_id, task_name: $task_name, args: $args)
 		}"""
