@@ -1323,7 +1323,7 @@ class StashInterface(GQLWrapper):
 	# Scene CRUD
 	def create_scene(self, scene_create_input:dict={}):
 		query = """
-		query SceneCrate($input: SceneCreateInput!) {
+		mutation SceneCrate($input: SceneCreateInput!) {
 			sceneCreate(input: $input) {
 				id
 			}
