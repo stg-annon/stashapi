@@ -60,20 +60,20 @@ class GQLWrapper:
 				query += f"\n{self.fragments[fragment]}"
 			return self.__resolveFragments(query)
 
-	def _getFragmentsIntrospection(self, global_overrides, fragment_overrides={}):
+	def _getFragmentsIntrospection(self, fragment_overrides, attribute_overrides={}):
 		"""Automatically generates fragments for GQL endpoint via introspection
 
 		Args:
-			global_overrides (dict, optional): mapping of objects and their fragments, any occurrence of these objects will use the defined fragment instead of a generated one
-			fragment_overrides (dict, optional): mapping of objects and specific attributes to override attributes to override. Defaults to {}.
+			fragment_overrides (dict, optional): mapping of objects and their fragments, any occurrence of these objects will use the defined fragment instead of a generated one
+			attribute_overrides (dict, optional): mapping of objects and specific attributes to override attributes to override. Defaults to {}.
 
 		Returns:
 			dict: mapping of fragment names and values
 
 		Examples:
 		.. code-block:: python
-			global_overrides = { "Scene": "{ id }" }
-			fragment_overrides = { "ScrapedStudio": {"parent": "{ stored_id }"} }
+			fragment_overrides = { "Scene": "{ id }" }
+			attribute_overrides = { "ScrapedStudio": {"parent": "{ stored_id }"} }
 
 		"""		
 
@@ -173,21 +173,21 @@ fragment TypeRef on __Type {
 				continue
 
 			type_name = type["name"]
-			fragment_override = fragment_overrides.get(type_name, {})
+			attribute_override = attribute_overrides.get(type_name, {})
 
 			fragment = "fragment "+type_name+" on "+type_name+" {"
 			for field in type['fields']:
 				if field.get("isDeprecated"):
 					continue
 				attr = field["name"]
-				if fragment_override.get(field["name"],"") == None:
+				if attribute_override.get(field["name"],"") == None:
 					continue
 				field_type_name = has_object_name(field)
 				if field_type_name:
-					if field_type_name in global_overrides:
-						attr += " "+global_overrides[field_type_name]
-					elif field["name"] in fragment_override:
-						attr += " "+fragment_override[field["name"]]
+					if field_type_name in fragment_overrides:
+						attr += " "+fragment_overrides[field_type_name]
+					elif field["name"] in attribute_override:
+						attr += " "+attribute_override[field["name"]]
 					else:
 						attr += " { ..."+field_type_name+" }"
 				fragment += f"\n\t{attr}"
@@ -206,14 +206,14 @@ fragment TypeRef on __Type {
 				if field.get("isDeprecated"):
 					continue
 				attr = "... on " + field["name"]
-				if fragment_override.get(field["name"],"") == None:
+				if attribute_override.get(field["name"],"") == None:
 					continue
 				field_type_name = has_object_name(field)
 				if field_type_name:
-					if field_type_name in global_overrides:
-						attr += " "+global_overrides[field_type_name]
-					elif field["name"] in fragment_override:
-						attr += " "+fragment_override[field["name"]]
+					if field_type_name in fragment_overrides:
+						attr += " "+fragment_overrides[field_type_name]
+					elif field["name"] in attribute_override:
+						attr += " "+attribute_override[field["name"]]
 					else:
 						attr += " {"
 						#Search for the object used in the UNION. Basically the loop above, but limited to one Object
@@ -222,14 +222,14 @@ fragment TypeRef on __Type {
 							if field.get("isDeprecated"):
 								continue
 							attr += "\n\t" + objectField["name"]
-							if fragment_override.get(objectField["name"],"") == None:
+							if attribute_override.get(objectField["name"],"") == None:
 								continue
 							objectField_type_name = has_object_name(objectField)
 							if objectField_type_name:
-								if objectField_type_name in global_overrides:
-									attr += " "+global_overrides[objectField_type_name]
-								elif objectField["name"] in fragment_override:
-									attr += " "+fragment_override[objectField["name"]]
+								if objectField_type_name in fragment_overrides:
+									attr += " "+fragment_overrides[objectField_type_name]
+								elif objectField["name"] in attribute_override:
+									attr += " "+attribute_override[objectField["name"]]
 								else:
 									attr += " { ..."+objectField_type_name+" }"
 						attr += "}"
