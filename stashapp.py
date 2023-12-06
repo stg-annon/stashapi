@@ -347,7 +347,7 @@ class StashInterface(GQLWrapper):
 		variables = {'input': tag_in}
 		result = self._callGraphQL(query, variables)
 		return result["tagCreate"]
-	def find_tag(self, tag_in, create=False, on_multiple=OnMultipleMatch.RETURN_FIRST) -> dict:
+	def find_tag(self, tag_in, create=False, fragment=None, on_multiple=OnMultipleMatch.RETURN_FIRST) -> dict:
 		"""looks for tag from stash matching aliases
 
 		Args:
@@ -362,7 +362,8 @@ class StashInterface(GQLWrapper):
 		if isinstance(tag_in, int):
 			return self.__generic_find(
 				"query FindTag($id: ID!) { findTag(id: $id) { ...Tag } }",
-				tag_in
+				tag_in,
+				[r'\.\.\.Tag', fragment]
 			)
 
 		name = None
@@ -370,7 +371,7 @@ class StashInterface(GQLWrapper):
 			if tag_in.get("stored_id"):
 				try:
 					stored_id = int(tag_in["stored_id"])
-					return self.find_tag(stored_id)
+					return self.find_tag(stored_id, fragment=fragment)
 				except:
 					del tag_in["stored_id"]
 			if tag_in.get("name"):
@@ -397,11 +398,11 @@ class StashInterface(GQLWrapper):
 				return None
 			if on_multiple == OnMultipleMatch.RETURN_LIST:
 				self.log.warning(f"{warn_msg} returning all matches")
-				return [self.find_tag(t["id"]) for t in matches]
+				return [self.find_tag(int(t), fragment=fragment) for t in matches]
 			if on_multiple == OnMultipleMatch.RETURN_FIRST:
 				self.log.warning(f"{warn_msg} returning first match")
 		if len(matches) >= 1:
-			return self.find_tag(int(matches[0]))
+			return self.find_tag(int(matches[0]), fragment=fragment)
 		if create:
 			self.log.info(f"Could not find tag with {name=} creating")
 			return self.create_tag(tag_in)
