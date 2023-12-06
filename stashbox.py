@@ -62,7 +62,7 @@ class StashBoxInterface(GQLWrapper):
 		except Exception as e:
 			self.log.exit(f"Could not connect to Stash-Box at {self.url}", e)
 
-		global_overrides = {
+		fragment_overrides = {
 			"Scene": "{ id }",
 			"Studio": "{ id name }",
 			"Performer": "{ id }",
@@ -70,10 +70,10 @@ class StashBoxInterface(GQLWrapper):
 			"Tag": "{ id name }",
 			"URL": "{ type url }",
 		}
-		fragment_overrides = {
+		attribute_overrides = {
 			"Studio": { "performers": None }
 		}
-		self.fragments = self._getFragmentsIntrospection(global_overrides, fragment_overrides)
+		self.fragments = self._getFragmentsIntrospection(fragment_overrides, attribute_overrides)
 		for fragment in fragments:
 			self.parse_fragments(fragment)
 
@@ -95,7 +95,7 @@ class StashBoxInterface(GQLWrapper):
 				matches.add(tag["id"])
 		matches = list(matches)
 		if len(matches) > 1:
-			self.log.warning(f"Matched multiple tags with '{search}' {matches}")
+			self.log.warning(f"Matched multiple results with '{search}' {matches}")
 			return
 		if len(matches) == 1:
 			return matches[0]
