@@ -1671,7 +1671,7 @@ class StashInterface(GQLWrapper):
 	def scrape_scene(self, source, input):
 		if isinstance(source, str):
 			source = {"scraper_id": source}
-		if isinstance(input, str):
+		if isinstance(input, (str, int)):
 			input = {"scene_id": input}
 
 		if not isinstance(source, dict):
@@ -1695,14 +1695,14 @@ class StashInterface(GQLWrapper):
 	def scrape_gallery(self, source, input):
 		if isinstance(source, str):
 			source = {"scraper_id": source}
-		if isinstance(input, str):
+		if isinstance(input, (str, int)):
 			input = {"gallery_id": input}
 
 		if not isinstance(source, dict):
 			self.log.warning(f'Unexpected Object passed to source {type(source)}{source}\n, expecting "ScraperSourceInput" or string of scraper_id')
 			return None
 		if not isinstance(input, dict):
-			self.log.warning(f'Unexpected Object passed to input {type(input)}{input}\n, expecting "ScrapeSingleGalleryInput" or string of scene_id')
+			self.log.warning(f'Unexpected Object passed to input {type(input)}{input}\n, expecting "ScrapeSingleGalleryInput" or string of gallery_id')
 			return None
 
 		query = """query ScrapeSingleGallery($source: ScraperSourceInput!, $input: ScrapeSingleGalleryInput!) {
@@ -1716,42 +1716,30 @@ class StashInterface(GQLWrapper):
 			return None
 		else:
 			return scraped_gallery_list[0]
-	def scrape_performer(self, scraper_id:int, performer):
-		query = """query ScrapePerformer($scraper_id: ID!, $performer: ScrapedPerformerInput!) {
-			scrapePerformer(scraper_id: $scraper_id, performer: $performer) {
+	def scrape_performer(self, source, input):
+		if isinstance(source, str):
+			source = {"scraper_id": source}
+		if isinstance(input, (str, int)):
+			input = {"performer_id": input}
+
+		if not isinstance(source, dict):
+			self.log.warning(f'Unexpected Object passed to source {type(source)}{source}\n, expecting "ScraperSourceInput" or string of scraper_id')
+			return None
+		if not isinstance(input, dict):
+			self.log.warning(f'Unexpected Object passed to input {type(input)}{input}\n, expecting "ScrapeSinglePerformerInput" or string of performer_id')
+			return None
+
+		query = """query ScrapeSinglePerformer($source: ScraperSourceInput!, $input: ScrapeSinglePerformerInput!) {
+			scrapeSinglePerformer(source: $source, input: $input) {
 			  ...ScrapedPerformer
 			}
 		  }
 		"""
-		variables = {
-			"scraper_id": scraper_id,
-			"performer": {
-			"name": performer["name"],
-			"gender": None,
-			"url": performer["url"],
-			"twitter": None,
-			"instagram": None,
-			"birthdate": None,
-			"ethnicity": None,
-			"country": None,
-			"eye_color": None,
-			"height": None,
-			"measurements": None,
-			"fake_tits": None,
-			"career_length": None,
-			"tattoos": None,
-			"piercings": None,
-			"aliases": None,
-			"tags": None,
-			"image": None,
-			"details": None,
-			"death_date": None,
-			"hair_color": None,
-			"weight": None,
-		}
-		}
-		result = self._callGraphQL(query, variables)
-		return result["scrapePerformer"]
+		scraped_performer_list = self._callGraphQL(query, {"source": source, "input": input})["scrapeSinglePerformer"]
+		if len(scraped_performer_list) == 0:
+			return None
+		else:
+			return scraped_performer_list[0]
 
 	# URL Scrape
 	def scrape_scene_url(self, url):
