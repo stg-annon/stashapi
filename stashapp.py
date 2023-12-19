@@ -1691,7 +1691,7 @@ class StashInterface(GQLWrapper):
 		if len(scraped_scene_list) == 0:
 			return None
 		else:
-			return scraped_scene_list[0]
+			return scraped_scene_list
 	def scrape_gallery(self, source, input):
 		if isinstance(source, str):
 			source = {"scraper_id": source}
@@ -1715,7 +1715,7 @@ class StashInterface(GQLWrapper):
 		if len(scraped_gallery_list) == 0:
 			return None
 		else:
-			return scraped_gallery_list[0]
+			return scraped_gallery_list
 	def scrape_performer(self, source, input):
 		if isinstance(source, str):
 			source = {"scraper_id": source}
@@ -1739,7 +1739,7 @@ class StashInterface(GQLWrapper):
 		if len(scraped_performer_list) == 0:
 			return None
 		else:
-			return scraped_performer_list[0]
+			return scraped_performer_list
 
 	# URL Scrape
 	def scrape_scene_url(self, url):
