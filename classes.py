@@ -175,7 +175,7 @@ fragment TypeRef on __Type {
 			type_name = type["name"]
 			attribute_override = attribute_overrides.get(type_name, {})
 
-			fragment = "fragment "+type_name+" on "+type_name+" {"
+			fragment = "{"
 			for field in type['fields']:
 				if field.get("isDeprecated"):
 					continue
@@ -201,42 +201,16 @@ fragment TypeRef on __Type {
 			if not type["possibleTypes"]:
 				continue
 			type_name = type["name"]
-			fragment = f"fragment {type_name} on {type_name} "+"{"
+			fragment = "{"
 			for field in type['possibleTypes']:
 				if field.get("isDeprecated"):
 					continue
-				attr = "... on " + field["name"]
-				if attribute_override.get(field["name"],"") == None:
-					continue
-				field_type_name = has_object_name(field)
-				if field_type_name:
-					if field_type_name in fragment_overrides:
-						attr += " "+fragment_overrides[field_type_name]
-					elif field["name"] in attribute_override:
-						attr += " "+attribute_override[field["name"]]
-					else:
-						attr += " {"
-						#Search for the object used in the UNION. Basically the loop above, but limited to one Object
-						objectType = [x for x in stash_types if x["kind"] == "OBJECT" and x["fields"] and x["name"] == field_type_name][0]
-						for objectField in objectType["fields"]:
-							if field.get("isDeprecated"):
-								continue
-							attr += "\n\t" + objectField["name"]
-							if attribute_override.get(objectField["name"],"") == None:
-								continue
-							objectField_type_name = has_object_name(objectField)
-							if objectField_type_name:
-								if objectField_type_name in fragment_overrides:
-									attr += " "+fragment_overrides[objectField_type_name]
-								elif objectField["name"] in attribute_override:
-									attr += " "+attribute_override[objectField["name"]]
-								else:
-									attr += " { ..."+objectField_type_name+" }"
-						attr += "}"
-				fragment += f"\n\t{attr}"
+				fragment += f'\n\t...{field["name"]}'
 			fragment += "\n}"
 			fragments[type_name] = fragment
 
+		for type_name, fragment in fragments.items():
+			fragments[type_name] = f"fragment {type_name} on {type_name} {fragment}"
 		return fragments
 
 	def _callGraphQL(self, query, variables={}):
