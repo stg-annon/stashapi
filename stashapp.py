@@ -68,6 +68,7 @@ class StashInterface(GQLWrapper):
 			"Performer": "{ id }",
 			"Image": "{ id }",
 			"Gallery": "{ id }",
+			"VisualFile": "{...VideoFile ...ImageFile}"
 		}
 		attribute_overrides = {
 			"ScrapedStudio": {"parent": "{ stored_id }"},
