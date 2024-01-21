@@ -602,11 +602,11 @@ class StashInterface(GQLWrapper):
 				return None
 			if on_multiple == OnMultipleMatch.RETURN_LIST:
 				self.log.warning(f"{warn_msg} returning all matches")
-				return [self.find_performer(p["id"]) for p in performer_matches]
+				return [self.find_performer(p["id"], fragment=fragment) for p in performer_matches]
 			if on_multiple == OnMultipleMatch.RETURN_FIRST:
 				self.log.warning(f"{warn_msg} returning first match")
 		if len(performer_matches) > 0:
-			return self.find_performer(performer_matches[0]["id"])
+			return self.find_performer(performer_matches[0]["id"], fragment=fragment)
 
 		if create:
 			self.log.info(f'Create missing performer: "{performer["name"]}"')
