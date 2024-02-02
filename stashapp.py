@@ -263,7 +263,23 @@ class StashInterface(GQLWrapper):
 		result = self._callGraphQL(query, {"input": clean_metadata_input})
 		return result
 
+	def file_set_fingerprints(self, file_id, fingerprints:[]):
+		if not file_id:
+			return
 
+		query = """
+		mutation FileSetFingerprints($input: FileSetFingerprintsInput!) {
+			fileSetFingerprints(input: $input)
+		}
+		"""
+		variables = {
+			"input": {
+			   "id": file_id,
+			   "fingerprints": fingerprints
+			}
+		}
+		result = self._callGraphQL(query, variables)
+		return result["fileSetFingerprints"]
 	def destroy_files(self, file_ids:list=[]):
 		if not file_ids:
 			return
@@ -429,15 +445,15 @@ class StashInterface(GQLWrapper):
 				matches.add(tag["id"])
 		matches = list(matches)
 		if len(matches) > 1:
-			warn_msg = f"Matched multiple tags with {name=} {matches}"
+			msg = f"Matched multiple tags with {name=} {matches}"
 			if on_multiple == OnMultipleMatch.RETURN_NONE:
-				self.log.warning(f"{warn_msg} returning None")
+				self.log.debug(f"{msg} returning None")
 				return None
 			if on_multiple == OnMultipleMatch.RETURN_LIST:
-				self.log.warning(f"{warn_msg} returning all matches")
+				self.log.debug(f"{msg} returning all matches")
 				return [self.find_tag(int(t), fragment=fragment) for t in matches]
 			if on_multiple == OnMultipleMatch.RETURN_FIRST:
-				self.log.warning(f"{warn_msg} returning first match")
+				self.log.debug(f"{msg} returning first match")
 		if len(matches) >= 1:
 			return self.find_tag(int(matches[0]), fragment=fragment)
 		if create:
