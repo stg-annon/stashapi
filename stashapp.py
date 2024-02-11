@@ -1563,6 +1563,31 @@ class StashInterface(GQLWrapper):
 
 		variables = { "scene_id": scene_id }
 		return self._callGraphQL(query, variables)["findScene"]["scene_markers"]
+	def find_scene_markers_filter(self, scene_marker_filter, fragment=None) -> list:
+		""" Finds markers matching a SceneMarkerFilterType dict, as find_scene_markers() only takes a scene ID.
+		This is useful for finding a list of markers that use a specifc tag.
+
+		Args:
+			 scene_marker_filter (SceneMarkerFilterType, optional)
+			 	See https://github.com/stashapp/stash/blob/develop/pkg/models/scene_marker.go for details on SceneMarkerFilterType
+
+		Returns:
+			dict: containing markers matching the filter
+		"""
+		query = """
+			query findSceneMarkers($scene_marker_filter: SceneMarkerFilterType, $filter: FindFilterType) {
+				findSceneMarkers(scene_marker_filter: $scene_marker_filter, filter: $filter) {
+					scene_markers {
+						...SceneMarker
+					}
+				}
+			}
+		"""
+		if fragment:
+			query = re.sub(r'\.\.\.SceneMarker', fragment, query)
+
+		variables = { "scene_marker_filter": scene_marker_filter }
+		return self._callGraphQL(query, variables)["findSceneMarkers"]["scene_markers"]
 	def create_scene_marker(self, marker_create_input:dict, fragment=None):
 		query = """
 			mutation SceneMarkerCreate($marker_input: SceneMarkerCreateInput!) {
