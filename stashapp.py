@@ -560,8 +560,8 @@ class StashInterface(GQLWrapper):
 	def map_tag_ids(self, tags_input, create=False):
 		tag_ids = []
 		for tag_input in tags_input:
-			if tag_id := self.find_tag(tag_input, create=create, on_multiple=OnMultipleMatch.RETURN_NONE):
-				tag_ids.append(tag_id)
+			if tag := self.find_tag(tag_input, create=create, on_multiple=OnMultipleMatch.RETURN_NONE):
+				tag_ids.append(tag["id"])
 		return tag_ids
 
 	# Performer CRUD
