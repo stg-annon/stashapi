@@ -1549,7 +1549,14 @@ class StashInterface(GQLWrapper):
 
 	# Markers CRUD
 	def get_scene_markers(self, scene_id, fragment=None) -> list:
-		"""Gets markers matching a scene_id."""
+		""" returns a list of markers for a particular Scene given the scene_id
+		
+		Args:
+			scene_id: the stash ID of the scene to get markers for
+		
+		Returns:
+			list: list of marker objects from stash
+		"""
 		query = """
 			query FindSceneMarkers($scene_id: ID) {
 				findScene(id: $scene_id) {
@@ -1627,15 +1634,15 @@ class StashInterface(GQLWrapper):
 
 	# BULK Markers
 	def destroy_scene_markers(self, scene_id:int):
-		scene_markers = self.find_scene_markers(scene_id, fragment="id")
+		scene_markers = self.get_scene_markers(scene_id, fragment="id")
 		for marker in scene_markers:
 			self.destroy_scene_marker(marker["id"])
 	def merge_scene_markers(self, target_scene_id: int, source_scene_ids: list):
-		existing_marker_timestamps = [marker["seconds"] for marker in self.find_scene_markers(target_scene_id)]
+		existing_marker_timestamps = [marker["seconds"] for marker in self.get_scene_markers(target_scene_id)]
 
 		markers_to_merge = []
 		for source_scene_id in source_scene_ids:
-			markers_to_merge.extend(self.find_scene_markers(source_scene_id))
+			markers_to_merge.extend(self.get_scene_markers(source_scene_id))
 
 		created_markers = []
 		for marker in markers_to_merge:
