@@ -1548,7 +1548,15 @@ class StashInterface(GQLWrapper):
 		return self._callGraphQL(query, {"merge_input":merge_input})["sceneMerge"]
 
 	# Markers CRUD
-	def find_scene_markers(self, scene_id, fragment=None) -> list:
+	def get_scene_markers(self, scene_id, fragment=None) -> list:
+		""" returns a list of markers for a particular Scene given the scene_id
+		
+		Args:
+			scene_id: the stash ID of the scene to get markers for
+		
+		Returns:
+			list: list of marker objects from stash
+		"""
 		query = """
 			query FindSceneMarkers($scene_id: ID) {
 				findScene(id: $scene_id) {
@@ -1563,6 +1571,37 @@ class StashInterface(GQLWrapper):
 
 		variables = { "scene_id": scene_id }
 		return self._callGraphQL(query, variables)["findScene"]["scene_markers"]
+	def find_scene_markers(self, scene_marker_filter, fragment=None) -> list:
+		"""Finds markers matching a SceneMarkerFilterType dict, as get_scene_markers() only takes a scene_id.
+		This is useful for finding a list of markers that use a specifc tag.
+
+		Args:
+			 scene_marker_filter (SceneMarkerFilterType, optional)
+			 	See https://github.com/stashapp/stash/blob/develop/pkg/models/scene_marker.go for details on SceneMarkerFilterType
+
+		Returns:
+			dict: containing markers matching the filter
+		"""
+
+		# Catch legacy find_scene_markers() calls and redirect to get_scene_markers().
+		if not isinstance(scene_marker_filter, dict):
+			self.log.warning("find_scene_markers() no longer accepts scene_id, use get_scene_markers() instead")
+			return self.get_scene_markers(scene_marker_filter)
+
+		query = """
+			query findSceneMarkers($scene_marker_filter: SceneMarkerFilterType, $filter: FindFilterType) {
+				findSceneMarkers(scene_marker_filter: $scene_marker_filter, filter: $filter) {
+					scene_markers {
+						...SceneMarker
+					}
+				}
+			}
+		"""
+		if fragment:
+			query = re.sub(r'\.\.\.SceneMarker', fragment, query)
+
+		variables = { "scene_marker_filter": scene_marker_filter }
+		return self._callGraphQL(query, variables)["findSceneMarkers"]["scene_markers"]
 	def create_scene_marker(self, marker_create_input:dict, fragment=None):
 		query = """
 			mutation SceneMarkerCreate($marker_input: SceneMarkerCreateInput!) {
@@ -1595,15 +1634,15 @@ class StashInterface(GQLWrapper):
 
 	# BULK Markers
 	def destroy_scene_markers(self, scene_id:int):
-		scene_markers = self.find_scene_markers(scene_id, fragment="id")
+		scene_markers = self.get_scene_markers(scene_id, fragment="id")
 		for marker in scene_markers:
 			self.destroy_scene_marker(marker["id"])
 	def merge_scene_markers(self, target_scene_id: int, source_scene_ids: list):
-		existing_marker_timestamps = [marker["seconds"] for marker in self.find_scene_markers(target_scene_id)]
+		existing_marker_timestamps = [marker["seconds"] for marker in self.get_scene_markers(target_scene_id)]
 
 		markers_to_merge = []
 		for source_scene_id in source_scene_ids:
-			markers_to_merge.extend(self.find_scene_markers(source_scene_id))
+			markers_to_merge.extend(self.get_scene_markers(source_scene_id))
 
 		created_markers = []
 		for marker in markers_to_merge:

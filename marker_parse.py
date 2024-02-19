@@ -135,7 +135,7 @@ def import_scene_markers(stash:StashInterface, scraped_markers, stash_scene_id, 
 	"""
 
 	mapped_markers = [Marker.from_scrape(m, stash_scene_id, stash) for m in scraped_markers]
-	stash_markers = [Marker.from_gql(m) for m in stash.find_scene_markers(stash_scene_id, fragment=SCENE_MARKER_FRAGMENT)]    
+	stash_markers = [Marker.from_gql(m) for m in stash.get_scene_markers(stash_scene_id, fragment=SCENE_MARKER_FRAGMENT)]    
 
 	# merges scraped markers within distance of each other into one marker 
 	mapped_markers = merge_markers(mapped_markers, closest_allowed_common_marker)
