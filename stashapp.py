@@ -1548,7 +1548,8 @@ class StashInterface(GQLWrapper):
 		return self._callGraphQL(query, {"merge_input":merge_input})["sceneMerge"]
 
 	# Markers CRUD
-	def find_scene_markers(self, scene_id, fragment=None) -> list:
+	def get_scene_markers(self, scene_id, fragment=None) -> list:
+		"""Gets markers matching a scene_id."""
 		query = """
 			query FindSceneMarkers($scene_id: ID) {
 				findScene(id: $scene_id) {
@@ -1563,8 +1564,8 @@ class StashInterface(GQLWrapper):
 
 		variables = { "scene_id": scene_id }
 		return self._callGraphQL(query, variables)["findScene"]["scene_markers"]
-	def find_scene_markers_filter(self, scene_marker_filter, fragment=None) -> list:
-		""" Finds markers matching a SceneMarkerFilterType dict, as find_scene_markers() only takes a scene ID.
+	def find_scene_markers(self, scene_marker_filter, fragment=None) -> list:
+		"""Finds markers matching a SceneMarkerFilterType dict, as get_scene_markers() only takes a scene_id.
 		This is useful for finding a list of markers that use a specifc tag.
 
 		Args:
@@ -1574,6 +1575,12 @@ class StashInterface(GQLWrapper):
 		Returns:
 			dict: containing markers matching the filter
 		"""
+
+		# Catch legacy find_scene_markers() calls and redirect to get_scene_markers().
+		if not isinstance(scene_marker_filter, dict):
+			self.log.warning("find_scene_markers() no longer accepts scene_id, use get_scene_markers() instead")
+			return self.get_scene_markers(scene_marker_filter)
+
 		query = """
 			query findSceneMarkers($scene_marker_filter: SceneMarkerFilterType, $filter: FindFilterType) {
 				findSceneMarkers(scene_marker_filter: $scene_marker_filter, filter: $filter) {
