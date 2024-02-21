@@ -9,26 +9,79 @@
 # messages.
 
 import re, sys, json
-
 from enum import Enum
+
+import logging
+from functools import partial, partialmethod
+
+logging.TRACE = 5  # low order python logging level
+logging.addLevelName(logging.TRACE, "TRACE")
+logging.Logger.trace = partialmethod(logging.Logger.log, logging.TRACE)
+logging.trace = partial(logging.log, logging.TRACE)
+
+logging.PROGRESS = 50 # high order python logging level
+logging.addLevelName(logging.PROGRESS, "PROGRESS")
+logging.Logger.progress = partialmethod(logging.Logger.log, logging.PROGRESS)
+logging.progress = partial(logging.log, logging.PROGRESS)
+
+STASH_LOG_LEVEL_MAP = {
+	logging.TRACE:   "t",
+	logging.DEBUG:   "d",
+	logging.INFO:    "i",
+	logging.WARNING: "w",
+	logging.ERROR:   "e",
+	logging.PROGRESS:"p",
+}
+
 class StashLogLevel(Enum):
-	DEFAULT     = 0
+	NOTSET      = 0
 	TRACE       = 1
 	DEBUG       = 2
 	INFO        = 3
 	WARNING     = 4
 	ERROR       = 5
-	DISABLED    = 6
+	PROGRESS    = 6
+	DISABLED    = 500
 	def __lt__(self, other):
 		return self.value < other.value
-# level can be set to disable lower level logs
-LEVEL = StashLogLevel.DEFAULT
-# disables logging progress bar, indented for use when running in console to avoid spam
-DISABLE_PROGRESS = False
+# Regex to replace data blobs from logging
+DATA_BLOB_REGEX = re.compile(r"[\'|\"]data:.+/.*;base64,(?P<content>.*?)[\'|\"]")
+# Max size of golang buf - level bytes and newline
+LOG_PAYLOAD_MAX_SZ = (64 * 1024) - 4  
+
+def truncate_base64_replacement(match_group):
+	return match_group.group(0).replace(
+		match_group.group(1), f"<BASE64_DATA({len(match_group.group(1))})>"
+	)
+
+class StashLogHandler(logging.Handler):
+	"""Python std logging handler that outputs to stash log over stderr
+	LOG_LEVEL = os.getenv('LOG_LEVEL', 'DEBUG')
+	logging.basicConfig(format="%(name)s| %(message)s", handlers=[StashLogHandler()], level=LOG_LEVEL)
+	"""
+
+	def __init__(self, stream=sys.stderr) -> None:
+		self.stream = stream
+		super().__init__()
+
+	def emit(self, record) -> None:
+		if self.stream != sys.stderr and record.levelno == logging.PROGRESS:
+			return
+		msg = self.format(record)
+		msg = DATA_BLOB_REGEX.sub(truncate_base64_replacement, msg)
+		for line in msg.split("\n"):
+			self.stream.write(f"\x01{STASH_LOG_LEVEL_MAP.get(record.levelno, 0)}\x02{line[:LOG_PAYLOAD_MAX_SZ]}\n")
+			self.stream.flush()
 
 class StashLogger:
 
-	def __init__(self, log_level:StashLogLevel=StashLogLevel.DEFAULT, disable_progress_bar:bool=False) -> None:
+	def __init__(self, log_level:StashLogLevel=StashLogLevel.INFO,disable_progress_bar:bool=False) -> None:
+		""" creates instance of StashLogger
+
+		Args:
+			log_level (StashLogLevel, optional): log level setting. Defaults to StashLogLevel.INFO.
+			disable_progress_bar (bool, optional): disables logging progress bar, indented for use when running in console to avoid spam. Defaults to False.
+		"""		
 
 		self.DISABLE_PROGRESS = disable_progress_bar
 		self.LEVEL = log_level
@@ -46,10 +99,10 @@ class StashLogger:
 			s = str(s)
 
 		# truncate any base64 data before logging
-		s = re.sub(r'data:image.+?;base64(.+?(["\']))','<b64img>\g<2>',str(s))
+		s = DATA_BLOB_REGEX.sub(truncate_base64_replacement, s)
 
 		for line in s.split("\n"):
-			print(level_char, line, file=sys.stderr, flush=True)
+			print(level_char, line[:LOG_PAYLOAD_MAX_SZ], file=sys.stderr, flush=True)
 
 	def trace(self, s):
 		if StashLogLevel.TRACE < self.LEVEL:
@@ -77,9 +130,7 @@ class StashLogger:
 		self.__log(b'e', s)
 
 	def progress(self, p):
-		if self.DISABLE_PROGRESS:
-			return
-		if self.LEVEL == StashLogLevel.DISABLED:
+		if self.DISABLE_PROGRESS or self.LEVEL == StashLogLevel.DISABLED:
 			return
 		progress = min(max(0, p), 1)
 		self.__log(b'p', str(progress))
@@ -101,71 +152,21 @@ class StashLogger:
 			print("null")
 		sys.exit()
 
-
-def __log(level_char: bytes, s):
-	if not level_char:
-		return
-	level_char = f"\x01{level_char.decode()}\x02"
-
-	# convert dicts to json string
-	if isinstance(s, dict):
-		s = json.dumps(s)
-	# attempt to cast any non string value to a string
-	if not isinstance(s, str):
-		s = str(s)
-
-	# truncate any base64 data before logging
-	s = re.sub(r'data:image.+?;base64(.+?(["\']))','<b64img>\g<2>',str(s))
-
-	for line in s.split("\n"):
-		print(level_char, line, file=sys.stderr, flush=True)
-
+# module import backwards compatibility i.e. (import stashapi.log as log) 
+sl = StashLogger(log_level=StashLogLevel.NOTSET)
 def trace(s):
-	if StashLogLevel.TRACE < LEVEL:
-		return
-	__log(b't', s)
-
+	sl.trace(s)
 def debug(s):
-	if StashLogLevel.DEBUG < LEVEL:
-		return
-	__log(b'd', s)
-
+	sl.debug(s)
 def info(s):
-	if StashLogLevel.INFO < LEVEL:
-		return
-	__log(b'i', s)
-
+	sl.info(s)
 def warning(s):
-	if StashLogLevel.WARNING < LEVEL:
-		return
-	__log(b'w', s)
-
+	sl.warning(s)
 def error(s):
-	if StashLogLevel.ERROR < LEVEL:
-		return
-	__log(b'e', s)
-
+	sl.error(s)
 def progress(p):
-	if DISABLE_PROGRESS:
-		return
-	if StashLogLevel.DISABLED == LEVEL:
-		return
-	progress = min(max(0, p), 1)
-	__log(b'p', str(progress))
-
+	sl.progress(p)
 def exit(msg=None, err=None):
-	if msg is None and err is None:
-		msg = "ok"
-	print(json.dumps({
-		"output": msg,
-		"error": err
-	}))
-	sys.exit()
-	
+	sl.exit(msg,err)
 def result(data=None):
-	"""used to return data to stash from a scraper"""
-	if data:
-		print(json.dumps(data))
-	else:
-		print("null")
-	sys.exit()
+	sl.result(data)
