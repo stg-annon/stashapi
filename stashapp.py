@@ -210,11 +210,29 @@ class StashInterface(GQLWrapper):
 		return result["findJob"]
 	
 	def wait_for_job(self, job_id, status="FINISHED", period=1.5, timeout=120):
+		"""Waits for stash job to match desired status
+
+		Args:
+			job_id (ID): the ID of the job to wait for
+			status (str, optional): Desired status to wait for. Defaults to "FINISHED".
+			period (float, optional): Interval between checks for job status. Defaults to 1.5.
+			timeout (int, optional): time in seconds that if exceeded raises Exception. Defaults to 120.
+
+		Raises:
+			Exception: timeout raised if wait task takes longer than timeout
+
+		Returns:
+			bool: 
+				True: job stats is desired status
+				False: job finished or was cancelled without matching desired status
+				None: job could not be found
+		"""		
 		timeout_value = time.time() + timeout
 		while time.time() < timeout_value:
 			job = self.find_job(job_id)
 			if not job:
-				return False
+				return None
+			self.log.debug(f'Waiting for Job:{job_id} Status:{job["status"]} Progress:{job.get("progress",0.0):.1f}')
 			if job["status"] == status:
 				return True
 			if job["status"] in ["FINISHED", "CANCELLED"]:
