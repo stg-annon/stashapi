@@ -40,8 +40,8 @@ class StashBoxInterface(GQLWrapper):
 		if not self.url:
 			raise Exception("REQUIRED key 'endpoint' not provided in connection dict")
 
-		if "metadataapi.net" in self.url:
-			self.log.warning("metadataapi.net is not an actual Stash-Box instance, use their API (https://api.metadataapi.net/docs/)")
+		if "theporndb.net" in self.url:
+			self.log.warning("theporndb.net is not an actual Stash-Box instance, use their API (https://api.theporndb.net/docs/)")
 			raise Exception("Not stash-box endpoint")
 
 		stash = conn.get("stash")
