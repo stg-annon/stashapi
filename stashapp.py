@@ -772,6 +772,14 @@ class StashInterface(GQLWrapper):
 					performer_update[d_attr] = source[d_attr]
 		performer_update["alias_list"] = [a for a in performer_update["alias_list"] if a != performer_update["name"]]
 		
+		# Fix for case-insensitive alias conflict
+		alias_map_lowercase = {}
+		for alias in performer_update["alias_list"]:
+			if alias.lower() in alias_map_lowercase:
+				continue
+			alias_map_lowercase[alias.lower()] = alias
+		performer_update["alias_list"] = list(alias_map_lowercase.values())
+
 		self.update_performer(performer_update)
 
 		source_ids = [p["id"] for p in sources]
