@@ -757,7 +757,7 @@ class StashInterface(GQLWrapper):
 					continue
 				if d_attr == "stash_ids":
 					existing_ids = [id["stash_id"] for id in performer_update["stash_ids"]]
-					performer_update["stash_ids"].extend([id for id in performer_update["stash_ids"] if id["stash_id"] not in existing_ids])
+					performer_update["stash_ids"].extend([id for id in source["stash_ids"] if id["stash_id"] not in existing_ids])
 					continue
 				if d_attr == "tags":
 					performer_update["tag_ids"].extend([t["id"] for t in source["tags"]])
