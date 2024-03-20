@@ -1445,6 +1445,36 @@ class StashInterface(GQLWrapper):
 
 		result = self._callGraphQL(query, variables)
 		return result['findSceneByHash']
+	def find_scenes_by_hash(self, hash_type:str, value:str, fragment:str=None) -> list:
+		"""returns a list of Scenes that have a file matching a given hash
+
+		Args:
+			hash_type (str): type of hash (md5, oshash, phash, ...)
+			value (str): hash value
+			fragment (str, optional): desired GQL Scene fragment to be returned for each scene. Defaults to None.
+
+		Returns:
+			list: list of scene objects matching given hash
+		"""		
+
+		query="""
+		SELECT 
+			scene_id
+		FROM 
+			files_fingerprints
+		INNER JOIN scenes_files USING(file_id)
+		WHERE type = ?"""
+
+		if hash_type == "phash":
+			query += " AND printf('%x', fingerprint) = ?;"
+		else:
+			query += " AND fingerprint = ?;" 
+
+		scene_ids = self.sql_query(query, [hash_type, value]).get("rows")
+		if len(scene_ids) > 0:
+			scene_ids = scene_ids[0]
+
+		return [ self.find_scene(sid, fragment=fragment) for sid in scene_ids ]
 	def update_scene(self, update_input:dict, create=False):
 		query = """
 			mutation sceneUpdate($input:SceneUpdateInput!) {
