@@ -754,8 +754,6 @@ class StashInterface(GQLWrapper):
 				if d_attr in use_longest_string:
 					performer_update[d_attr] = pick_string(performer_update[d_attr], source[d_attr])
 					continue
-				if d_attr == "disambiguation":
-					performer_update[d_attr] += f', {source["disambiguation"]}'
 				if d_attr == "stash_ids":
 					existing_ids = [id["stash_id"] for id in performer_update["stash_ids"]]
 					performer_update["stash_ids"].extend([id for id in source["stash_ids"] if id["stash_id"] not in existing_ids])
@@ -774,6 +772,11 @@ class StashInterface(GQLWrapper):
 					continue
 				if not performer_update[d_attr] and d_attr in source and source[d_attr]:
 					performer_update[d_attr] = source[d_attr]
+
+		# merge all values of disambiguation
+		disambiguation_list = [performer_update["disambiguation"]]
+		disambiguation_list.extend([s["disambiguation"] for s in sources])
+		performer_update["disambiguation"] = ", ".join([d for d in disambiguation_list if d])
 
 		# remove 'name' from alias_list to avoid GQL error on update
 		performer_update["alias_list"] = [a for a in performer_update["alias_list"] if a != performer_update["name"]]
