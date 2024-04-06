@@ -74,7 +74,7 @@ class StashBoxInterface(GQLWrapper):
 		attribute_overrides = {
 			"Studio": { "performers": None }
 		}
-		self.fragments = self._getFragmentsIntrospection(fragment_overrides, attribute_overrides)
+		self.fragments = self._get_fragments_introspection(fragment_overrides, attribute_overrides)
 		for fragment in fragments:
 			self.parse_fragments(fragment)
 

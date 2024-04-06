@@ -42,7 +42,7 @@ class GQLWrapper:
 		self.fragments.update(fragments)
 		return fragments
 
-	def __resolveFragments(self, query):
+	def __resolve_fragments(self, query):
 		fragmentReferences = list(set(re.findall(r'(?<=\.\.\.)\w+', query)))
 		fragments = []
 		for ref in fragmentReferences:
@@ -58,9 +58,9 @@ class GQLWrapper:
 				if fragment not in self.fragments:
 					raise Exception(f'StashAPI error: fragment "{fragment}" not defined')
 				query += f"\n{self.fragments[fragment]}"
-			return self.__resolveFragments(query)
+			return self.__resolve_fragments(query)
 
-	def _getFragmentsIntrospection(self, fragment_overrides, attribute_overrides={}):
+	def _get_fragments_introspection(self, fragment_overrides, attribute_overrides={}):
 		"""Automatically generates fragments for GQL endpoint via introspection
 
 		Args:
@@ -155,7 +155,7 @@ fragment TypeRef on __Type {
   }
 }"""
 
-		stash_schema = self._callGraphQL(query)
+		stash_schema = self._GQL(query)
 		stash_types = stash_schema.get('__schema',{}).get('types',[])
 
 		def has_object_name(type):
@@ -213,29 +213,24 @@ fragment TypeRef on __Type {
 			fragments[type_name] = f"fragment {type_name} on {type_name} {fragment}"
 		return fragments
 
-	def _callGraphQL(self, query, variables={}):
+	def _GQL(self, query, variables={}):
 
-		query = self.__resolveFragments(query)
+		query = self.__resolve_fragments(query)
 
 		json_request = {'query': query}
 		if variables:
 			serialize_dict(variables)
 			json_request['variables'] = variables
 
-		# recursive call no longer needed as -1 has been fixed in stash
-		# per_page = variables.get("filter",{}).get("per_page",None)		
-		# if per_page == -1:
-		# 	return self._callGraphQLRecursive(query, variables)
-
 		response = requests.post(self.url, json=json_request, headers=self.headers, cookies=self.cookies, verify=self.verify_ssl)
 		
 		try:
-			return self._handleGQLResponse(response)
+			return self._handle_GQL_response(response)
 		except:
 			self.log.debug(f"{rm_query_whitespace(query)}\nVariables: {variables}")
 			raise
 
-	def _handleGQLResponse(self, response):
+	def _handle_GQL_response(self, response):
 		try:
 			content = response.json()
 		except ValueError:
@@ -278,36 +273,10 @@ fragment TypeRef on __Type {
 		self.log.error(error_msg)
 		raise Exception(error_msg)
 
-	def _callGraphQLRecursive(self, query, variables, pages=-1):
-
-		PER_PAGE = 1000 # set to max allowable
-
-		page = variables.get("filter",{}).get("page",1)
-
-		variables["filter"]["page"] = page
-		variables["filter"]["per_page"] = PER_PAGE
-
-		r = self._callGraphQL(query, variables)
-
-		queryType = list(r.keys())[0]
-		itemType = list(r[queryType].keys())[1]
-
-		if pages == -1:
-			pages = math.ceil(r[queryType]["count"] / PER_PAGE)
-
-		self.log.debug(f'received page {page}/{pages} for {queryType} query, {r[queryType]["count"]} {itemType} results')
-
-		if page < pages:
-			variables["filter"]["page"] = page + 1 
-			next_page = self._callGraphQLRecursive(query, variables, pages)
-			r[queryType][itemType].extend(next_page[queryType][itemType])
-
-		return r
-
 	def callGQL(self, query, variables={}):
-		return self._callGraphQL(query, variables)
-	def call_gql(self, query, variables={}):
-		return self._callGraphQL(query, variables)
+		return self._GQL(query, variables)
+	def _callGraphQL(self, query, variables={}):
+		return self._GQL(query, variables)
 
 class StashVersion:
 
