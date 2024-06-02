@@ -42,7 +42,6 @@ class StashBoxInterface(GQLWrapper):
 
 		if "theporndb.net" in self.url:
 			self.log.warning("theporndb.net is not an actual Stash-Box instance, use their API (https://api.theporndb.net/docs/)")
-			raise Exception("Not stash-box endpoint")
 
 		stash = conn.get("stash")
 		if stash:
