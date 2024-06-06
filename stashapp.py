@@ -62,6 +62,13 @@ class StashInterface(GQLWrapper):
 
 		self.log.debug(f'Using stash ({self.version}) endpoint at {self.url}')
 
+		# grab API key to persist connection past session cookie duration
+		api_key = self.call_GQL("query getApiKey{ configuration { general { apiKey } } }")["configuration"]["general"]["apiKey"]
+		if api_key:
+			self.log.debug("Persisting Connection to Stash with ApiKey...")
+			self.headers["ApiKey"] = api_key
+			self.cookies = {}
+
 		fragment_overrides = {
 			"Scene": "{ id }",
 			"Studio": "{ id }",
