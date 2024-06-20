@@ -19,17 +19,9 @@ class StashboxTarget(Enum):
 class StashBoxInterface(GQLWrapper):
 	port = None
 	url = None
-	headers = {
-		"Accept-Encoding": "gzip, deflate",
-		"Content-Type": "application/json",
-		"Accept": "application/json",
-		"Connection": "keep-alive",
-		"DNT": "1"
-	}
-	cookies = {}
 
 	def __init__(self, conn={}, fragments:list[str]=[]):
-
+		super().__init__()
 		conn = CaseInsensitiveDict(conn)
 		
 		self.log = conn.get("Logger", StashLogger())
@@ -43,18 +35,16 @@ class StashBoxInterface(GQLWrapper):
 		if "theporndb.net" in self.url:
 			self.log.warning("theporndb.net is not an actual Stash-Box instance, use their API (https://api.theporndb.net/docs/)")
 
-		stash = conn.get("stash")
-		if stash:
-			c = stash.get_stashbox_connection(self.url)	
-			api_key = c.get("api_key")
+		if stash := conn.get("stash"):
+			api_key = stash.get_stashbox_connection(self.url).get("api_key", None)
 			if not api_key:
 				raise Exception(f"Could not find api_key for '{self.url}' with provided stash connection")
 		else:
-			api_key = conn.get('api_key', None)
+			api_key = conn.get("api_key", None)
 			if not api_key:
 				raise Exception(f"REQUIRED key 'api_key' not provided in connection dict ({conn})")
 
-		self.headers['ApiKey'] = api_key
+		self.s.headers.update({"ApiKey":api_key})
 		try:
 			# test query to check connection
 			r = self._callGraphQL("query Me{me {name email}}")
@@ -182,10 +172,7 @@ class StashBoxInterface(GQLWrapper):
 			'1': ('1.jpg', base64.decodebytes(b64bytes), mime)
 		})
 
-		request_headers = self.headers.copy()
-		request_headers.update({"Content-Type":multipart_header})
-		
-		response = requests.post(self.url, data=body, headers=request_headers, cookies=self.cookies)
+		response = self.s.post(self.url, data=body, headers={"Content-Type":multipart_header})
 		return self._handleGQLResponse(response)["imageCreate"]
 
 	def pending_edits_count(self, stash_id, target_type):

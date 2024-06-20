@@ -6,19 +6,18 @@ from .stash_types import StashEnum
 class GQLWrapper:
 	port = ""
 	url = ""
-	headers = {
-		"Accept-Encoding": "gzip, deflate",
-		"Content-Type": "application/json",
-		"Accept": "application/json",
-		"Connection": "keep-alive",
-		"DNT": "1"
-	}
-	cookies = {}
 	version = None
-	verify_ssl = True
 
 	def __init__(self):
-		return
+		self.s = requests.session()
+		self.s.headers.update({
+			"Accept-Encoding": "gzip, deflate",
+			"Content-Type": "application/json",
+			"Accept": "application/json",
+			"Connection": "keep-alive",
+			"DNT": "1"
+		})
+		self.s.verify = True
 
 	def parse_fragments(self, fragments_in):
 		fragments = {}
@@ -222,7 +221,7 @@ fragment TypeRef on __Type {
 			serialize_dict(variables)
 			json_request['variables'] = variables
 
-		response = requests.post(self.url, json=json_request, headers=self.headers, cookies=self.cookies, verify=self.verify_ssl)
+		response = self.s.post(self.url, json=json_request)
 		
 		try:
 			return self._handle_GQL_response(response)

@@ -15,27 +15,12 @@ from .classes import StashVersion
 class StashInterface(GQLWrapper):
 	port = ""
 	url = ""
-	headers = {
-		"Accept-Encoding": "gzip, deflate",
-		"Content-Type": "application/json",
-		"Accept": "application/json",
-		"Connection": "keep-alive",
-		"DNT": "1"
-	}
-	cookies = {}
 
 	def __init__(self, conn:dict={}, fragments:list[str]=[]):
+		super().__init__()
 		conn = CaseInsensitiveDict(conn)
 
 		self.log = conn.get("Logger", StashLogger())
-
-		if conn.get("ApiKey"):
-			self.headers["ApiKey"] = conn["ApiKey"]
-
-		# Session cookie for authentication
-		self.cookies = {}
-		if conn.get("SessionCookie"):
-			self.cookies['session'] = conn['SessionCookie']['Value']
 
 		scheme = conn.get('Scheme', 'http')
 		if conn.get('Domain'):
@@ -52,6 +37,13 @@ class StashInterface(GQLWrapper):
 		# Stash GraphQL endpoint
 		self.url = f'{scheme}://{host}:{self.port}/graphql'
 
+		# ApiKey authentication
+		if conn.get("ApiKey"):
+			self.s.headers.update({"ApiKey":conn["ApiKey"]})
+		# Session cookie for authentication
+		if conn.get("SessionCookie"):
+			self.s.cookies.update({"session":conn['SessionCookie']['Value']})
+
 		try:
 			# test query to ensure good connection
 			self.version = self.stash_version()
@@ -63,11 +55,10 @@ class StashInterface(GQLWrapper):
 		self.log.debug(f'Using stash ({self.version}) endpoint at {self.url}')
 
 		# grab API key to persist connection past session cookie duration
-		api_key = self.call_GQL("query getApiKey{ configuration { general { apiKey } } }")["configuration"]["general"]["apiKey"]
-		if api_key:
+		if api_key := self.call_GQL("query getApiKey{ configuration { general { apiKey } } }")["configuration"]["general"]["apiKey"]:
 			self.log.debug("Persisting Connection to Stash with ApiKey...")
-			self.headers["ApiKey"] = api_key
-			self.cookies = {}
+			self.s.headers.update({"ApiKey":api_key})
+			self.s.cookies.clear()
 
 		fragment_overrides = {
 			"Scene": "{ id }",
