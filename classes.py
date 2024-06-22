@@ -257,10 +257,7 @@ fragment TypeRef on __Type {
 			self.log.error(fmt_error)
 
 		if response.status_code == 401:
-			if "session" in self.cookies:
-				self.log.error(f"{response.status_code} {response.reason}. Could not access endpoint {self.url} Are you running a proxy? check your proxy settings.")
-			else:
-				self.log.error(f"{response.status_code} {response.reason}. Could not access endpoint {self.url}. Did you provide an API key? ")
+			self.log.error(f"{response.status_code} {response.reason}. Could not access endpoint {self.url}. Did you provide an API key? Are you running a proxy?")
 		elif content.get("data") == None:
 			self.log.error(f"{response.status_code} {response.reason} GQL data response is null")
 		elif database_locked == 1:
