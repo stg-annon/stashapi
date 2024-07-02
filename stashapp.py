@@ -399,7 +399,7 @@ class StashInterface(GQLWrapper):
 		Returns:
 			dict: map of plugins and their values or just the plugin values if just one plugin ID is passed
 		"""
-		query="""query FindPluginConfig($input: [String!]){ configuration { plugins (include: $input) } }"""
+		query="""query FindPluginConfig($input: [ID!]){ configuration { plugins (include: $input) } }"""
 		if isinstance(plugin_ids, str):
 			plugin_ids = [plugin_ids]
 		config = self.call_GQL(query, {"input": plugin_ids})["configuration"]["plugins"]
