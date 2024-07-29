@@ -404,8 +404,12 @@ class StashInterface(GQLWrapper):
 			plugin_ids = [plugin_ids]
 		config = self.call_GQL(query, {"input": plugin_ids})["configuration"]["plugins"]
 		if len(plugin_ids) == 1:
-			return config.get(plugin_ids[0], {})
-		return config
+			config = config.get(plugin_ids[0])
+		if config:
+			return config
+		else:
+			self.log.debug(f"no plugin configs found with any of the following IDs {plugin_ids}")
+			return {}
 	def run_plugin_task(self, plugin_id, task_name, args={}):
 		"""Queues a plugin task to run
 		
