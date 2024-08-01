@@ -16,8 +16,10 @@ class StashInterface(GQLWrapper):
 	port = ""
 	url = ""
 
-	def __init__(self, conn:dict={}, fragments:list[str]=[]):
+	def __init__(self, conn:dict={}, fragments:list[str]=[], verify_ssl:bool=True):
 		super().__init__()
+		self.s.verify = verify_ssl
+
 		conn = CaseInsensitiveDict(conn)
 
 		self.log = conn.get("Logger", StashLogger())
