@@ -4,7 +4,6 @@ from enum import Enum
 from requests.structures import CaseInsensitiveDict
 
 from .classes import GQLWrapper
-from .log import StashLogger
 
 from .tools import file_to_base64, url_to_base64, str_compare
 
@@ -24,7 +23,10 @@ class StashBoxInterface(GQLWrapper):
 		super().__init__()
 		conn = CaseInsensitiveDict(conn)
 		
-		self.log = conn.get("Logger", StashLogger())
+		self.log = conn.get("Logger", None)
+		if not self.log:
+			import stashapi.log as logger
+			self.log = logger
 		
 		self.url = conn.get('endpoint', "https://stashdb.org/graphql")
 		self.endpoint = self.url

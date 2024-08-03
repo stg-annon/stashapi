@@ -2,8 +2,6 @@ import re, math, time
 
 from requests.structures import CaseInsensitiveDict
 
-from .log import StashLogger
-
 from .tools import str_compare
 
 from .stash_types import StashItem
@@ -22,7 +20,10 @@ class StashInterface(GQLWrapper):
 
 		conn = CaseInsensitiveDict(conn)
 
-		self.log = conn.get("Logger", StashLogger())
+		self.log = conn.get("Logger", None)
+		if not self.log:
+			import stashapi.log as logger
+			self.log = logger
 
 		scheme = conn.get('Scheme', 'http')
 		if conn.get('Domain'):
