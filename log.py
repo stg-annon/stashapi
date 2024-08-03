@@ -89,7 +89,6 @@ class StashLogger:
 	def __log(self, level_char: bytes, s):
 		if not level_char:
 			return
-		level_char = f"\x01{level_char.decode()}\x02"
 
 		# convert dicts to json string
 		if isinstance(s, dict):
@@ -102,7 +101,7 @@ class StashLogger:
 		s = DATA_BLOB_REGEX.sub(truncate_base64_replacement, s)
 
 		for line in s.split("\n"):
-			print(level_char, line[:LOG_PAYLOAD_MAX_SZ], file=sys.stderr, flush=True)
+			print(f"\x01{level_char.decode()}\x02{line[:LOG_PAYLOAD_MAX_SZ]}", file=sys.stderr, flush=True)
 
 	def trace(self, s):
 		if StashLogLevel.TRACE < self.LEVEL:
