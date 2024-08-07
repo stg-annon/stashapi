@@ -251,6 +251,14 @@ class StashInterface(GQLWrapper):
 		result = self.call_GQL(query)
 		return result['configuration']
 
+	def job_queue(self):
+		return self.call_GQL("query JobQueue { jobQueue{ ...Job } }")["jobQueue"]
+	
+	def stop_job(self, job_id):
+		query = "mutation StopJob($job_id: ID!) { stopJob(job_id: $job_id) }"
+		result = self.call_GQL(query, {"job_id": job_id})
+		return result["stopJob"]
+
 	def find_job(self, job_id):
 		query = "query FindJob($input:FindJobInput!) { findJob(input: $input){ ...Job } }"
 		result = self.call_GQL(query, {"input": {"id":job_id}})
