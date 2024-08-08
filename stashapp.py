@@ -336,6 +336,25 @@ class StashInterface(GQLWrapper):
 		result = self.call_GQL(query, {"input": clean_metadata_input})
 		return result
 
+	def metadata_autotag(self, paths:list=[], dry_run=False):
+		if not paths:
+			return
+
+		query = """
+		mutation MetadataAutoTag($input:AutoTagMetadataInput!) {
+			metadataAutoTag(input: $input)
+		}
+		"""
+
+		metadata_autotag_input = {
+			"paths": paths
+		}
+		result = self.call_GQL(query, {"input": metadata_autotag_input})
+		return result
+
+	def backup_database(self):
+		return self.call_GQL("mutation { backupDatabase(input: {download: false})}")
+
 	def file_set_fingerprints(self, file_id, fingerprints:[]):
 		if not file_id:
 			return
