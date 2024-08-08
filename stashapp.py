@@ -355,6 +355,9 @@ class StashInterface(GQLWrapper):
 	def backup_database(self):
 		return self.call_GQL("mutation { backupDatabase(input: {download: false})}")
 
+	def optimise_database(self):
+		return self.call_GQL("mutation OptimiseDatabase { optimiseDatabase }")
+
 	def file_set_fingerprints(self, file_id, fingerprints:[]):
 		if not file_id:
 			return
