@@ -320,9 +320,6 @@ class StashInterface(GQLWrapper):
 		return result["metadataGenerate"]
 
 	def metadata_clean(self, paths:list=[], dry_run=False):
-		if not paths:
-			return
-
 		query = """
 		mutation MetadataClean($input:CleanMetadataInput!) {
 			metadataClean(input: $input)
@@ -336,18 +333,17 @@ class StashInterface(GQLWrapper):
 		result = self.call_GQL(query, {"input": clean_metadata_input})
 		return result
 
-	def metadata_autotag(self, paths:list=[], dry_run=False):
-		if not paths:
-			return
-
+	def metadata_autotag(self, paths:list=[], performers:list=[], studios:list=[], tags:list=[]):
 		query = """
 		mutation MetadataAutoTag($input:AutoTagMetadataInput!) {
-			metadataAutoTag(input: $input)
+		    metadataAutoTag(input: $input)
 		}
 		"""
-
 		metadata_autotag_input = {
-			"paths": paths
+		    "paths":paths,
+		    "performers": performers,
+		    "studios":studios,
+		    "tags":tags,
 		}
 		result = self.call_GQL(query, {"input": metadata_autotag_input})
 		return result
