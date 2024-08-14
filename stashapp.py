@@ -1810,6 +1810,8 @@ class StashInterface(GQLWrapper):
 		"""
 		if fragment:
 			query = re.sub(r'\.\.\.SceneSlim', fragment, query)
+		else:
+			query += "fragment SceneSlim on Scene { id code title }"
 
 		variables = { "distance": distance }
 		result = self.call_GQL(query, variables)
