@@ -320,9 +320,6 @@ class StashInterface(GQLWrapper):
 		return result["metadataGenerate"]
 
 	def metadata_clean(self, paths:list=[], dry_run=False):
-		if not paths:
-			return
-
 		query = """
 		mutation MetadataClean($input:CleanMetadataInput!) {
 			metadataClean(input: $input)
@@ -335,6 +332,45 @@ class StashInterface(GQLWrapper):
 		}
 		result = self.call_GQL(query, {"input": clean_metadata_input})
 		return result
+
+	def metadata_autotag(self, paths:list=[], performers:list=[], studios:list=[], tags:list=[]):
+		query = """
+		mutation MetadataAutoTag($input:AutoTagMetadataInput!) {
+		    metadataAutoTag(input: $input)
+		}
+		"""
+		metadata_autotag_input = {
+		    "paths":paths,
+		    "performers": performers,
+		    "studios":studios,
+		    "tags":tags,
+		}
+		result = self.call_GQL(query, {"input": metadata_autotag_input})
+		return result
+	
+	def metadata_clean_generated(self, blobFiles=True, dryRun=False, imageThumbnails=True, markers=True, screenshots=True, sprites=True, transcodes=True):
+		query = """
+		mutation MetadataCleanGenerated($input: CleanGeneratedInput!) {
+		  metadataCleanGenerated(input: $input)
+		}
+		"""
+		clean_metadata_input = {
+		    "blobFiles": blobFiles,
+		    "dryRun": dryRun,
+		    "imageThumbnails": imageThumbnails,
+		    "markers": markers,
+		    "screenshots": screenshots,
+		    "sprites": sprites,
+		    "transcodes": transcodes,
+		}
+		result = self.call_GQL(query, {"input": clean_metadata_input})
+		return result	
+	
+	def backup_database(self):
+		return self.call_GQL("mutation { backupDatabase(input: {download: false})}")
+
+	def optimise_database(self):
+		return self.call_GQL("mutation OptimiseDatabase { optimiseDatabase }")
 
 	def file_set_fingerprints(self, file_id, fingerprints:[]):
 		if not file_id:
