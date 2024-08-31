@@ -77,6 +77,8 @@ class StashInterface(GQLWrapper):
 			"VideoFile": { "fingerprint": None },
 			"ImageFile": { "fingerprint": None },
 			"GalleryFile": { "fingerprint": None },
+			"Gallery": { "image": None },
+			"Group": {"containing_groups": "{ id }", "sub_groups": "{ id }"},
 		}
 		self.fragments = self._get_fragments_introspection(fragment_overrides, attribute_overrides)
 		for fragment in fragments:
@@ -401,6 +403,14 @@ class StashInterface(GQLWrapper):
 		variables = {'ids': file_ids}
 		result = self.call_GQL(query, variables)
 		return result["deleteFiles"]
+
+	# FILES
+	def move_files(self, move_files_input):
+		result = self.call_GQL(
+			"query MoveFiles($input: MoveFilesInput!) { moveFiles(input: $input) }",
+			{"input": move_files_input}
+		)
+		return result['moveFiles']
 
 	# PLUGINS
 	def configure_plugin(self, plugin_id, values:dict, init_defaults=False) -> dict:
@@ -1836,7 +1846,7 @@ class StashInterface(GQLWrapper):
 		for scene in scenes:
 			scene["stash_ids"] = [sid for sid in scene["stash_ids"] if sid["stash_id"] != stash_id ]
 			self.update_scene(scene)
-	def find_duplicate_scenes(self, distance: PhashDistance=PhashDistance.EXACT, fragment=None):
+	def find_duplicate_scenes(self, distance: PhashDistance=PhashDistance.EXACT, fragment="id"):
 		query = """
 			query FindDuplicateScenes($distance: Int) {
 				findDuplicateScenes(distance: $distance) {
@@ -1844,10 +1854,7 @@ class StashInterface(GQLWrapper):
 				}
 			}
 		"""
-		if fragment:
-			query = re.sub(r'\.\.\.SceneSlim', fragment, query)
-		else:
-			query += "fragment SceneSlim on Scene { id code title }"
+		query = re.sub(r'\.\.\.SceneSlim', fragment, query)
 
 		variables = { "distance": distance }
 		result = self.call_GQL(query, variables)
