@@ -289,7 +289,7 @@ class StashInterface(GQLWrapper):
 			job = self.find_job(job_id)
 			if not job:
 				return None
-			self.log.debug(f'Waiting for Job:{job_id} Status:{job["status"]} Progress:{job.get("progress",0.0):.1f}')
+			self.log.debug(f'Waiting for Job:{job_id} Status:{job["status"]} Progress:{job["progress"]}')
 			if job["status"] == status:
 				return True
 			if job["status"] in ["FINISHED", "CANCELLED"]:
