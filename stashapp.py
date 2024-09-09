@@ -307,8 +307,8 @@ class StashInterface(GQLWrapper):
 		scan_metadata_input = {"paths": paths}
 		if flags:
 			scan_metadata_input.update(flags)
-		else:
-			scan_metadata_input.update(self.get_configuration_defaults("scan { ...ScanMetadataOptions }").get("scan",{}))
+		elif scan_config := self.get_configuration_defaults("scan { ...ScanMetadataOptions }").get("scan"):
+			scan_metadata_input.update(scan_config)
 		result = self.call_GQL(query, {"input": scan_metadata_input})
 		return result["metadataScan"]
 	
