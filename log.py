@@ -34,8 +34,8 @@ STASH_LOG_LEVEL_MAP = {
 
 # Regex to replace data blobs from logging
 DATA_BLOB_REGEX = re.compile(r"[\'|\"]data:.+/.*;base64,(?P<content>.*?)[\'|\"]")
-# Max size of golang buf - level bytes and newline
-LOG_PAYLOAD_MAX_SZ = (64 * 1024) - 4  
+# Max size of golang buf - level bytes and newline, theoretical max (64 * 1024) - 4  
+LOG_PAYLOAD_MAX_SZ = 64000
 
 def truncate_base64_replacement(match_group):
 	return match_group.group(0).replace(
