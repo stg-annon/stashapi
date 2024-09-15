@@ -4,7 +4,7 @@ class StashEnum(Enum):
 	def __repr__(self) -> str:
 		return f"{self.__class__.__name__}.{self.name}"
 	def __str__(self) -> str:
-		return self.value
+		return str(self.value)
 	def serialize(self):
 		return self.value
 
