@@ -69,6 +69,7 @@ class StashInterface(GQLWrapper):
 			"Performer": "{ id }",
 			"Image": "{ id }",
 			"Gallery": "{ id }",
+			"Group": "{ id }",
 		}
 		attribute_overrides = {
 			"ScrapedStudio": {"parent": "{ stored_id }"},
@@ -78,7 +79,6 @@ class StashInterface(GQLWrapper):
 			"ImageFile": { "fingerprint": None },
 			"GalleryFile": { "fingerprint": None },
 			"Gallery": { "image": None },
-			"Group": {"containing_groups": "{ group { id } }", "sub_groups": "{ group { id } }"},
 		}
 		self.fragments = self._get_fragments_introspection(fragment_overrides, attribute_overrides)
 		for fragment in fragments:
