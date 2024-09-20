@@ -1745,7 +1745,7 @@ class StashInterface(GQLWrapper):
 
 		variables = { "scene_id": scene_id }
 		return self.call_GQL(query, variables)["findScene"]["scene_markers"]
-	def find_scene_markers(self, scene_marker_filter, fragment=None) -> list:
+	def find_scene_markers(self, scene_marker_filter, filter:dict={"per_page": -1}, fragment=None) -> list:
 		"""Finds markers matching a SceneMarkerFilterType dict, as get_scene_markers() only takes a scene_id.
 		This is useful for finding a list of markers that use a specific tag.
 
@@ -1774,7 +1774,10 @@ class StashInterface(GQLWrapper):
 		if fragment:
 			query = re.sub(r'\.\.\.SceneMarker', fragment, query)
 
-		variables = { "scene_marker_filter": scene_marker_filter }
+		variables = { 
+			"scene_marker_filter": scene_marker_filter,
+			"filter": filter
+		}
 		return self.call_GQL(query, variables)["findSceneMarkers"]["scene_markers"]
 	def create_scene_marker(self, marker_create_input:dict, fragment=None):
 		query = """
