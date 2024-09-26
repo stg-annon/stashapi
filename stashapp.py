@@ -1127,96 +1127,105 @@ class StashInterface(GQLWrapper):
 		else:
 			return result['findStudios']['studios']
 
-	# Movie CRUD
-	def create_movie(self, movie_in):
-		if isinstance(movie_in, str):
-			movie_in = {"name": movie_in}
-		if not isinstance(movie_in, dict):
-			self.log.warning(f"could not create movie from {movie_in}")
+	# GROUP
+	def create_group(self, group_in):
+		if isinstance(group_in, str):
+			group_in = {"name": group_in}
+		if not isinstance(group_in, dict):
+			self.log.warning(f"could not create Group from {group_in}")
 			return
 		query = """
-			mutation($input: MovieCreateInput!) {
-				movieCreate(input: $input) {
+			mutation($input: GroupCreateInput!) {
+				groupCreate(input: $input) {
 					id
 				}
 			}
 		"""
-		variables = {'input': movie_in}
+		variables = {'input': group_in}
 		result = self.call_GQL(query, variables)
-		return result['movieCreate']
-	def find_movie(self, movie_in, fragment=None, create=False):
+		return result['groupCreate']
+	def find_group(self, group_in, fragment=None, create=False):
 		# assume input is an ID if int
-		if isinstance(movie_in, int):
+		if isinstance(group_in, int):
 			return self.__generic_find(
-				"query FindMovie($id: ID!) { findMovie(id: $id) { ...Movie } }",
-				movie_in,
-				(r'\.\.\.Movie', fragment)
+				"query FindGroup($id: ID!) { findGroup(id: $id) { ...Group } }",
+				group_in,
+				(r'\.\.\.Group', fragment)
 			)
 
 		name = None
-		if isinstance(movie_in, dict):
-			if movie_in.get("stored_id"):
-				return self.find_movie(int(movie_in["stored_id"]))
-			if movie_in.get("id"):
-				return self.find_movie(int(movie_in["id"]))
-			if movie_in.get("name"):
-				name = movie_in["name"]
-		if isinstance(movie_in, str):
-			name = movie_in
+		if isinstance(group_in, dict):
+			if group_in.get("stored_id"):
+				return self.find_group(int(group_in["stored_id"]))
+			if group_in.get("id"):
+				return self.find_group(int(group_in["id"]))
+			if group_in.get("name"):
+				name = group_in["name"]
+		if isinstance(group_in, str):
+			name = group_in
 
-		movies = self.find_movies(q=name)
-		movie_matches = self.__match_alias_item(name, movies)
+		groups = self.find_groups(q=name)
+		group_matches = self.__match_alias_item(name, groups)
 
-		if len(movie_matches) > 0:
-			if len(movie_matches) == 1:
-				return movie_matches[0]
+		if len(group_matches) > 0:
+			if len(group_matches) == 1:
+				return group_matches[0]
 			else:
-				self.log.warning(f'Too many matches for movie "{name}"')
+				self.log.warning(f'Too many matches for Group "{name}"')
 				return None
 
 		if create:
-			self.log.info(f'Creating missing Movie "{name}"')
-			return self.create_movie(movie_in)
-	def update_movie(self, movie_in):
+			self.log.info(f'Creating missing Group "{name}"')
+			return self.create_group(group_in)
+	def update_group(self, group_in):
 		query = """
-			mutation MovieUpdate($input:MovieUpdateInput!) {
-				movieUpdate(input: $input) {
-					...Movie
+			mutation GroupUpdate($input:GroupUpdateInput!) {
+				groupUpdate(input: $input) {
+					...Group
 				}
 			}
 		"""
-		variables = {'input': movie_in}
+		variables = {'input': group_in}
 
 		result = self.call_GQL(query, variables)
-		return result['movieUpdate']
-	# TODO destroy_movie()
-
-	# BULK Movies
-	def find_movies(self, f:dict={}, filter:dict={"per_page": -1}, q="", fragment=None, get_count=False, callback=None):
+		return result['groupUpdate']
+	def destroy_group(self, group_id):
 		query = """
-			query FindMovies($filter: FindFilterType, $movie_filter: MovieFilterType) {
-				findMovies(filter: $filter, movie_filter: $movie_filter) {
+			mutation DestroyGroup($input:GroupDestroyInput!) {
+				groupDestroy(input: $input) {
+					...Group
+				}
+			}
+		"""
+		result = self.call_GQL(query, {'input': {"id": group_id}})
+		return result['groupDestroy']
+
+	# GROUPS
+	def find_groups(self, f:dict={}, filter:dict={"per_page": -1}, q="", fragment=None, get_count=False, callback=None):
+		query = """
+			query FindGroups($filter: FindFilterType, $group_filter: GroupFilterType) {
+				findGroups(filter: $filter, group_filter: $group_filter) {
 					count
-					movies {
-						...Movie
+					groups {
+						...Group
 					}
 				}
 			}
 		"""
 		if fragment:
-			query = re.sub(r'\.\.\.Movie', fragment, query)
+			query = re.sub(r'\.\.\.Group', fragment, query)
 
 		filter["q"] = q
 		variables = {
 			"filter": filter,
-			"movie_filter": f
+			"group_filter": f
 		}
 
 		result = self.call_GQL(query, variables, callback=callback)
 		if get_count:
-			return result['findMovies']['count'], result['findMovies']['movies']
+			return result['findGroups']['count'], result['findMovies']['groups']
 		else:
-			return result['findMovies']['movies']
+			return result['findGroups']['groups']
 
 	# Gallery CRUD
 	def create_gallery(self, gallery_create_input:dict):
