@@ -1227,6 +1227,21 @@ class StashInterface(GQLWrapper):
 		else:
 			return result['findGroups']['groups']
 
+	# MOVIE Shims
+	def create_movie(self, *args, **kwargs):
+		self.log.warning("create_movie() is depracated use create_group()")
+		return self.create_group(*args, **kwargs)
+	def find_movie(self, *args, **kwargs):
+		self.log.warning("find_movie() is depracated use find_group()")
+		return  self.find_group(*args, **kwargs)
+	def update_movie(self, *args, **kwargs):
+		self.log.warning("update_movie() is depracated use update_group()")
+		return self.update_group(*args, **kwargs)
+
+	def find_movies(self, *args, **kwargs):
+		self.log.warning("find_movies() is depracated use find_gruops()")
+		return self.find_groups(*args, **kwargs)
+
 	# Gallery CRUD
 	def create_gallery(self, gallery_create_input:dict):
 		query =  """
