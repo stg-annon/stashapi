@@ -1223,7 +1223,7 @@ class StashInterface(GQLWrapper):
 
 		result = self.call_GQL(query, variables, callback=callback)
 		if get_count:
-			return result['findGroups']['count'], result['findMovies']['groups']
+			return result['findGroups']['count'], result['findGroups']['groups']
 		else:
 			return result['findGroups']['groups']
 
