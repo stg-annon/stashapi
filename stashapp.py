@@ -1265,11 +1265,11 @@ class StashInterface(GQLWrapper):
 
 		if isinstance(gallery_in, dict):
 			if gallery_in.get("id"):
-				return self.find_gallery(int(gallery_in["id"]))
+				return self.find_gallery(int(gallery_in["id"]), fragment)
 
 		if isinstance(gallery_in, str):
 			try:
-				return self.find_gallery(int(gallery_in))
+				return self.find_gallery(int(gallery_in), fragment)
 			except:
 				self.log.warning(f"could not parse {gallery_in} to Gallery ID (int)")
 	def update_gallery(self, gallery_data):
