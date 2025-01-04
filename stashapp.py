@@ -137,12 +137,13 @@ class StashInterface(GQLWrapper):
 
 		# attempt to match exclusively to primary name
 		for p in performers:
-			if p.get("disambiguation"):
-				self.log.debug(f'ignore primary name with disambiguation "{p["name"]}" ({p["disambiguation"]}) pid:{p["id"]}')
-				continue
+			if p.get("disambiguation") and search.get("disambiguation"):
+				# ignore disambiguation if it does not match search
+				if search["disambiguation"] not in p["disambiguation"]:
+					continue
 
-			if str_compare(search, p["name"]):
-				self.log.debug(f'matched performer "{search}" to "{p["name"]}" ({p["id"]}) using primary name')
+			if str_compare(search["name"], p["name"]):
+				self.log.debug(f'matched performer "{search["name"]}" to "{p["name"]}" ({p["id"]}) using primary name')
 				performer_matches[p["id"]] = p
 				return list(performer_matches.values())
 
@@ -168,9 +169,12 @@ class StashInterface(GQLWrapper):
 			if not aliases:
 				continue
 			for alias in aliases:
+				alias_search = search["name"]
+				if search.get("disambiguation"):
+					alias_search += f' ({search["disambiguation"]})'
 				parsed_alias = alias.strip()
-				if str_compare(search, parsed_alias):
-					self.log.info(f'matched performer "{search}" to "{p["name"]}" ({p["id"]}) using alias')
+				if str_compare(alias_search, parsed_alias):
+					self.log.info(f'matched performer "{alias_search}" to "{p["name"]}" ({p["id"]}) using alias')
 					performer_matches[p["id"]] = p
 		return list(performer_matches.values())
 
@@ -731,8 +735,15 @@ class StashInterface(GQLWrapper):
 			self.log.warning(f'find_performer() expects int, str, or dict not {type(performer)} "{performer}"')
 			return
 
-		performer_search = self.find_performers(q=performer["name"], fragment="id name disambiguation alias_list")
-		performer_matches = self.__match_performer_alias(performer["name"], performer_search)
+		performer_filter = {}
+		if performer.get("disambiguation"):
+			performer_filter = {
+				"disambiguation": {"value":performer["disambiguation"],"modifier":"INCLUDES"},
+				"OR": {"aliases": {"value":performer["disambiguation"],"modifier":"INCLUDES"}}
+			}
+
+		performer_search = self.find_performers(q=performer["name"], f=performer_filter, fragment="id name disambiguation alias_list")
+		performer_matches = self.__match_performer_alias(performer, performer_search)
 
 		if len(performer_matches) > 1:
 			warn_msg = f"Matched multiple Performers to '{performer['name']}'"
