@@ -114,4 +114,34 @@ def phash_distance(lhash, rhash):
 	return bin(hamming).count("1")
 
 def similarity_score(lhash, rhash):
+	"""compares two phashes to determine how simmilar they are
+
+	Args:
+		lhash (str): "left" phash
+		rhash (str): "right" phash
+
+	Returns:
+		float: simmilarity percentage
+	"""
 	return 1-(phash_distance(lhash, rhash)/64.0)
+
+def crypto_hash(remote, algorithm: str='md5'):
+	if algorithm == 'md5':
+		hashfn = hashlib.md5()
+	elif algorithm == 'sha1':
+		hashfn = hashlib.sha1()
+	elif algorithm == 'sha256':
+		hashfn = hashlib.sha256()
+	elif algorithm == 'sha384':
+		hashfn = hashlib.sha384()
+	elif algorithm == 'sha512':
+		hashfn = hashlib.sha512()
+	else:
+		raise Exception(f'Unsupported hash function "{algorithm}"')
+
+	while True:
+		data = remote.read(4096)
+		if not data:
+			break
+		hashfn.update(data)
+	return hashfn.hexdigest()
