@@ -14,7 +14,7 @@ class StashInterface(GQLWrapper):
 	port = ""
 	url = ""
 
-	def __init__(self, conn:dict={}, fragments:list[str]=[], verify_ssl:bool=True):
+	def __init__(self, conn:dict={}, fragments:list[str]=[], verify_ssl:bool=True, force_api_key=False):
 		super().__init__()
 		self.s.verify = verify_ssl
 
@@ -58,7 +58,8 @@ class StashInterface(GQLWrapper):
 		self.log.debug(f'Using stash ({self.version}) endpoint at {self.url}')
 
 		# grab API key to persist connection past session cookie duration
-		if api_key := self.call_GQL("query getApiKey{ configuration { general { apiKey } } }")["configuration"]["general"]["apiKey"]:
+		api_key = self.call_GQL("query getApiKey{ configuration { general { apiKey } } }")["configuration"]["general"]["apiKey"]
+		if force_api_key and api_key:
 			self.log.debug("Persisting Connection to Stash with ApiKey...")
 			self.s.headers.update({"ApiKey":api_key})
 			self.s.cookies.clear()
