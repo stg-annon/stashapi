@@ -476,7 +476,7 @@ class StashInterface(GQLWrapper):
 		
 		Args:
 			plugin_id (ID): plugin_id
-			task_name (str): plugin task to perform
+			task_name (str): plugin task to perform, task must exist in plugin config
 			args (dict, optional): arguments to pass to plugin. Defaults to {}.
 
 		Returns:
@@ -506,7 +506,7 @@ class StashInterface(GQLWrapper):
 		}
 		return self.call_GQL(query, variables)["runPluginTask"]
 
-	# Tag CRUD
+	# TAG
 	def create_tag(self, tag_in:dict) -> dict:
 		"""creates tag in stash
 
@@ -614,22 +614,8 @@ class StashInterface(GQLWrapper):
 		}}
 
 		self.call_GQL(query, variables)
-	def destroy_tags(self, tag_ids:list[int]):
-		"""deletes tags from stash
-
-		Args:
-			 tag_ids ([int]): tag IDs from stash to delete
-		"""
-
-		query = """
-			mutation tagsDestroy($ids: [ID!]!) {
-				tagsDestroy(ids: $ids)
-			}
-		"""
-
-		self.call_GQL(query, {'ids': tag_ids})
-
-	# BULK Tags
+	
+	# TAGS
 	def find_tags(self, f:dict={}, filter:dict={"per_page": -1}, q:str="", fragment:str=None, get_count:bool=False) -> list[dict]:
 		"""gets tags matching filter/query
 
@@ -690,8 +676,22 @@ class StashInterface(GQLWrapper):
 			if tag := self.find_tag(tag_input, create=create, on_multiple=OnMultipleMatch.RETURN_NONE):
 				tag_ids.append(tag["id"])
 		return tag_ids
+	def destroy_tags(self, tag_ids:list[int]):
+		"""deletes tags from stash
 
-	# Performer CRUD
+		Args:
+			 tag_ids ([int]): tag IDs from stash to delete
+		"""
+
+		query = """
+			mutation tagsDestroy($ids: [ID!]!) {
+				tagsDestroy(ids: $ids)
+			}
+		"""
+
+		self.call_GQL(query, {'ids': tag_ids})
+
+	# PERFORMER
 	def create_performer(self, performer_in:dict) -> dict:
 		"""creates performer in stash
 
@@ -939,7 +939,7 @@ class StashInterface(GQLWrapper):
 
 		self.destroy_performer(source_ids)
 
-	# Performers CRUD
+	# PERFORMERS
 	def find_performers(self, f:dict={}, filter:dict={"per_page": -1}, q="", fragment:str=None, get_count:bool=False, callback=None) -> list[dict]:
 		"""get performers matching filter/query
 
