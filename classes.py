@@ -1,6 +1,7 @@
 import re, math
 import requests
-
+from enum import Enum
+from pathlib import Path
 from .stash_types import StashEnum
 
 class GQLWrapper:
@@ -336,7 +337,11 @@ def serialize_dict(input_dict):
 				if isinstance(item, dict):
 					serialize_dict(item)
 
-def type_transformer(value):
-	if isinstance(value, StashEnum):
-		return value.serialize()
-	return value
+def type_transformer(object):
+	if isinstance(object, Path):
+		return str(object)
+	if isinstance(object, StashEnum):
+		return object.serialize()
+	if isinstance(object, Enum):
+		return object.value
+	return object
