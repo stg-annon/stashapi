@@ -53,8 +53,15 @@ def get_base64(pth):
 
 def url_to_base64(url):
 	import requests
-	b64img_bytes = base64.b64encode(requests.get(url).content)
-	return f"data:image/jpeg;base64,{b64img_bytes.decode('utf-8')}"
+	try:
+		r = requests.get(url, timeout=2)
+	except:
+		return None
+	if not r.ok:
+		return None
+	b64img_bytes = base64.b64encode(r.content)
+	content_type = r.headers.get("Content-Type", "image/jpeg")
+	return f"data:{content_type};base64,{b64img_bytes.decode('utf-8')}"
 
 def file_to_base64(image_path):
 	from pathlib import Path
