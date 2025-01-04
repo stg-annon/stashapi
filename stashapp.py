@@ -1934,6 +1934,16 @@ class StashInterface(GQLWrapper):
 		return [{k: scraper[k] for k in ["id", "name", "movie"]} for scraper in self.list_scrapers([StashItem.MOVIE])]
 
 	# Fragment Scrape
+	def scrape_scenes(self, source, input, fragment=None):
+		query = """query ScrapeMultiScenes($source: ScraperSourceInput!, $input: ScrapeMultiScenesInput!) {
+		scrapeMultiScenes(source: $source, input: $input) {
+			...ScrapedScene
+		}
+		}"""
+		if fragment:
+			query = re.sub(r'\.\.\.ScrapedScene', fragment, query)
+		return self.call_GQL(query, {"source": source, "input": input})["scrapeMultiScenes"]
+
 	def scrape_scene(self, source, input):
 		if isinstance(source, str):
 			source = {"scraper_id": source}
@@ -2011,7 +2021,11 @@ class StashInterface(GQLWrapper):
 	def scrape_scene_url(self, url):
 		query = "query($url: String!) { scrapeSceneURL(url: $url) { ...ScrapedScene } }"
 		return self.call_GQL(query, {"url": url})['scrapeSceneURL']
+	def scrape_group_url(self, url):
+		query = "query($url: String!) { scrapeGroupURL(url: $url) { ...ScrapedGroup } }"
+		return self.call_GQL(query, {"url": url})['scrapeGroupURL']
 	def scrape_movie_url(self, url):
+		self.log.warning("scrape_movie_url() is depracated use scrape_group_url()")
 		query = "query($url: String!) { scrapeMovieURL(url: $url) { ...ScrapedMovie } }"
 		return self.call_GQL(query, {"url": url})['scrapeMovieURL']
 	def scrape_gallery_url(self, url):
