@@ -254,7 +254,7 @@ fragment TypeRef on __Type {
 				code = "DATABASE_LOCKED"
 				database_locked = 1
 			path = error.get("path", "")
-			fmt_error = f"{code}: {message} {path}".strip()
+			fmt_error = f"{code}:{path} {message}".strip()
 			self.log.error(fmt_error)
 
 		if response.status_code == 401:
@@ -270,9 +270,9 @@ fragment TypeRef on __Type {
 		self.log.error(error_msg)
 		raise Exception(error_msg)
 
-	def callGQL(self, query, variables={}):
-		return self._GQL(query, variables)
-	def _callGraphQL(self, query, variables={}):
+	def call_GQL(self, query, variables={}, callback=None):
+		if callback:
+			raise Exception("callback not immplemented")
 		return self._GQL(query, variables)
 
 class StashVersion:
