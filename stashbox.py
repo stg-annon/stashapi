@@ -350,6 +350,31 @@ class StashBoxInterface(GQLWrapper):
 		
 		return existing
 
+	# FINGERPRINTS
+	def find_scenes_by_fingerprints(self, fingerprints=None, fragment=None):
+		query = """query findScenesBySceneFingerprints($fingerprints: [[FingerprintQueryInput!]!]!) {
+		findScenesBySceneFingerprints(fingerprints: $fingerprints) { 
+				...Scene
+			}
+		}"""
+		if fragment:
+			query = re.sub(r'\.\.\.Scene', fragment, query)
+		
+		return self.call_GQL(query, {"fingerprints":fingerprints})["findScenesBySceneFingerprints"]
+	def fingerprint_submission(self, scene_id, fingerprint, unmatch=None, vote=None):
+		query = """mutation SubmitFingerprint($input: FingerprintSubmission!){ submitFingerprint(input: $input) }"""
+
+		variables={"input": {
+			"scene_id": scene_id,
+			"fingerprint": fingerprint
+		}}
+		if unmatch != None:
+			variables["input"]["unmatch"] = unmatch
+		if vote != None:
+			variables["input"]["vote"] = vote
+
+		return self.call_GQL(query, variables)
+
 	# PERFORMERS
 	def find_performer(self, performer_in, fragment=None):
 		performer = self.__find_by_id(
