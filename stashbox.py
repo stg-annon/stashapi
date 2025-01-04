@@ -4,6 +4,7 @@ from enum import Enum
 from requests.structures import CaseInsensitiveDict
 
 from .classes import GQLWrapper
+from .stash_types import CallbackReturns
 
 from .tools import file_to_base64, url_to_base64, str_compare
 
@@ -49,7 +50,7 @@ class StashBoxInterface(GQLWrapper):
 		self.s.headers.update({"ApiKey":api_key})
 		try:
 			# test query to check connection
-			r = self._callGraphQL("query Me{me {name email}}")
+			r = self.call_GQL("query Me{me {name email}}")
 			self.log.debug(f'Connected to "{self.url}" as {r["me"]["name"]} ({r["me"]["email"]})')
 		except Exception as e:
 			self.log.exit(f"Could not connect to Stash-Box at {self.url}", e)
@@ -105,45 +106,55 @@ class StashBoxInterface(GQLWrapper):
 		pattern, substitution = fragment
 		if substitution:
 			query = re.sub(pattern, substitution, query)
-		result = self._callGraphQL(query,  {"id":item_id})
+		result = self.call_GQL(query,  {"id":item_id})
 		queryType = list(result.keys())[0]
 		return result[queryType]
 
-	def _paginate_query(self, query, type_input, pages=-1, callback=None):
+	def paginate_GQL(self, query, gql_input, pages=-1, callback=None):
 		"""auto paginate graphql query and return pages results
 
 		Args:
 			query (str): graphql query string
-			type_input (dict): graphql query input
+			gql_input (dict): graphql query input
 			pages (int, optional): number of pages to get results for, -1 for all pages. Defaults to -1.
 			callback (_function_, optional): callback function to run results against between page calls. Defaults to None.
 
 		Returns:
 			dict: all results from query up to specified page
 		"""
-		result = self._callGraphQL(query, {"input": type_input})
+		result = self._GQL(query, {"input": gql_input})
 
 		queryType = list(result.keys())[0]
 		result = result[queryType]
 
 		itemType = list(result.keys())[1]
 		items = result[itemType]
-		if callback != None:
-			callback(items)
 
+		callback_result = None
+		if callback != None:
+			callback_result = callback(items)
+		if callback_result == CallbackReturns.STOP_ITERATION:
+			return items
+		
 		if pages == -1: # set to all pages if -1
-			pages = math.ceil(result["count"] / type_input["per_page"])
+			pages = math.ceil(result["count"] / gql_input["per_page"])
 
 		if pages > 1:
-			self.log.progress(float(type_input["page"])/float(pages))
-			self.log.debug(f'received page {type_input["page"]}/{pages} for {queryType} query')
+			self.log.progress(float(gql_input["page"])/float(pages))
+			self.log.debug(f'received page {gql_input["page"]}/{pages} for {queryType} query')
 
-		if type_input.get("page") < pages:
-			type_input["page"] = type_input["page"] + 1 
-			next_page = self._paginate_query(query, type_input, pages, callback)
+		if gql_input.get("page") < pages:
+			gql_input["page"] = gql_input["page"] + 1 
+			next_page = self.paginate_GQL(query, gql_input, pages, callback)
 			items.extend(next_page)
 
 		return items
+
+	def call_GQL(self, query, variables={}, pages=-1, callback=None):
+		if callback:
+			return self.paginate_GQL(query, variables, pages=pages, callback=callback)
+		else:
+			return self._GQL(query, variables)
 
 	def upload_image(self, image_in):
 		from pathlib import Path
@@ -190,7 +201,7 @@ class StashBoxInterface(GQLWrapper):
 			"type": target_type.name,
 			"id": stash_id
 		}
-		return self._callGraphQL(query, variables)["queryEdits"]["count"]
+		return self.call_GQL(query, variables)["queryEdits"]["count"]
 
 	# SCENES
 	def find_scene(self, scene_id, fragment=None):
@@ -202,7 +213,7 @@ class StashBoxInterface(GQLWrapper):
 		if fragment:
 			query = re.sub(r'\.\.\.Scene', fragment, query)
 
-		result = self._callGraphQL(query, {"id":scene_id})
+		result = self.call_GQL(query, {"id":scene_id})
 		return result["findScene"]
 	def find_scenes(self, scene_query={}, fragment=None, pages=-1, callback=None):
 		query = """query FindScenes($input: SceneQueryInput!) {
@@ -218,7 +229,7 @@ class StashBoxInterface(GQLWrapper):
 		
 		scene_query["page"] = scene_query.get("page", 1)
 		scene_query["per_page"] = 40
-		return self._paginate_query(query, scene_query, pages, callback)
+		return self.paginate_GQL(query, scene_query, pages, callback)
 	def edit_scene(self, stash_id:str, edit:dict, manual_comment:str):
 		if self.pending_edits_count(stash_id, StashboxTarget.SCENE) > 0:
 			self.log.warning(f'Edit not submitted Scene:{stash_id} has pending edits')
@@ -295,7 +306,7 @@ class StashBoxInterface(GQLWrapper):
 			}
 		}
 
-		result = self._callGraphQL(query, input)
+		result = self.call_GQL(query, input)
 		return result["sceneEdit"]
 	def fetch_scene_edit_details(self, stash_id):
 		slim_scene_edit_details = """
@@ -368,7 +379,7 @@ class StashBoxInterface(GQLWrapper):
 		
 		performer_query["page"] = performer_query.get("page", 1)
 		performer_query["per_page"] = 40
-		return self._paginate_query(query, performer_query, pages, callback)
+		return self.paginate_GQL(query, performer_query, pages, callback)
 
 	# TAGS
 	def find_tag(self, tag_in, fragment=None):
@@ -399,7 +410,7 @@ class StashBoxInterface(GQLWrapper):
 		
 		tag_query["page"] = tag_query.get("page", 1)
 		tag_query["per_page"] = 40
-		return self._paginate_query(query, tag_query, pages, callback)
+		return self.paginate_GQL(query, tag_query, pages, callback)
 
 	# DRAFTS
 	def find_drafts(self):
@@ -408,7 +419,7 @@ class StashBoxInterface(GQLWrapper):
 				...Draft
 			}
 		}"""
-		return self._callGraphQL(query)["findDrafts"]
+		return self.call_GQL(query)["findDrafts"]
 	def get_draft_data(self, draft_id):
 		query = """query FindDraftData($draft_id: ID!){
 			findDraft(id: $draft_id){
@@ -418,7 +429,7 @@ class StashBoxInterface(GQLWrapper):
 				}
 			}
 		}"""
-		return self._callGraphQL(query, {"draft_id": draft_id})["findDraft"]
+		return self.call_GQL(query, {"draft_id": draft_id})["findDraft"]
 
 	# STUDIOS
 	def find_studio(self, studio_in, fragment=None):
@@ -449,12 +460,12 @@ class StashBoxInterface(GQLWrapper):
 		
 		studio_query["page"] = studio_query.get("page", 1)
 		studio_query["per_page"] = 40
-		return self._paginate_query(query, studio_query, pages, callback)
+		return self.paginate_GQL(query, studio_query, pages, callback)
 
 	# SITES
 	def find_site(self, site_name):
 		query = """query FindSiteId{ querySites{ count sites{ id name url } } }"""
-		result = self._callGraphQL(query)
+		result = self.call_GQL(query)
 		matches = []
 		for site in result["querySites"]["sites"]:
 			if str_compare(site["name"], site_name):

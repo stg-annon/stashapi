@@ -64,3 +64,6 @@ class OnMultipleMatch(Enum):
 	RETURN_NONE = 0
 	RETURN_LIST = 1
 	RETURN_FIRST = 2
+
+class CallbackReturns(Enum):
+	STOP_ITERATION = 0
