@@ -1,4 +1,4 @@
-import re, math, time
+import re, math, time, inspect
 
 from requests.structures import CaseInsensitiveDict
 
@@ -7,6 +7,7 @@ from .tools import str_compare
 from .stash_types import StashItem
 from .stash_types import PhashDistance
 from .stash_types import OnMultipleMatch
+from .stash_types import CallbackReturns
 from .classes import GQLWrapper
 from .classes import StashVersion
 
@@ -191,7 +192,7 @@ class StashInterface(GQLWrapper):
 		Returns:
 			dict: all results from query up to specified page
 		"""
-		variables["filter"]["page"] = variables.get("filter",{}).get("page", 0)
+		variables["filter"]["page"] = variables.get("filter",{}).get("page", 1)
 		
 		result = self._GQL(query, variables)
 
@@ -200,14 +201,26 @@ class StashInterface(GQLWrapper):
 
 		itemType = list(result.keys())[1]
 		items = result[itemType]
+		callback_response = None
 		if callback != None:
-			callback(items)
+			callback_sig = inspect.signature(callback)
+			callback_kwargs = {}
+
+			if "count" in callback_sig.parameters:
+				callback_kwargs["count"] = result["count"]
+			if "page_number" in callback_sig.parameters:
+				callback_kwargs["page_number"] = variables["filter"]["page"]
+
+			if callback_kwargs:
+				callback_response = callback(items, **callback_kwargs)
+			else:
+				callback_response = callback(items)
 
 		if pages == -1: # set to all pages if -1
 			pages = math.ceil(result["count"] / variables["filter"]["per_page"])
 
-		if pages > 1:
-			self.log.debug(f'received page {variables["filter"]["page"]}/{pages} for {query_type} query')
+		if callback_response == CallbackReturns.STOP_ITERATION:
+			return
 
 		if variables["filter"]["page"] < pages:
 			variables["filter"]["page"] += 1
