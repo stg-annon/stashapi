@@ -284,7 +284,7 @@ class StashVersion:
 			self.parse(f"{version_in['version']}-{version_in['hash']}")
 
 	def parse(self, ver_str) -> None:
-		m = re.search(r'v(?P<MAJOR>\d+)\.(?P<MINOR>\d+)\.(?P<PATCH>\d+)(?:-(?P<BUILD>\d+))?(?:-(?P<HASH>[a-z0-9]{9}))?', ver_str)
+		m = re.search(r'v(?P<MAJOR>\d+)\.(?P<MINOR>\d+)\.(?P<PATCH>\d+)(?:-(?P<BUILD>\d+)?(?:-(?P<HASH>[a-z0-9]{9})))?', ver_str)
 		if m:
 			m = m.groupdict()
 		else:
