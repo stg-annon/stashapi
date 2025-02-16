@@ -37,7 +37,7 @@ LEVEL_MAPPING = {
     Level.INFO: 20,
     Level.WARNING: 30,
     Level.ERROR: 40,
-    Level.PROGRESS: 50,
+    Level.PROGRESS: 60,
 }
 
 
