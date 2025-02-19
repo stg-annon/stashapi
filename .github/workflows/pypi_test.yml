@@ -1,0 +1,36 @@
+name: Build and publish to PyPI
+
+on:
+  # Triggers the workflow when a release is created
+  release:
+    types: [created]
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checks-out repository under $GITHUB_WORKSPACE
+      - name: "Checkout repository and submodules"
+        uses: actions/checkout@v4
+        with:
+          ref: pypi
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.6.1"
+          python-version-file: pyproject.toml
+
+      - name: Install the project
+        run: uv sync
+
+      - name: Build
+        run: uv build
+
+      - name: Upload to PyPI
+        run: uv publish
+        env:
+          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
