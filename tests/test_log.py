@@ -1,6 +1,12 @@
 from enum import StrEnum
 from types import TracebackType
-from typing import Callable, TextIO, TypeAlias, cast, final, override
+from typing import Callable, TextIO, TypeAlias, cast, final
+
+try:
+    from typing import override  # pyright: ignore[reportUnknownVariableType, reportAttributeAccessIssue]
+except ImportError:
+    from typing_extensions import override
+
 from unittest.mock import Mock, patch
 
 import pytest

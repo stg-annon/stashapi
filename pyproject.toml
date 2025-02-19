@@ -1,21 +1,27 @@
 [project]
-name = "stashapi"
-version = "0.1.0"
-description = "API for working with a [Stash](https://github.com/stashapp/stash) instance"
-readme = "README.md"
-requires-python = "==3.12.7"
-dependencies = ["requests>=2.32.3"]
-license = "MIT"
-license-files = ["LICENSE"]
+authors = [
+    { name = "stg-annon", email = "14135675+stg-annon@users.noreply.github.com" },
+]
 classifiers = [
     "License :: OSI Approved :: MIT License",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
-# todo: add urls
+dependencies = ["requests>=2.32.3", "typing-extensions>=4.12.2"]
+description = "API wrapper and tools for interfacing with a [Stash](https://github.com/stashapp/stash) instance"
+dynamic = ["version"]
+license = "MIT"
+license-files = ["LICENSE"]
+name = "stashapi"
+readme = "README.md"
+requires-python = ">=3.11"
+
+[project.urls]
+Homepage = "https://github.com/stg-annon/stashapi"
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
 
 [dependency-groups]
@@ -27,6 +33,11 @@ line-length = 120
 [tool.coverage.run]
 source = ["stashapi"]
 
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.version.raw-options]
+version_scheme = "no-guess-dev"
 
 [tool.pyright]
 verboseOutput = true
@@ -43,7 +54,7 @@ executionEnvironments = [
 ]
 
 [tool.tox]
-env_list = ["format-check", "py312"]
+env_list = ["format-check", "py311", "py312", "py313"]
 
 [tool.tox.env.format]
 description = "install black in a virtual environment and invoke it on the current folder"
@@ -57,8 +68,7 @@ deps = ["black==24.10.0"]
 skip_install = true
 commands = [["black", "src", "--check", "--diff", "--color"]]
 
-[tool.tox.env."py312"]
-description = "install pytest in a virtual environment and invoke it on the tests folder"
+[tool.tox.env_run_base]
 deps = ["pytest>=8", "pytest-cov"]
 commands = [
     [
@@ -76,3 +86,12 @@ commands = [
         { replace = "posargs", extend = true },
     ],
 ]
+
+[tool.tox.env."py311"]
+description = "Run tests on Python version 3.11"
+
+[tool.tox.env."py312"]
+description = "Run tests on Python version 3.12"
+
+[tool.tox.env."py313"]
+description = "Run tests on Python version 3.13"

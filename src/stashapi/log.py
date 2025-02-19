@@ -16,7 +16,12 @@ import logging
 import os
 import re
 import sys
-from typing import Callable, TextIO, override
+from typing import Callable, TextIO
+
+try:
+    from typing import override  # pyright: ignore[reportUnknownVariableType, reportAttributeAccessIssue]
+except ImportError:
+    from typing_extensions import override
 
 TRACE = 5  # logging.TRACE will be available, but pyright doesn't like it
 setattr(logging, "TRACE", TRACE)  # low order python logging level
