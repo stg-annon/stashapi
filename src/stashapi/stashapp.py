@@ -1,32 +1,27 @@
-import re, math, time, inspect
+import inspect
+import math
+import re
+import time
 
 from requests.structures import CaseInsensitiveDict
 
-from .tools import str_compare
-
-from .stash_types import StashItem
-from .stash_types import PhashDistance
-from .stash_types import OnMultipleMatch
-from .stash_types import CallbackReturns
-from .classes import GQLWrapper
-from .classes import StashVersion
+from stashapi.classes import GQLWrapper, StashVersion
+from stashapi.log import get_logger
+from stashapi.stash_types import (
+    CallbackReturns,
+    OnMultipleMatch,
+    PhashDistance,
+    StashItem,
+)
+from stashapi.tools import str_compare
 
 
 class StashInterface(GQLWrapper):
-    port = ""
-    url = ""
-
     def __init__(self, conn: dict = {}, fragments: list[str] = [], verify_ssl: bool = True, force_api_key=False):
-        super().__init__()
-        self.s.verify = verify_ssl
-
         conn = CaseInsensitiveDict(conn)
 
-        self.log = conn.get("Logger", None)
-        if not self.log:
-            import stashapi.log as logger
-
-            self.log = logger
+        super().__init__(conn.get("Logger", None) or get_logger())
+        self.s.verify = verify_ssl
 
         scheme = conn.get("Scheme", "http")
         if conn.get("Domain"):
@@ -265,12 +260,12 @@ class StashInterface(GQLWrapper):
 
     def get_configuration(self, fragment=None):
         query = """
-			query Configuration {
-				configuration {
-					...ConfigResult
-				}
-			}
-		"""
+            query Configuration {
+                configuration {
+                    ...ConfigResult
+                }
+            }
+        """
         if fragment:
             query = re.sub(r"\.\.\.ConfigResult", fragment, query)
 
@@ -349,10 +344,10 @@ class StashInterface(GQLWrapper):
 
     def metadata_clean(self, paths: list = [], dry_run=False):
         query = """
-		mutation MetadataClean($input:CleanMetadataInput!) {
-			metadataClean(input: $input)
-		}
-		"""
+        mutation MetadataClean($input:CleanMetadataInput!) {
+            metadataClean(input: $input)
+        }
+        """
 
         clean_metadata_input = {"paths": paths, "dryRun": dry_run}
         result = self.call_GQL(query, {"input": clean_metadata_input})
@@ -360,10 +355,10 @@ class StashInterface(GQLWrapper):
 
     def metadata_autotag(self, paths: list = [], performers: list = [], studios: list = [], tags: list = []):
         query = """
-		mutation MetadataAutoTag($input:AutoTagMetadataInput!) {
-		    metadataAutoTag(input: $input)
-		}
-		"""
+        mutation MetadataAutoTag($input:AutoTagMetadataInput!) {
+            metadataAutoTag(input: $input)
+        }
+        """
         metadata_autotag_input = {
             "paths": paths,
             "performers": performers,
@@ -384,10 +379,10 @@ class StashInterface(GQLWrapper):
         transcodes=True,
     ):
         query = """
-		mutation MetadataCleanGenerated($input: CleanGeneratedInput!) {
-		  metadataCleanGenerated(input: $input)
-		}
-		"""
+        mutation MetadataCleanGenerated($input: CleanGeneratedInput!) {
+          metadataCleanGenerated(input: $input)
+        }
+        """
         clean_metadata_input = {
             "blobFiles": blobFiles,
             "dryRun": dryRun,
@@ -411,10 +406,10 @@ class StashInterface(GQLWrapper):
             return
 
         query = """
-		mutation FileSetFingerprints($input: FileSetFingerprintsInput!) {
-			fileSetFingerprints(input: $input)
-		}
-		"""
+        mutation FileSetFingerprints($input: FileSetFingerprintsInput!) {
+            fileSetFingerprints(input: $input)
+        }
+        """
         variables = {"input": {"id": file_id, "fingerprints": fingerprints}}
         result = self.call_GQL(query, variables)
         return result["fileSetFingerprints"]
@@ -424,10 +419,10 @@ class StashInterface(GQLWrapper):
             return
 
         query = """
-		mutation DeleteFiles($ids: [ID!]!) {
-			deleteFiles(ids: $ids)
-		}
-		"""
+        mutation DeleteFiles($ids: [ID!]!) {
+            deleteFiles(ids: $ids)
+        }
+        """
         variables = {"ids": file_ids}
         result = self.call_GQL(query, variables)
         return result["deleteFiles"]
@@ -452,10 +447,10 @@ class StashInterface(GQLWrapper):
                 dict: current plugin configuration values
         """
         query = """
-			mutation ConfigurePlugin($plugin_id: ID!, $input: Map!) {
-				configurePlugin(plugin_id: $plugin_id, input: $input)
-			}
-		"""
+            mutation ConfigurePlugin($plugin_id: ID!, $input: Map!) {
+                configurePlugin(plugin_id: $plugin_id, input: $input)
+            }
+        """
         plugin_values = self.find_plugin_config(plugin_id)
         if init_defaults:
             values.update(plugin_values)
@@ -509,8 +504,8 @@ class StashInterface(GQLWrapper):
                 ID: task ID
         """
         query = """mutation RunPluginTask($plugin_id: ID!, $task_name: String!, $args: [PluginArgInput!]) {
-			runPluginTask(plugin_id: $plugin_id, task_name: $task_name, args: $args)
-		}"""
+            runPluginTask(plugin_id: $plugin_id, task_name: $task_name, args: $args)
+        }"""
         args_list = []
         for k, v in args.items():
             if isinstance(v, str):
@@ -544,12 +539,12 @@ class StashInterface(GQLWrapper):
         """
 
         query = """
-			mutation tagCreate($input:TagCreateInput!) {
-				tagCreate(input: $input){
-					...Tag
-				}
-			}
-		"""
+            mutation tagCreate($input:TagCreateInput!) {
+                tagCreate(input: $input){
+                    ...Tag
+                }
+            }
+        """
         variables = {"input": tag_in}
         result = self.call_GQL(query, variables)
         return result["tagCreate"]
@@ -614,12 +609,12 @@ class StashInterface(GQLWrapper):
 
     def update_tag(self, tag_update):
         query = """
-		mutation TagUpdate($input: TagUpdateInput!) {
-			tagUpdate(input: $input) {
-				id
-			}
-		}
-		"""
+        mutation TagUpdate($input: TagUpdateInput!) {
+            tagUpdate(input: $input) {
+                id
+            }
+        }
+        """
         variables = {"input": tag_update}
 
         self.call_GQL(query, variables)
@@ -632,10 +627,10 @@ class StashInterface(GQLWrapper):
         """
 
         query = """
-			mutation tagDestroy($input: TagDestroyInput!) {
-				tagDestroy(input: $input)
-			}
-		"""
+            mutation tagDestroy($input: TagDestroyInput!) {
+                tagDestroy(input: $input)
+            }
+        """
         variables = {"input": {"id": tag_id}}
 
         self.call_GQL(query, variables)
@@ -658,15 +653,15 @@ class StashInterface(GQLWrapper):
         """
 
         query = """
-			query FindTags($filter: FindFilterType, $tag_filter: TagFilterType) {
-				findTags(filter: $filter, tag_filter: $tag_filter) {
-					count
-					tags {
-						...Tag
-					}
-				}
-			}
-		"""
+            query FindTags($filter: FindFilterType, $tag_filter: TagFilterType) {
+                findTags(filter: $filter, tag_filter: $tag_filter) {
+                    count
+                    tags {
+                        ...Tag
+                    }
+                }
+            }
+        """
         if fragment:
             query = re.sub(r"\.\.\.Tag", fragment, query)
 
@@ -708,10 +703,10 @@ class StashInterface(GQLWrapper):
         """
 
         query = """
-			mutation tagsDestroy($ids: [ID!]!) {
-				tagsDestroy(ids: $ids)
-			}
-		"""
+            mutation tagsDestroy($ids: [ID!]!) {
+                tagsDestroy(ids: $ids)
+            }
+        """
 
         self.call_GQL(query, {"ids": tag_ids})
 
@@ -726,12 +721,12 @@ class StashInterface(GQLWrapper):
                  dict: stash performer object
         """
         query = """
-			mutation($input: PerformerCreateInput!) {
-				performerCreate(input: $input) {
-					...Performer
-				}
-			}
-		"""
+            mutation($input: PerformerCreateInput!) {
+                performerCreate(input: $input) {
+                    ...Performer
+                }
+            }
+        """
 
         variables = {"input": performer_in}
 
@@ -739,14 +734,14 @@ class StashInterface(GQLWrapper):
         return result["performerCreate"]
 
     def find_performer(self, performer, create=False, fragment=None, on_multiple=OnMultipleMatch.RETURN_FIRST) -> dict:
-        """looks for performer from stash matching aliases
+        """looks for performer from stash, matching on name or aliases
 
         Args:
-                 performer (int, str, dict): int of performer id, str of performer name/alias, dict of performer object
-                 create (bool, optional): create performer if not found. Defaults to False.
+            performer (int, str, dict): int of performer id, str of performer name/alias, dict of performer object
+            create (bool, optional): create performer if not found. Defaults to False.
 
         Returns:
-                 dict: performer from stash
+            dict: performer from stash
         """
         performer = self._parse_obj_for_ID(performer)
         # assume input is an ID if int
@@ -800,12 +795,12 @@ class StashInterface(GQLWrapper):
         """
 
         query = """
-			mutation performerUpdate($input:PerformerUpdateInput!) {
-				performerUpdate(input: $input) {
-					...Performer
-				}
-			}
-		"""
+            mutation performerUpdate($input:PerformerUpdateInput!) {
+                performerUpdate(input: $input) {
+                    ...Performer
+                }
+            }
+        """
         variables = {"input": performer_in}
 
         result = self.call_GQL(query, variables)
@@ -818,44 +813,44 @@ class StashInterface(GQLWrapper):
             raise Exception("destroy_gallery only accepts an int or list of ints")
 
         query = """
-		mutation performersDestroy($performer_ids:[ID!]!) {
-			performersDestroy(ids: $performer_ids)
-		}
-		"""
+        mutation performersDestroy($performer_ids:[ID!]!) {
+            performersDestroy(ids: $performer_ids)
+        }
+        """
         result = self.call_GQL(query, {"performer_ids": performer_ids})
         return result["performersDestroy"]
 
     def merge_performers(self, source: list, destination, values={}):
 
         performer_update_fragment = """
-			id
-			name
-			disambiguation
-			url
-			twitter
-			instagram
-			gender
-			birthdate
-			death_date
-			ethnicity
-			country
-			eye_color
-			height_cm
-			measurements
-			fake_tits
-			career_length
-			tattoos
-			piercings
-			alias_list
-			favorite
-			tags { id }
-			stash_ids { endpoint stash_id }
-			rating100
-			details
-			hair_color
-			weight
-			ignore_auto_tag
-		"""
+            id
+            name
+            disambiguation
+            url
+            twitter
+            instagram
+            gender
+            birthdate
+            death_date
+            ethnicity
+            country
+            eye_color
+            height_cm
+            measurements
+            fake_tits
+            career_length
+            tattoos
+            piercings
+            alias_list
+            favorite
+            tags { id }
+            stash_ids { endpoint stash_id }
+            rating100
+            details
+            hair_color
+            weight
+            ignore_auto_tag
+        """
 
         if isinstance(source, str):
             source = int(source)
@@ -984,15 +979,15 @@ class StashInterface(GQLWrapper):
         """
 
         query = """
-			query FindPerformers($filter: FindFilterType, $performer_filter: PerformerFilterType) {
-				findPerformers(filter: $filter, performer_filter: $performer_filter) {
-					count
-					performers {
-						...Performer
-					}
-				}
-			}
-		"""
+            query FindPerformers($filter: FindFilterType, $performer_filter: PerformerFilterType) {
+                findPerformers(filter: $filter, performer_filter: $performer_filter) {
+                    count
+                    performers {
+                        ...Performer
+                    }
+                }
+            }
+        """
         if fragment:
             query = re.sub(r"\.\.\.Performer", fragment, query)
 
@@ -1007,12 +1002,12 @@ class StashInterface(GQLWrapper):
 
     def update_performers(self, bulk_performer_update_input: dict):
         query = """
-			mutation BulkPerformerUpdate($input:BulkPerformerUpdateInput!) {
-				bulkPerformerUpdate(input: $input) {
-					id
-				}
-			}
-		"""
+            mutation BulkPerformerUpdate($input:BulkPerformerUpdateInput!) {
+                bulkPerformerUpdate(input: $input) {
+                    id
+                }
+            }
+        """
         variables = {"input": bulk_performer_update_input}
 
         result = self.call_GQL(query, variables)
@@ -1038,12 +1033,12 @@ class StashInterface(GQLWrapper):
                  dict: stash studio object
         """
         query = """
-			mutation StudioCreate($input: StudioCreateInput!) {
-				studioCreate(input: $input) {
-					...Studio
-				}
-			}
-		"""
+            mutation StudioCreate($input: StudioCreateInput!) {
+                studioCreate(input: $input) {
+                    ...Studio
+                }
+            }
+        """
         variables = {"input": studio_create_input}
 
         result = self.call_GQL(query, variables)
@@ -1101,12 +1096,12 @@ class StashInterface(GQLWrapper):
         """
 
         query = """
-			mutation StudioUpdate($input:StudioUpdateInput!) {
-				studioUpdate(input: $input) {
-					...Studio
-				}
-			}
-		"""
+            mutation StudioUpdate($input:StudioUpdateInput!) {
+                studioUpdate(input: $input) {
+                    ...Studio
+                }
+            }
+        """
         variables = {"input": studio}
 
         result = self.call_GQL(query, variables)
@@ -1146,15 +1141,15 @@ class StashInterface(GQLWrapper):
         """
 
         query = """
-		query FindStudios($filter: FindFilterType, $studio_filter: StudioFilterType) {
-			findStudios(filter: $filter, studio_filter: $studio_filter) {
-			count
-			studios {
-				...Studio
-			}
-			}
-		}
-		"""
+        query FindStudios($filter: FindFilterType, $studio_filter: StudioFilterType) {
+            findStudios(filter: $filter, studio_filter: $studio_filter) {
+            count
+            studios {
+                ...Studio
+            }
+            }
+        }
+        """
         if fragment:
             query = re.sub(r"\.\.\.Studio", fragment, query)
 
@@ -1175,12 +1170,12 @@ class StashInterface(GQLWrapper):
             self.log.warning(f"could not create Group from {group_in}")
             return
         query = """
-			mutation($input: GroupCreateInput!) {
-				groupCreate(input: $input) {
-					id
-				}
-			}
-		"""
+            mutation($input: GroupCreateInput!) {
+                groupCreate(input: $input) {
+                    id
+                }
+            }
+        """
         variables = {"input": group_in}
         result = self.call_GQL(query, variables)
         return result["groupCreate"]
@@ -1219,12 +1214,12 @@ class StashInterface(GQLWrapper):
 
     def update_group(self, group_in):
         query = """
-			mutation GroupUpdate($input:GroupUpdateInput!) {
-				groupUpdate(input: $input) {
-					...Group
-				}
-			}
-		"""
+            mutation GroupUpdate($input:GroupUpdateInput!) {
+                groupUpdate(input: $input) {
+                    ...Group
+                }
+            }
+        """
         variables = {"input": group_in}
 
         result = self.call_GQL(query, variables)
@@ -1232,12 +1227,12 @@ class StashInterface(GQLWrapper):
 
     def destroy_group(self, group_id):
         query = """
-			mutation DestroyGroup($input:GroupDestroyInput!) {
-				groupDestroy(input: $input) {
-					...Group
-				}
-			}
-		"""
+            mutation DestroyGroup($input:GroupDestroyInput!) {
+                groupDestroy(input: $input) {
+                    ...Group
+                }
+            }
+        """
         result = self.call_GQL(query, {"input": {"id": group_id}})
         return result["groupDestroy"]
 
@@ -1246,15 +1241,15 @@ class StashInterface(GQLWrapper):
         self, f: dict = {}, filter: dict = {"per_page": -1}, q="", fragment=None, get_count=False, callback=None
     ):
         query = """
-			query FindGroups($filter: FindFilterType, $group_filter: GroupFilterType) {
-				findGroups(filter: $filter, group_filter: $group_filter) {
-					count
-					groups {
-						...Group
-					}
-				}
-			}
-		"""
+            query FindGroups($filter: FindFilterType, $group_filter: GroupFilterType) {
+                findGroups(filter: $filter, group_filter: $group_filter) {
+                    count
+                    groups {
+                        ...Group
+                    }
+                }
+            }
+        """
         if fragment:
             query = re.sub(r"\.\.\.Group", fragment, query)
 
@@ -1287,12 +1282,12 @@ class StashInterface(GQLWrapper):
     # Gallery CRUD
     def create_gallery(self, gallery_create_input: dict):
         query = """
-		mutation GalleryCreate($input: GalleryCreateInput!) {
-			galleryCreate(input: $input) {
-				id
-			}
-		}
-		"""
+        mutation GalleryCreate($input: GalleryCreateInput!) {
+            galleryCreate(input: $input) {
+                id
+            }
+        }
+        """
         variables = {"input": gallery_create_input}
 
         result = self.call_GQL(query, variables)
@@ -1318,12 +1313,12 @@ class StashInterface(GQLWrapper):
 
     def update_gallery(self, gallery_data):
         query = """
-			mutation GalleryUpdate($input:GalleryUpdateInput!) {
-				galleryUpdate(input: $input) {
-					id
-				}
-			}
-		"""
+            mutation GalleryUpdate($input:GalleryUpdateInput!) {
+                galleryUpdate(input: $input) {
+                    id
+                }
+            }
+        """
         variables = {"input": gallery_data}
 
         result = self.call_GQL(query, variables)
@@ -1336,10 +1331,10 @@ class StashInterface(GQLWrapper):
             raise Exception("destroy_gallery only accepts an int or list of ints")
 
         query = """
-		mutation galleryDestroy($input:GalleryDestroyInput!) {
-			galleryDestroy(input: $input)
-		}
-		"""
+        mutation galleryDestroy($input:GalleryDestroyInput!) {
+            galleryDestroy(input: $input)
+        }
+        """
         variables = {"input": {"delete_file": delete_file, "delete_generated": delete_generated, "ids": gallery_ids}}
         result = self.call_GQL(query, variables)
         return result["galleryDestroy"]
@@ -1370,20 +1365,20 @@ class StashInterface(GQLWrapper):
 
     def remove_gallery_images(self, gallery_id, image_ids):
         query = """
-			mutation RemoveGalleryImages($gallery_id: ID!, $image_ids: [ID!]!) {
-				removeGalleryImages(input: { gallery_id: $gallery_id, image_ids: $image_ids }) 
-			}
-		"""
+            mutation RemoveGalleryImages($gallery_id: ID!, $image_ids: [ID!]!) {
+                removeGalleryImages(input: { gallery_id: $gallery_id, image_ids: $image_ids }) 
+            }
+        """
         variables = {"gallery_id": gallery_id, "image_ids": image_ids}
         result = self.call_GQL(query, variables)
         return result["removeGalleryImages"]
 
     def add_gallery_images(self, gallery_id, image_ids):
         query = """
-			mutation AddGalleryImages($gallery_id: ID!, $image_ids: [ID!]!) {
-				addGalleryImages(input: { gallery_id: $gallery_id, image_ids: $image_ids })
-			}
-		"""
+            mutation AddGalleryImages($gallery_id: ID!, $image_ids: [ID!]!) {
+                addGalleryImages(input: { gallery_id: $gallery_id, image_ids: $image_ids })
+            }
+        """
         variables = {"gallery_id": gallery_id, "image_ids": image_ids}
         result = self.call_GQL(query, variables)
         return result["addGalleryImages"]
@@ -1391,36 +1386,36 @@ class StashInterface(GQLWrapper):
     # Gallery Chapters
     def create_gallery_chapter(self, chapter_data):
         query = """
-			mutation GalleryChapterCreate($input:GalleryChapterCreateInput!) {
-				galleryChapterCreate(input: $input) {
-					id
-				}
-			}
-		"""
+            mutation GalleryChapterCreate($input:GalleryChapterCreateInput!) {
+                galleryChapterCreate(input: $input) {
+                    id
+                }
+            }
+        """
         variables = {"input": chapter_data}
         result = self.call_GQL(query, variables)
         return result["galleryChapterCreate"]["id"]
 
     def update_gallery_chapter(self, chapter_data):
         query = """
-			mutation GalleryChapterUpdate($input:GalleryChapterUpdateInput!) {
-				galleryChapterUpdate(input: $input) {
-					id
-				}
-			}
-		"""
+            mutation GalleryChapterUpdate($input:GalleryChapterUpdateInput!) {
+                galleryChapterUpdate(input: $input) {
+                    id
+                }
+            }
+        """
         variables = {"input": chapter_data}
         result = self.call_GQL(query, variables)
         return result["galleryChapterUpdate"]["id"]
 
     def destroy_gallery_chapter(self, chapter_id):
         query = """
-			mutation GalleryChapterDestroy($chapter_id:ID!) {
-				galleryChapterDestroy(id: $chapter_id) {
-					id
-				}
-			}
-		"""
+            mutation GalleryChapterDestroy($chapter_id:ID!) {
+                galleryChapterDestroy(id: $chapter_id) {
+                    id
+                }
+            }
+        """
         variables = {"chapter_id": chapter_id}
         result = self.call_GQL(query, variables)
         return result["galleryChapterDestroy"]["id"]
@@ -1430,15 +1425,15 @@ class StashInterface(GQLWrapper):
         self, f: dict = {}, filter: dict = {"per_page": -1}, q="", fragment=None, get_count=False, callback=None
     ):
         query = """
-			query FindGalleries($filter: FindFilterType, $gallery_filter: GalleryFilterType) {
-				findGalleries(gallery_filter: $gallery_filter, filter: $filter) {
-					count
-					galleries {
-						...Gallery
-					}
-				}
-			}
-		"""
+            query FindGalleries($filter: FindFilterType, $gallery_filter: GalleryFilterType) {
+                findGalleries(gallery_filter: $gallery_filter, filter: $filter) {
+                    count
+                    galleries {
+                        ...Gallery
+                    }
+                }
+            }
+        """
         if fragment:
             query = re.sub(r"\.\.\.Gallery", fragment, query)
 
@@ -1453,12 +1448,12 @@ class StashInterface(GQLWrapper):
 
     def update_galleries(self, galleries_input):
         query = """
-			mutation BulkGalleryUpdate($input:BulkGalleryUpdateInput!) {
-				bulkGalleryUpdate(input: $input) {
-					id
-				}
-			}
-		"""
+            mutation BulkGalleryUpdate($input:BulkGalleryUpdateInput!) {
+                bulkGalleryUpdate(input: $input) {
+                    id
+                }
+            }
+        """
         variables = {"input": galleries_input}
 
         result = self.call_GQL(query, variables)
@@ -1492,12 +1487,12 @@ class StashInterface(GQLWrapper):
 
     def update_image(self, update_input):
         query = """
-			mutation ImageUpdate($input:ImageUpdateInput!) {
-				imageUpdate(input: $input) {
-					id
-				}
-			}
-		"""
+            mutation ImageUpdate($input:ImageUpdateInput!) {
+                imageUpdate(input: $input) {
+                    id
+                }
+            }
+        """
         variables = {"input": update_input}
 
         result = self.call_GQL(query, variables)
@@ -1505,10 +1500,10 @@ class StashInterface(GQLWrapper):
 
     def destroy_image(self, image_id, delete_file=False):
         query = """
-		mutation ImageDestroy($input:ImageDestroyInput!) {
-			imageDestroy(input: $input)
-		}
-		"""
+        mutation ImageDestroy($input:ImageDestroyInput!) {
+            imageDestroy(input: $input)
+        }
+        """
         variables = {"input": {"delete_file": delete_file, "delete_generated": True, "id": image_id}}
 
         result = self.call_GQL(query, variables)
@@ -1519,15 +1514,15 @@ class StashInterface(GQLWrapper):
         self, f: dict = {}, filter: dict = {"per_page": -1}, q="", fragment=None, get_count=False, callback=None
     ):
         query = """
-		query FindImages($filter: FindFilterType, $image_filter: ImageFilterType, $image_ids: [Int!]) {
-  			findImages(filter: $filter, image_filter: $image_filter, image_ids: $image_ids) {
-	 			count
-	 			images {
-					...Image
-	 			}
-  			}
-		}
-		"""
+        query FindImages($filter: FindFilterType, $image_filter: ImageFilterType, $image_ids: [Int!]) {
+            findImages(filter: $filter, image_filter: $image_filter, image_ids: $image_ids) {
+                count
+                images {
+                    ...Image
+                }
+            }
+        }
+        """
         if fragment:
             query = re.sub(r"\.\.\.Image", fragment, query)
 
@@ -1542,12 +1537,12 @@ class StashInterface(GQLWrapper):
 
     def update_images(self, updates_input):
         query = """
-			mutation BulkImageUpdate($input:BulkImageUpdateInput!) {
-				bulkImageUpdate(input: $input) {
-					id
-				}
-			}
-		"""
+            mutation BulkImageUpdate($input:BulkImageUpdateInput!) {
+                bulkImageUpdate(input: $input) {
+                    id
+                }
+            }
+        """
         variables = {"input": updates_input}
 
         result = self.call_GQL(query, variables)
@@ -1555,10 +1550,10 @@ class StashInterface(GQLWrapper):
 
     def destroy_images(self, image_ids: list, delete_file=False):
         query = """
-		mutation ImagesDestroy($input:ImagesDestroyInput!) {
-			imagesDestroy(input: $input)
-		}
-		"""
+        mutation ImagesDestroy($input:ImagesDestroyInput!) {
+            imagesDestroy(input: $input)
+        }
+        """
         variables = {"input": {"delete_file": delete_file, "delete_generated": True, "ids": image_ids}}
 
         result = self.call_GQL(query, variables)
@@ -1567,12 +1562,12 @@ class StashInterface(GQLWrapper):
     # Scene CRUD
     def create_scene(self, scene_create_input: dict = {}):
         query = """
-		mutation SceneCrate($input: SceneCreateInput!) {
-			sceneCreate(input: $input) {
-				id
-			}
-		}
-		"""
+        mutation SceneCrate($input: SceneCreateInput!) {
+            sceneCreate(input: $input) {
+                id
+            }
+        }
+        """
 
         variables = {"input": scene_create_input}
 
@@ -1581,12 +1576,12 @@ class StashInterface(GQLWrapper):
 
     def find_scene(self, id: int, fragment=None):
         query = """
-		query FindScene($scene_id: ID) {
-			findScene(id: $scene_id) {
-				...Scene
-			}
-		}
-		"""
+        query FindScene($scene_id: ID) {
+            findScene(id: $scene_id) {
+                ...Scene
+            }
+        }
+        """
         if fragment:
             query = re.sub(r"\.\.\.Scene", fragment, query)
 
@@ -1597,12 +1592,12 @@ class StashInterface(GQLWrapper):
 
     def find_scene_by_hash(self, hash_input: dict, fragment=None):
         query = """
-		query FindSceneByHash($hash_input: SceneHashInput!) {
-			findSceneByHash(input: $hash_input) {
-				...Scene
-			}
-		}
-		"""
+        query FindSceneByHash($hash_input: SceneHashInput!) {
+            findSceneByHash(input: $hash_input) {
+                ...Scene
+            }
+        }
+        """
         if fragment:
             query = re.sub(r"\.\.\.Scene", fragment, query)
 
@@ -1624,12 +1619,12 @@ class StashInterface(GQLWrapper):
         """
 
         query = """
-		SELECT 
-			scene_id
-		FROM 
-			files_fingerprints
-		INNER JOIN scenes_files USING(file_id)
-		WHERE type = ?"""
+        SELECT 
+            scene_id
+        FROM 
+            files_fingerprints
+        INNER JOIN scenes_files USING(file_id)
+        WHERE type = ?"""
 
         if value != None:
             if hash_type == "phash":
@@ -1647,12 +1642,12 @@ class StashInterface(GQLWrapper):
 
     def update_scene(self, update_input: dict, create=False):
         query = """
-			mutation sceneUpdate($input:SceneUpdateInput!) {
-				sceneUpdate(input: $input) {
-					id
-				}
-			}
-		"""
+            mutation sceneUpdate($input:SceneUpdateInput!) {
+                sceneUpdate(input: $input) {
+                    id
+                }
+            }
+        """
         if update_input.get("tags"):
             self.log.debug("sceneUpdate expects 'tag_ids' not 'tags', automatically mapping...")
             update_input["tag_ids"] = self.map_tag_ids(update_input["tags"], create=create)
@@ -1669,10 +1664,10 @@ class StashInterface(GQLWrapper):
 
     def destroy_scene(self, scene_id, delete_file=False):
         query = """
-		mutation SceneDestroy($input:SceneDestroyInput!) {
-			sceneDestroy(input: $input)
-		}
-		"""
+        mutation SceneDestroy($input:SceneDestroyInput!) {
+            sceneDestroy(input: $input)
+        }
+        """
         variables = {"input": {"delete_file": delete_file, "delete_generated": True, "id": scene_id}}
 
         result = self.call_GQL(query, variables)
@@ -1689,15 +1684,15 @@ class StashInterface(GQLWrapper):
         self, f: dict = {}, filter: dict = {"per_page": -1}, q: str = "", fragment=None, get_count=False, callback=None
     ):
         query = """
-		query FindScenes($filter: FindFilterType, $scene_filter: SceneFilterType, $scene_ids: [Int!]) {
-			findScenes(filter: $filter, scene_filter: $scene_filter, scene_ids: $scene_ids) {
-				count
-				scenes {
-					...Scene
-				}
-			}
-		}
-		"""
+        query FindScenes($filter: FindFilterType, $scene_filter: SceneFilterType, $scene_ids: [Int!]) {
+            findScenes(filter: $filter, scene_filter: $scene_filter, scene_ids: $scene_ids) {
+                count
+                scenes {
+                    ...Scene
+                }
+            }
+        }
+        """
         if fragment:
             query = re.sub(r"\.\.\.Scene", fragment, query)
 
@@ -1712,12 +1707,12 @@ class StashInterface(GQLWrapper):
 
     def update_scenes(self, updates_input):
         query = """
-			mutation BulkSceneUpdate($input:BulkSceneUpdateInput!) {
-				bulkSceneUpdate(input: $input) {
-					id
-				}
-			}
-		"""
+            mutation BulkSceneUpdate($input:BulkSceneUpdateInput!) {
+                bulkSceneUpdate(input: $input) {
+                    id
+                }
+            }
+        """
         variables = {"input": updates_input}
 
         result = self.call_GQL(query, variables)
@@ -1725,10 +1720,10 @@ class StashInterface(GQLWrapper):
 
     def destroy_scenes(self, scene_ids, delete_file=False):
         query = """
-		mutation ScenesDestroy($input:ScenesDestroyInput!) {
-			scenesDestroy(input: $input)
-		}
-		"""
+        mutation ScenesDestroy($input:ScenesDestroyInput!) {
+            scenesDestroy(input: $input)
+        }
+        """
         variables = {"input": {"delete_file": delete_file, "delete_generated": True, "ids": scene_ids}}
 
         result = self.call_GQL(query, variables)
@@ -1750,12 +1745,12 @@ class StashInterface(GQLWrapper):
             raise Exception("merge_scenes() destination attribute must be an int")
 
         query = """
-			mutation SceneMerge($merge_input: SceneMergeInput!) {
-				sceneMerge(input: $merge_input) {
-					id
-				}
-			}
-		"""
+            mutation SceneMerge($merge_input: SceneMergeInput!) {
+                sceneMerge(input: $merge_input) {
+                    id
+                }
+            }
+        """
         values["id"] = destination
         merge_input = {
             "source": source,
@@ -1777,14 +1772,14 @@ class StashInterface(GQLWrapper):
                 list: list of marker objects from stash
         """
         query = """
-			query FindSceneMarkers($scene_id: ID) {
-				findScene(id: $scene_id) {
-					scene_markers {
-						...SceneMarker
-					}
-				}
-			}
-		"""
+            query FindSceneMarkers($scene_id: ID) {
+                findScene(id: $scene_id) {
+                    scene_markers {
+                        ...SceneMarker
+                    }
+                }
+            }
+        """
         if fragment:
             query = re.sub(r"\.\.\.SceneMarker", fragment, query)
 
@@ -1809,14 +1804,14 @@ class StashInterface(GQLWrapper):
             return self.get_scene_markers(scene_marker_filter)
 
         query = """
-			query findSceneMarkers($scene_marker_filter: SceneMarkerFilterType, $filter: FindFilterType) {
-				findSceneMarkers(scene_marker_filter: $scene_marker_filter, filter: $filter) {
-					scene_markers {
-						...SceneMarker
-					}
-				}
-			}
-		"""
+            query findSceneMarkers($scene_marker_filter: SceneMarkerFilterType, $filter: FindFilterType) {
+                findSceneMarkers(scene_marker_filter: $scene_marker_filter, filter: $filter) {
+                    scene_markers {
+                        ...SceneMarker
+                    }
+                }
+            }
+        """
         if fragment:
             query = re.sub(r"\.\.\.SceneMarker", fragment, query)
 
@@ -1825,12 +1820,12 @@ class StashInterface(GQLWrapper):
 
     def create_scene_marker(self, marker_create_input: dict, fragment=None):
         query = """
-			mutation SceneMarkerCreate($marker_input: SceneMarkerCreateInput!) {
-				sceneMarkerCreate(input: $marker_input) {
-					...SceneMarker
-				}
-			}
-		"""
+            mutation SceneMarkerCreate($marker_input: SceneMarkerCreateInput!) {
+                sceneMarkerCreate(input: $marker_input) {
+                    ...SceneMarker
+                }
+            }
+        """
         if fragment:
             query = re.sub(r"\.\.\.SceneMarker", fragment, query)
 
@@ -1839,20 +1834,20 @@ class StashInterface(GQLWrapper):
 
     def update_scene_marker(self, scene_marker_update: dict):
         query = """
-			mutation SceneMarkerUpdate($input: SceneMarkerUpdateInput!) {
-				sceneMarkerUpdate(input: $input) {
-					id
-				}
-			}
-		"""
+            mutation SceneMarkerUpdate($input: SceneMarkerUpdateInput!) {
+                sceneMarkerUpdate(input: $input) {
+                    id
+                }
+            }
+        """
         self.call_GQL(query, {"input": scene_marker_update})
 
     def destroy_scene_marker(self, marker_id: int):
         query = """
-			mutation DestroySceneMarkers($marker_id: ID!) {
-				sceneMarkerDestroy(id: $marker_id)
-			}
-		"""
+            mutation DestroySceneMarkers($marker_id: ID!) {
+                sceneMarkerDestroy(id: $marker_id)
+            }
+        """
         self.call_GQL(query, {"marker_id": marker_id})
 
     # BULK Markers
@@ -1899,12 +1894,12 @@ class StashInterface(GQLWrapper):
 
     def find_duplicate_scenes(self, distance: PhashDistance = PhashDistance.EXACT, fragment="id"):
         query = """
-			query FindDuplicateScenes($distance: Int) {
-				findDuplicateScenes(distance: $distance) {
-					...SceneSlim
-				}
-			}
-		"""
+            query FindDuplicateScenes($distance: Int) {
+                findDuplicateScenes(distance: $distance) {
+                    ...SceneSlim
+                }
+            }
+        """
         query = re.sub(r"\.\.\.SceneSlim", fragment, query)
 
         variables = {"distance": distance}
@@ -1914,28 +1909,28 @@ class StashInterface(GQLWrapper):
     # Scraper Operations
     def reload_scrapers(self):
         query = """
-			mutation ReloadScrapers {
-				reloadScrapers
-			}
-		"""
+            mutation ReloadScrapers {
+                reloadScrapers
+            }
+        """
 
         result = self.call_GQL(query)
         return result["reloadScrapers"]
 
     def list_scrapers(self, types: list[StashItem]):
         query = """
-		query ListScrapers ($types: [ScrapeContentType!]!) {
-			listScrapers(types: $types) {
-			  id
-			  name
-			  performer { supported_scrapes }
-			  scene { supported_scrapes }
-			  gallery { supported_scrapes }
-			  movie { supported_scrapes }
+        query ListScrapers ($types: [ScrapeContentType!]!) {
+            listScrapers(types: $types) {
+              id
+              name
+              performer { supported_scrapes }
+              scene { supported_scrapes }
+              gallery { supported_scrapes }
+              movie { supported_scrapes }
               image { supported_scrapes }
-			}
-		  }
-		"""
+            }
+          }
+        """
         result = self.call_GQL(query, {"types": [t.value for t in types]})
         return result["listScrapers"]
 
@@ -1962,10 +1957,10 @@ class StashInterface(GQLWrapper):
     # Fragment Scrape
     def scrape_scenes(self, source, input, fragment=None):
         query = """query ScrapeMultiScenes($source: ScraperSourceInput!, $input: ScrapeMultiScenesInput!) {
-		scrapeMultiScenes(source: $source, input: $input) {
-			...ScrapedScene
-		}
-		}"""
+        scrapeMultiScenes(source: $source, input: $input) {
+            ...ScrapedScene
+        }
+        }"""
         if fragment:
             query = re.sub(r"\.\.\.ScrapedScene", fragment, query)
         return self.call_GQL(query, {"source": source, "input": input})["scrapeMultiScenes"]
@@ -1988,11 +1983,11 @@ class StashInterface(GQLWrapper):
             return None
 
         query = """query ScrapeSingleScene($source: ScraperSourceInput!, $input: ScrapeSingleSceneInput!) {
-			scrapeSingleScene(source: $source, input: $input) {
-			  ...ScrapedScene
-			}
-		  }
-		"""
+            scrapeSingleScene(source: $source, input: $input) {
+              ...ScrapedScene
+            }
+          }
+        """
         scraped_scene_list = self.call_GQL(query, {"source": source, "input": input})["scrapeSingleScene"]
         if len(scraped_scene_list) == 0:
             return None
@@ -2017,11 +2012,11 @@ class StashInterface(GQLWrapper):
             return None
 
         query = """query ScrapeSingleGallery($source: ScraperSourceInput!, $input: ScrapeSingleGalleryInput!) {
-			scrapeSingleGallery(source: $source, input: $input) {
-			  ...ScrapedGallery
-			}
-		  }
-		"""
+            scrapeSingleGallery(source: $source, input: $input) {
+              ...ScrapedGallery
+            }
+          }
+        """
         scraped_gallery_list = self.call_GQL(query, {"source": source, "input": input})["scrapeSingleGallery"]
         if len(scraped_gallery_list) == 0:
             return None
@@ -2046,11 +2041,11 @@ class StashInterface(GQLWrapper):
             return None
 
         query = """query ScrapeSinglePerformer($source: ScraperSourceInput!, $input: ScrapeSinglePerformerInput!) {
-			scrapeSinglePerformer(source: $source, input: $input) {
-			  ...ScrapedPerformer
-			}
-		  }
-		"""
+            scrapeSinglePerformer(source: $source, input: $input) {
+              ...ScrapedPerformer
+            }
+          }
+        """
         scraped_performer_list = self.call_GQL(query, {"source": source, "input": input})["scrapeSinglePerformer"]
         if len(scraped_performer_list) == 0:
             return None
@@ -2062,10 +2057,10 @@ class StashInterface(GQLWrapper):
             source = {"scraper_id": source}
         if isinstance(input, (str, int)):
             input = {"image_id": input}
-    
+
         if not isinstance(source, dict):
             self.log.warning(
-              f'Unexpected Object passed to source {type(source)}{source}\n, expecting "ScraperSourceInput" or string of scraper_id'
+                f'Unexpected Object passed to source {type(source)}{source}\n, expecting "ScraperSourceInput" or string of scraper_id'
             )
             return None
         if not isinstance(input, dict):
@@ -2084,7 +2079,7 @@ class StashInterface(GQLWrapper):
         scraped_image_list = self.call_GQL(query, {"source": source, "input": input})["scrapeSingleImage"]
         if len(scraped_image_list) == 0:
             return None
-        else: 
+        else:
             return scraped_image_list
 
     # URL Scrape
@@ -2116,53 +2111,53 @@ class StashInterface(GQLWrapper):
     # Identify
     def get_identify_config(self):
         query = """
-		query getIdentifyConfig{
-			configuration {
-				defaults {
-					identify {
-						options {
-							fieldOptions {
-								field
-								strategy
-								createMissing
-							}
-							setCoverImage
-							setOrganized
-							includeMalePerformers
-						}
-					}
-				}
-			}
-		}"""
+        query getIdentifyConfig{
+            configuration {
+                defaults {
+                    identify {
+                        options {
+                            fieldOptions {
+                                field
+                                strategy
+                                createMissing
+                            }
+                            setCoverImage
+                            setOrganized
+                            includeMalePerformers
+                        }
+                    }
+                }
+            }
+        }"""
         result = self.call_GQL(query)
         return result["configuration"]["defaults"]["identify"]["options"]
 
     def get_identify_source_config(self, source_identifier):
         query = """
-		query getIdentifySourceConfig{
-			configuration {
-				defaults {
-					identify {
-						sources {
-							source {
-								stash_box_endpoint
-								scraper_id
-							}
-							options {
-								fieldOptions {
-									field
-									strategy
-									createMissing
-								}
-								setCoverImage
-								setOrganized
-								includeMalePerformers
-							}
-						}
-					}
-				}
-			}
-		}"""
+        query getIdentifySourceConfig{
+            configuration {
+                defaults {
+                    identify {
+                        sources {
+                            source {
+                                stash_box_endpoint
+                                scraper_id
+                            }
+                            options {
+                                fieldOptions {
+                                    field
+                                    strategy
+                                    createMissing
+                                }
+                                setCoverImage
+                                setOrganized
+                                includeMalePerformers
+                            }
+                        }
+                    }
+                }
+            }
+        }"""
         configs = self.call_GQL(query)["configuration"]["defaults"]["identify"]["sources"]
         for c in configs:
             if c["source"]["stash_box_endpoint"] == source_identifier:
@@ -2183,28 +2178,28 @@ class StashInterface(GQLWrapper):
 
     def get_stashbox_connections(self):
         query = """
-		query configuration{
-			configuration {
-				general {
-					stashBoxes {
-						name
-						endpoint
-						api_key
-					}
-				}
-			}
-		}"""
+        query configuration{
+            configuration {
+                general {
+                    stashBoxes {
+                        name
+                        endpoint
+                        api_key
+                    }
+                }
+            }
+        }"""
         result = self.call_GQL(query)
         return result["configuration"]["general"]["stashBoxes"]
 
     def stashbox_scene_scraper(self, scene_ids, stashbox_index: int = 0):
         query = """
-			query QueryStashBoxScene($input: StashBoxSceneQueryInput!) {
-				queryStashBoxScene(input: $input) {
-					...ScrapedScene
-				}
-			}
-		"""
+            query QueryStashBoxScene($input: StashBoxSceneQueryInput!) {
+                queryStashBoxScene(input: $input) {
+                    ...ScrapedScene
+                }
+            }
+        """
         variables = {"input": {"scene_ids": scene_ids, "stash_box_index": stashbox_index}}
 
         result = self.call_GQL(query, variables)
@@ -2213,10 +2208,10 @@ class StashInterface(GQLWrapper):
 
     def stashbox_submit_scene_fingerprints(self, scene_ids, stashbox_index: int = 0):
         query = """
-			mutation SubmitStashBoxFingerprints($input: StashBoxFingerprintSubmissionInput!) {
-				submitStashBoxFingerprints(input: $input)
-			}
-		"""
+            mutation SubmitStashBoxFingerprints($input: StashBoxFingerprintSubmissionInput!) {
+                submitStashBoxFingerprints(input: $input)
+            }
+        """
         variables = {"input": {"scene_ids": scene_ids, "stash_box_index": stashbox_index}}
 
         result = self.call_GQL(query, variables)
@@ -2224,10 +2219,10 @@ class StashInterface(GQLWrapper):
 
     def stashbox_identify_task(self, scene_ids, stashbox_endpoint="https://stashdb.org/graphql"):
         query = """
-			mutation MetadataIdentify($input: IdentifyMetadataInput!) {
-			metadataIdentify(input: $input)
-			}
-		"""
+            mutation MetadataIdentify($input: IdentifyMetadataInput!) {
+            metadataIdentify(input: $input)
+            }
+        """
         variables = {}
         variables["input"] = {
             "options": self.get_identify_config(),
@@ -2243,10 +2238,10 @@ class StashInterface(GQLWrapper):
 
     def submit_scene_draft(self, scene_id, sbox_index=0):
         query = """
-			mutation submitScenesToStashbox($input: StashBoxDraftSubmissionInput!) {
-				  submitStashBoxSceneDraft(input: $input)
-			}
-		"""
+            mutation submitScenesToStashbox($input: StashBoxDraftSubmissionInput!) {
+                  submitStashBoxSceneDraft(input: $input)
+            }
+        """
         variables = {"input": {"id": scene_id, "stash_box_index": sbox_index}}
         result = self.call_GQL(query, variables)
         return result["submitStashBoxSceneDraft"]
