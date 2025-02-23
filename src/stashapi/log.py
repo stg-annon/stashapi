@@ -17,11 +17,8 @@ import os
 import re
 import sys
 from typing import Callable, TextIO
+from typing_extensions import override
 
-try:
-    from typing import override  # pyright: ignore[reportUnknownVariableType, reportAttributeAccessIssue]
-except ImportError:
-    from typing_extensions import override
 
 TRACE = 5  # logging.TRACE will be available, but pyright doesn't like it
 setattr(logging, "TRACE", TRACE)  # low order python logging level
@@ -96,6 +93,24 @@ DISABLE_PROGRESS = False
 sl = logging.getLogger("StashLogger")
 sl.setLevel(os.getenv("LOG_LEVEL", logging.DEBUG))
 sl.addHandler(StashLogHandler())
+
+
+def get_logger(name: str | None = None) -> logging.Logger:
+    """
+    Get a logger with the given name, or "StashLogger" if the name is omitted
+
+    This logger can be used identically to the more traditional `import stashapi.log as log`,
+    but gives you a `logging.Logger` object to work with instead of a Module("stashapi.log") object
+
+    Args:
+        name (str, optional): The name to call `logging.getLogger` with
+    """
+
+    name = name or "StashLogger"
+    sl = logging.getLogger(name)
+    sl.setLevel(os.getenv("LOG_LEVEL", logging.DEBUG))
+    sl.addHandler(StashLogHandler())
+    return sl
 
 
 def trace(s: object):
