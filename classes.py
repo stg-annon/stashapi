@@ -270,6 +270,10 @@ fragment TypeRef on __Type {
 		self.log.error(error_msg)
 		raise Exception(error_msg)
 
+	# shim for older plugins
+	def callGQL(self, query, variables={}):
+		self.log.debug("callGQL() is deprecated use call_GQL() instead")
+		return self._GQL(query, variables)
 	def call_GQL(self, query, variables={}, callback=None):
 		if callback:
 			raise Exception("callback not immplemented")
