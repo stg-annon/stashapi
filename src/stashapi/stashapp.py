@@ -1932,6 +1932,7 @@ class StashInterface(GQLWrapper):
 			  scene { supported_scrapes }
 			  gallery { supported_scrapes }
 			  movie { supported_scrapes }
+              image { supported_scrapes }
 			}
 		  }
 		"""
@@ -1954,6 +1955,9 @@ class StashInterface(GQLWrapper):
 
     def list_movie_scrapers(self):
         return [{k: scraper[k] for k in ["id", "name", "movie"]} for scraper in self.list_scrapers([StashItem.MOVIE])]
+
+    def list_image_scrapers(self):
+        return [{k: scraper[k] for k in ["id", "name", "image"]} for scraper in self.list_scrapers([StashItem.IMAGE])]
 
     # Fragment Scrape
     def scrape_scenes(self, source, input, fragment=None):
@@ -2053,6 +2057,36 @@ class StashInterface(GQLWrapper):
         else:
             return scraped_performer_list
 
+    def scrape_image(self, source, input):
+        if isinstance(source, str):
+            source = {"scraper_id": source}
+        if isinstance(input, (str, int)):
+            input = {"image_id": input}
+    
+        if not isinstance(source, dict):
+            self.log.warning(
+              f'Unexpected Object passed to source {type(source)}{source}\n, expecting "ScraperSourceInput" or string of scraper_id'
+            )
+            return None
+        if not isinstance(input, dict):
+            self.log.warning(
+                f'Unexpected Object passed to input {type(input)}{input}\n, expecting "ScrapeSingleImageInput" or string of image_id'
+            )
+            return None
+
+        query = """query ScrapeSingleImage($source: ScraperSourceInput!, $input: ScrapeSingleImageInput!) {
+            scrapeSingleImage(source: $source, input: $input) {
+              ...ScrapedImage
+            }
+          }
+        """
+
+        scraped_image_list = self.call_GQL(query, {"source": source, "input": input})["scrapeSingleImage"]
+        if len(scraped_image_list) == 0:
+           return None
+        else: 
+           return scraped_image_list
+
     # URL Scrape
     def scrape_scene_url(self, url):
         query = "query($url: String!) { scrapeSceneURL(url: $url) { ...ScrapedScene } }"
@@ -2074,6 +2108,10 @@ class StashInterface(GQLWrapper):
     def scrape_performer_url(self, url):
         query = "query($url: String!) { scrapePerformerURL(url: $url) { ...ScrapedPerformer } }"
         return self.call_GQL(query, {"url": url})["scrapePerformerURL"]
+
+    def scrape_image_url(self, url):
+        query = "query($url: String!) { scrapeImageURL(url: $url) { ...ScrapedImage } }"
+        return self.call_GQL(query, {"url": url})["scrapeImageURL"]
 
     # Identify
     def get_identify_config(self):
