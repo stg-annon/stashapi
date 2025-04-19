@@ -23,7 +23,7 @@ class ScrapeParser:
         self.stash = stash_interface
         self.create_missing_tags = create_missing_tags
         self.create_missing_studios = create_missing_studios
-        self.create_missing_performers = create_missing_studios
+        self.create_missing_performers = create_missing_performers
 
     def detect(self, scraped_item):
 
