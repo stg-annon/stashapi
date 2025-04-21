@@ -3,7 +3,7 @@ import datetime
 from . import log
 
 from .stash_types import OnMultipleMatch
-from .stash_types import GenderEnum
+from .stash_types import Gender as GenderEnum
 
 
 class ScrapeParser:
