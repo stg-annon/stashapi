@@ -2083,9 +2083,9 @@ class StashInterface(GQLWrapper):
 
         scraped_image_list = self.call_GQL(query, {"source": source, "input": input})["scrapeSingleImage"]
         if len(scraped_image_list) == 0:
-           return None
+            return None
         else: 
-           return scraped_image_list
+            return scraped_image_list
 
     # URL Scrape
     def scrape_scene_url(self, url):
