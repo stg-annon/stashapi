@@ -3,7 +3,7 @@ import datetime
 from . import log
 
 from .stash_types import OnMultipleMatch
-from .stash_types import GenderEnum
+from .stash_types import Gender as GenderEnum
 
 
 class ScrapeParser:
@@ -23,7 +23,7 @@ class ScrapeParser:
         self.stash = stash_interface
         self.create_missing_tags = create_missing_tags
         self.create_missing_studios = create_missing_studios
-        self.create_missing_performers = create_missing_studios
+        self.create_missing_performers = create_missing_performers
 
     def detect(self, scraped_item):
 
@@ -42,6 +42,8 @@ class ScrapeParser:
             return self.performer_from_scrape(scraped_item)
         if scraped_item["__typename"] == "ScrapedScene":
             return self.scene_from_scrape(scraped_item)
+        if scraped_item["__typename"] == "ScrapedImage":
+            return self.image_from_scrape(scraped_item)
 
     def tag_ids_from_scrape(self, tags):
         tag_ids = [self.tag_from_scrape(t) for t in tags]
@@ -436,6 +438,70 @@ class ScrapeParser:
                 scene_update[attr] = scene[attr]
 
         return scene_update
+    
+    def image_from_scrape(self, image):
+        """
+        type ScrapedImage {
+              title: String
+              code: String
+              details: String
+              photographer: String
+              urls: [String!]
+              date: String
+              studio: ScrapedStudio
+              tags: [ScrapedTag!]
+              performers: [ScrapedPerformer!]
+        }
+
+        input ImageUpdateInput {
+              clientMutationId: String
+              id: ID!
+              title: String
+              code: String
+              rating100: Int
+              organized: Boolean
+              urls: [String!]
+              date: String
+              details: String
+              photographer: String
+              studio_id: ID
+              performer_ids: [ID!]
+              tag_ids: [ID!]
+              gallery_ids: [ID!]
+              primary_file_id: ID
+        }
+        """
+
+        image_update = {}
+
+        if image.get("code"):
+            image_update["code"] = str(image["code"])
+
+        if image.get("studio"):
+            image_update["studio_id"] = self.studio_from_scrape(image["studio"]).get("id")
+
+        if image.get("tags"):
+            image_update["tag_ids"] = self.tag_ids_from_scrape(image["tags"])
+
+        if image.get("performers"):
+            image_update["performer_ids"] = []
+            for p in image["performers"]:
+                performer = self.performer_from_scrape(p)
+                if performer.get("id"):
+                    image_update["performer_ids"].append(performer["id"])
+                else:
+                    log.debug(f"could not match performer {p['name']}")
+
+        if image.get("urls"):
+            image_update["urls"] = []
+            for url in image["urls"]:
+                image_update["urls"].append(url)
+
+        for attr in ["title", "details", "photographer", "date"]:
+            if image.get(attr):
+                image_update[attr] = image[attr]
+
+        return image_update
 
     def localize_scraped_scene(self, scraped_scene):
         # casts ScrapedScene to ScrapedScene while resolving aliases
@@ -500,3 +566,30 @@ class ScrapeParser:
                     performer["stored_id"] = performer_match["id"]
 
         return scraped_gallery
+    
+    def localize_scraped_image(self, scraped_image):
+        """
+        type ScrapedImage {
+              title: String
+              code: String
+              details: String
+              photographer: String
+              urls: [String!]
+              date: String
+              studio: ScrapedStudio
+              tags: [ScrapedTag!]
+              performers: [ScrapedPerformer!]
+        }
+        """
+        if not scraped_image:
+            return
+
+        if scraped_image.get("performers"):
+            for performer in scraped_image["performers"]:
+                if performer.get("stored_id"):
+                    continue
+                performer_match = self.stash.find_performer(performer, on_multiple=OnMultipleMatch.RETURN_NONE)
+                if performer_match:
+                    performer["stored_id"] = performer_match["id"]
+
+        return scraped_image

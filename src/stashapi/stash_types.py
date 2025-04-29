@@ -45,13 +45,14 @@ class ScrapeContentType(StashEnum):
     MOVIE = "MOVIE"
     PERFORMER = "PERFORMER"
     SCENE = "SCENE"
-
+    IMAGE = "IMAGE"
 
 class StashItem(StashEnum):
     SCENE = "SCENE"
     GALLERY = "GALLERY"
     PERFORMER = "PERFORMER"
     MOVIE = "MOVIE"
+    IMAGE = "IMAGE"
 
 
 class Gender(StashEnum):
