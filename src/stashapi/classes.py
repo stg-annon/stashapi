@@ -2,7 +2,7 @@ from enum import IntEnum, StrEnum
 import logging
 from pathlib import Path
 import re
-from typing import Callable, NotRequired, TypeAlias, TypedDict, cast
+from typing import Any, Callable, Literal, NotRequired, TypeAlias, TypedDict, cast
 
 import requests
 from requests.sessions import Session
@@ -85,6 +85,49 @@ class GQLIntrospectionTypes(TypedDict):
 
 
 GQLIntrospectionResult = TypedDict("GQLIntrospectionResult", {"__schema": GQLIntrospectionTypes})
+
+
+class GQLSqlQueryResponse(TypedDict):
+    columns: list[str]
+    rows: list[Any]
+
+
+class GQLSqlExecResponse(TypedDict):
+    rows_affected: NotRequired[int]
+    last_insert_id: NotRequired[int]
+
+
+class GQLJobStatus(StrEnum):
+    READY = "READY"
+    RUNNING = "RUNNING"
+    FINISHED = "FINISHED"
+    STOPPING = "STOPPING"
+    CANCELLED = "CANCELLED"
+    FAILED = "FAILED"
+
+
+GQLJobStatusLiteral: TypeAlias = Literal[
+    "READY",
+    "RUNNING",
+    "FINISHED",
+    "STOPPING",
+    "CANCELLED",
+    "FAILED",
+]
+
+JobStatus: TypeAlias = GQLJobStatusLiteral | GQLJobStatus
+
+
+class GQLJob(TypedDict):
+    id: int
+    status: GQLJobStatus
+    subTasks: list[str]
+    description: str
+    progress: NotRequired[float]
+    startTime: NotRequired[str]
+    endTime: NotRequired[str]
+    addTime: str
+    error: NotRequired[str]
 
 
 class GQLWrapper:
@@ -419,12 +462,18 @@ fragment TypeRef on __Type {
         self,
         query: str,
         variables: dict[str, object] | None = None,
-        callback: Callable[[], CallbackReturns] | None = None,
-    ):
+        callback: Callable[..., CallbackReturns] | None = None,
+    ) -> dict[str, JSON]:
         variables = variables or {}
         if callback:
             raise NotImplementedError("Callback function not implemented")
         return self._GQL(query, variables)
+
+
+class GQLStashVersion(TypedDict):
+    build_time: str
+    hash: str
+    version: str
 
 
 class StashVersion:
@@ -434,7 +483,7 @@ class StashVersion:
     build: int = 0
     hash: str = ""
 
-    def __init__(self, version_in: str | dict[str, str]):
+    def __init__(self, version_in: str | GQLStashVersion):
         if isinstance(version_in, str):
             self.parse(version_in)
         else:

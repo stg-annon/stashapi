@@ -43,6 +43,7 @@ version_scheme = "no-guess-dev"
 verboseOutput = true
 include = ["src"]
 exclude = ["**/__pycache__", "**/*.egg-info"]
+reportExplicitAny = false
 
 pythonVersion = "3.12"
 

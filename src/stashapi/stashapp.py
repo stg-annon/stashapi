@@ -1,11 +1,25 @@
 import inspect
 import math
+from pathlib import Path
 import re
 import time
+from typing import Any, Callable, Literal, NotRequired, TypedDict, cast
+from typing_extensions import deprecated, override
 
 from requests.structures import CaseInsensitiveDict
 
-from stashapi.classes import GQLWrapper, StashVersion
+from stashapi.classes import (
+    JSON,
+    ConfigDefaultSettingsField,
+    GQLJob,
+    GQLJobStatus,
+    GQLSqlExecResponse,
+    GQLSqlQueryResponse,
+    GQLStashVersion,
+    GQLWrapper,
+    JobStatus,
+    StashVersion,
+)
 from stashapi.log import get_logger
 from stashapi.stash_types import (
     CallbackReturns,
@@ -14,6 +28,11 @@ from stashapi.stash_types import (
     StashItem,
 )
 from stashapi.tools import str_compare
+
+
+class GQLSetFingerprintsInput(TypedDict):
+    type: str
+    value: NotRequired[str]
 
 
 class StashInterface(GQLWrapper):
@@ -72,7 +91,7 @@ class StashInterface(GQLWrapper):
             "Gallery": "{ id }",
             "Group": "{ id }",
         }
-        attribute_overrides = {
+        attribute_overrides: dict[str, dict[str, str | None]] = {
             "ScrapedStudio": {"parent": "{ stored_id }"},
             "Tag": {"parents": "{ id }", "children": "{ id }"},
             "Studio": {"parent_studio": "{ id }"},
@@ -179,29 +198,48 @@ class StashInterface(GQLWrapper):
                     performer_matches[p["id"]] = p
         return list(performer_matches.values())
 
-    def paginate_GQL(self, query, variables={}, pages=-1, callback=None):
-        """auto paginate graphql query with a callback to process items in each page
+    def paginate_GQL(
+        self,
+        query: str,
+        variables: dict[str, object] | None = None,
+        pages: int = -1,
+        callback: Callable[..., CallbackReturns] | None = None,
+    ) -> dict[str, JSON] | None:
+        """
+        auto paginate graphql query with an optional callback to process items in each page
 
         Args:
-                query (str): graphql query string
-                variables (dict): graphql query variables
-                pages (int, optional): number of pages to get results for, -1 for all pages. Defaults to -1.
-                callback (_function_, optional): callback function to run results against between page calls. Defaults to None.
+            query (str): graphql query string
+            variables (dict): graphql query variables
+            pages (int, optional): number of pages to get results for, -1 for all pages. Defaults to -1.
+            callback (_function_, optional): callback function to run results against between page calls. Defaults to None.
+                If the given callback has parameters named "count" and/or "page_number", those values will be passed to
+                the callback function when it is called.
 
         Returns:
-                dict: all results from query up to specified page
+            dict: all results from query up to specified page
         """
-        variables["filter"]["page"] = variables.get("filter", {}).get("page", 1)
+        variables = variables or {}
+        if not "filter" in variables:
+            variables["filter"] = {}
+        assert isinstance(variables["filter"], dict)
+
+        if not "page" in variables["filter"]:
+            variables["filter"]["page"] = 1
+        assert isinstance(variables["filter"]["page"], int)
 
         result = self._GQL(query, variables)
 
         query_type = list(result.keys())[0]
         result = result[query_type]
+        assert isinstance(result, dict)
 
         itemType = list(result.keys())[1]
         items = result[itemType]
-        callback_response = None
-        if callback != None:
+        assert isinstance(items, list)
+
+        if callback:
+            callback_response = None
             callback_sig = inspect.signature(callback)
             callback_kwargs = {}
 
@@ -215,50 +253,104 @@ class StashInterface(GQLWrapper):
             else:
                 callback_response = callback(items)
 
-        if pages == -1:  # set to all pages if -1
-            pages = math.ceil(result["count"] / variables["filter"]["per_page"])
+            if callback_response == CallbackReturns.STOP_ITERATION:
+                return
 
-        if callback_response == CallbackReturns.STOP_ITERATION:
-            return
+        if pages == -1:  # set to all pages if -1
+            count = result["count"]
+            assert isinstance(count, int)
+
+            per_page = cast(int, variables["filter"]["per_page"])
+            assert isinstance(per_page, int)
+
+            pages = math.ceil(count / per_page)
 
         if variables["filter"]["page"] < pages:
             variables["filter"]["page"] += 1
             next_page = self.paginate_GQL(query, variables, pages, callback)
-            if callback == None:
+            if callback is None and next_page is not None:
                 items.extend(next_page)
 
         if callback == None:
             return {query_type: {"count": len(items), itemType: items}}
+
+        # FIXME: CallbackReturns only has one entry for STOP_ITERATION, meaning that if a callback function is
+        # used, we should already have returned from this function by now
         return {query_type: {"count": 0, itemType: []}}
 
-    def call_GQL(self, query, variables={}, callback=None):
+    @override
+    def call_GQL(
+        self,
+        query: str,
+        variables: dict[str, object] | None = None,
+        callback: Callable[..., CallbackReturns] | None = None,
+    ) -> dict[str, JSON]:
         if callback:
-            return self.paginate_GQL(query, variables, callback=callback)
+            # note: if `paginate_GQL` returns None, we return an empty dict so that we match the function signature
+            # of the function we are overriding in the base class
+            return self.paginate_GQL(query, variables, callback=callback) or {}
         else:
             return self._GQL(query, variables)
 
     def stash_version(self):
         result = self.call_GQL("query StashVersion{ version { build_time hash version } }")
-        return StashVersion(result["version"])
+        if result:
+            version = cast(GQLStashVersion, cast(object, result["version"]))
+            return StashVersion(version)
 
+    @deprecated("Deprecated, use API SQL mutations")
     def get_sql_interface(self):
         self.log.warning("Deprecated use api SQL mutations (sql_query, sql_commit)")
 
-    def sql_query(self, sql: str, args: list = []):
-        query = "mutation SQLquery($sql_query:String!, $sql_args:[Any]) { querySQL(sql: $sql_query, args: $sql_args){ ...SQLQueryResult } }"
-        result = self.call_GQL(query, {"sql_query": sql, "sql_args": args})
-        return result["querySQL"]
+    def sql_query(self, sql: str, args: list[Any] | None = None) -> GQLSqlQueryResponse:
+        """
+        Run an arbitrary SQL query against the Stash database
 
-    def sql_commit(self, sql: str, args: list = []):
+        Args:
+            sql (str): The SQL query to run
+            args (list, optional): Optional list of arguments to replace in the SQL query
+
+        Returns:
+            The result of the SQL query
+        """
+        args = args or []
+        query = "mutation SQLquery($sql_query:String!, $sql_args:[Any]) { querySQL(sql: $sql_query, args: $sql_args){ ...SQLQueryResult } }"
+
+        result = self.call_GQL(query, {"sql_query": sql, "sql_args": args})
+        assert "querySQL" in result, f"Got malformed result when running a SQL query: {result}"
+
+        return cast(GQLSqlQueryResponse, cast(object, result["querySQL"]))
+
+    @deprecated("`sql_commit` is deprecated, use `sql_exec` instead")
+    def sql_commit(self, sql: str, args: list[Any] | None = None) -> GQLSqlExecResponse:
+        self.log.warning("`sql_commit` is deprecated, use `sql_exec` instead")
+        return self.sql_exec(sql, args)
+
+    def sql_exec(self, sql: str, args: list[Any] | None = None) -> GQLSqlExecResponse:
+        """
+        Execute an arbitrary SQL query against the Stash database
+
+        Args:
+            sql (str): The SQL query to execute
+            args (list, optional): Optional list of arguments to replace in the SQL query
+
+        Returns:
+            A dictionary which may contain the following keys:
+                rows_affected (int)
+                last_insert_id (int)
+        """
+        args = args or []
         query = "mutation SQLcommit($sql_query:String!, $sql_args:[Any]) { execSQL(sql: $sql_query, args: $sql_args){ ...SQLExecResult } }"
         result = self.call_GQL(query, {"sql_query": sql, "sql_args": args})
-        return result["execSQL"]
+        assert "execSQL" in result, f"Got malformed result when running a SQL query: {result}"
 
-    def graphql_configuration(self):
+        return cast(GQLSqlExecResponse, cast(object, result["execSQL"]))
+
+    def graphql_configuration(self) -> dict[str, JSON]:
         self.log.warning("Deprecated graphql_configuration() use get_configuration()")
         return self.get_configuration()
 
-    def get_configuration(self, fragment=None):
+    def get_configuration(self, fragment: str | None = None) -> dict[str, JSON]:
         query = """
             query Configuration {
                 configuration {
@@ -269,27 +361,35 @@ class StashInterface(GQLWrapper):
         if fragment:
             query = re.sub(r"\.\.\.ConfigResult", fragment, query)
 
-        result = self.call_GQL(query)
-        return result["configuration"]
+        result = self.call_GQL(query)["configuration"]
+        return cast(dict[str, JSON], result)
 
-    def job_queue(self):
-        return self.call_GQL("query JobQueue { jobQueue{ ...Job } }")["jobQueue"]
+    def job_queue(self) -> GQLJob:
+        result = self.call_GQL("query JobQueue { jobQueue{ ...Job } }")["jobQueue"]
+        return cast(GQLJob, cast(object, result))
 
-    def stop_job(self, job_id):
+    def stop_job(self, job_id: int) -> bool:
         query = "mutation StopJob($job_id: ID!) { stopJob(job_id: $job_id) }"
         result = self.call_GQL(query, {"job_id": job_id})
-        return result["stopJob"]
+        return cast(bool, result["stopJob"])
 
-    def find_job(self, job_id):
+    def find_job(self, job_id: int) -> GQLJob:
         query = "query FindJob($input:FindJobInput!) { findJob(input: $input){ ...Job } }"
         result = self.call_GQL(query, {"input": {"id": job_id}})
-        return result["findJob"]
+        return cast(GQLJob, cast(object, result["findJob"]))
 
-    def wait_for_job(self, job_id, status="FINISHED", period=1.5, timeout=120):
-        """Waits for stash job to match desired status
+    def wait_for_job(
+        self,
+        job_id: int,
+        status: JobStatus = GQLJobStatus.FINISHED,
+        period: float = 1.5,
+        timeout: int = 120,
+    ) -> bool | None:
+        """
+        Waits for stash job to match the given status
 
         Args:
-                job_id (ID): the ID of the job to wait for
+                job_id (int): the integer ID of the job to wait for
                 status (str, optional): Desired status to wait for. Defaults to "FINISHED".
                 period (float, optional): Interval between checks for job status. Defaults to 1.5.
                 timeout (int, optional): time in seconds that if exceeded raises Exception. Defaults to 120.
@@ -298,40 +398,73 @@ class StashInterface(GQLWrapper):
                 Exception: timeout raised if wait task takes longer than timeout
 
         Returns:
-                bool:
-                        True: job stats is desired status
-                        False: job finished or was cancelled without matching desired status
-                        None: job could not be found
+            None if the job could not be found, otherwise True if the job matches the specified status, or False if the
+            job is finished or cancelled
         """
         timeout_value = time.time() + timeout
         while time.time() < timeout_value:
             job = self.find_job(job_id)
             if not job:
                 return None
-            self.log.debug(f'Waiting for Job:{job_id} Status:{job["status"]} Progress:{job["progress"]}')
-            if job["status"] == status:
+
+            self.log.debug(f'Waiting for Job:{job_id} Status:{job["status"]} Progress:{job.get("progress")}')
+
+            if job["status"] == str(status):
                 return True
-            if job["status"] in ["FINISHED", "CANCELLED"]:
+            if job["status"] in [GQLJobStatus.FINISHED, GQLJobStatus.CANCELLED]:
                 return False
             time.sleep(period)
-        raise Exception("Hit timeout waiting for Job to complete")
+        raise Exception(f"Hit timeout waiting for Job with ID '{job_id}' to complete")
 
-    def get_configuration_defaults(self, default_field):
+    def get_configuration_defaults(self, default_field: str) -> dict[str, JSON]:
         query = "query ConfigurationDefaults { configuration { defaults { " + default_field + " } } }"
-        result = self.call_GQL(query)
-        return result["configuration"]["defaults"]
+        result = cast(dict[str, JSON], self.call_GQL(query)["configuration"])
+        return cast(dict[str, JSON], result["defaults"])
 
-    def metadata_scan(self, paths: list = [], flags={}):
+    def metadata_scan(
+        self,
+        paths: list[str | Path] | None = None,
+        flags: dict[str, Any] | None = None,
+    ) -> int:
+        """
+        Trigger the metadataScan mutation on the given paths. Flags are used if provided, otherwise the default
+        configuration is first fetched from Stash
+
+        Args:
+            paths (list[str | Path]): Paths to scan
+            flags (dict[str, Any]): Configuration to use for the scan. If not provided, current configuration is
+                fetched from Stash
+
+        Returns:
+            The integer ID of the triggered scan job
+        """
+        paths = paths or []
+        flags = flags or {}
+
         query = "mutation MetadataScan($input:ScanMetadataInput!) { metadataScan(input: $input) }"
-        scan_metadata_input = {"paths": paths}
+        scan_metadata_input: dict[str, object] = {"paths": paths}
         if flags:
             scan_metadata_input.update(flags)
         elif scan_config := self.get_configuration_defaults("scan { ...ScanMetadataOptions }").get("scan"):
-            scan_metadata_input.update(scan_config)
-        result = self.call_GQL(query, {"input": scan_metadata_input})
-        return result["metadataScan"]
+            scan_metadata_input.update(cast(dict[str, JSON], scan_config))
 
-    def metadata_generate(self, flags={}):
+        result = self.call_GQL(query, {"input": scan_metadata_input})["metadataScan"]
+        return cast(int, result)
+
+    def metadata_generate(self, flags: dict[str, Any] | None = None) -> int:
+        """
+        Trigger the metadataGenerate mutation. Flags are used if provided, otherwise the default configuration is first
+        fetched from Stash
+
+        Args:
+            flags (dict[str, Any]): Configuration to use for the generate job. If not provided, current configuration
+                is fetched from Stash
+
+        Returns:
+            The integer ID of the triggered scan job
+        """
+        flags = flags or {}
+
         query = "mutation MetadataGenerate($input:GenerateMetadataInput!) { metadataGenerate(input: $input) }"
         if flags:
             generate_metadata_input = flags
@@ -339,45 +472,85 @@ class StashInterface(GQLWrapper):
             generate_metadata_input = self.get_configuration_defaults("generate { ...GenerateMetadataOptions }")[
                 "generate"
             ]
-        result = self.call_GQL(query, {"input": generate_metadata_input})
-        return result["metadataGenerate"]
+        result = self.call_GQL(query, {"input": generate_metadata_input})["metadataGenerate"]
+        return cast(int, result)
 
-    def metadata_clean(self, paths: list = [], dry_run=False):
-        query = """
-        mutation MetadataClean($input:CleanMetadataInput!) {
-            metadataClean(input: $input)
-        }
+    def metadata_clean(self, paths: list[Path | str] | None = None, dry_run: bool = False) -> int:
         """
+        Trigger the metadataClean mutation on the given paths. Optionally, trigger a dry_run.
+
+        Args:
+            paths (list[str | Path]): Paths to clean
+            dry_run (bool, optional): Set to True to trigger a dry-run (default: False)
+
+        Returns:
+            The integer ID of the triggered clean job
+        """
+        paths = paths or []
+        query = "mutation MetadataClean($input:CleanMetadataInput!) { metadataClean(input: $input) }"
 
         clean_metadata_input = {"paths": paths, "dryRun": dry_run}
-        result = self.call_GQL(query, {"input": clean_metadata_input})
-        return result
+        result = self.call_GQL(query, {"input": clean_metadata_input})["metadataClean"]
+        return cast(int, result)
 
-    def metadata_autotag(self, paths: list = [], performers: list = [], studios: list = [], tags: list = []):
+    def metadata_autotag(
+        self,
+        paths: list[Path | str] | None = None,
+        performers: list[int | Literal["*"]] | None = None,
+        studios: list[int | Literal["*"]] | None = None,
+        tags: list[int | Literal["*"]] | None = None,
+    ) -> int:
+        """
+        Trigger the metadataAutotag mutation on the given paths, performers, studios, and/or tags.
+
+        Args:
+            paths (list[str | Path]): Paths to clean
+            performers (list[int | Literal["*"]]): List of integer performer IDs to scan, or simply the string "*" to scan all
+            studios (list[int | Literal["*"]]): List of integer studio IDs to scan, or simply the string "*" to scan all
+            tags (list[int | Literal["*"]]): List of integer tag IDs to scan, or simply the string "*" to scan all
+
+        Returns:
+            The integer ID of the triggered autotag job
+        """
         query = """
         mutation MetadataAutoTag($input:AutoTagMetadataInput!) {
             metadataAutoTag(input: $input)
         }
         """
         metadata_autotag_input = {
-            "paths": paths,
-            "performers": performers,
-            "studios": studios,
-            "tags": tags,
+            "paths": paths or [],
+            "performers": performers or [],
+            "studios": studios or [],
+            "tags": tags or [],
         }
-        result = self.call_GQL(query, {"input": metadata_autotag_input})
-        return result
+        result = self.call_GQL(query, {"input": metadata_autotag_input})["metadataAutotag"]
+        return cast(int, result)
 
     def metadata_clean_generated(
         self,
-        blobFiles=True,
-        dryRun=False,
-        imageThumbnails=True,
-        markers=True,
-        screenshots=True,
-        sprites=True,
-        transcodes=True,
-    ):
+        blobFiles: bool = True,
+        dryRun: bool = False,
+        imageThumbnails: bool = True,
+        markers: bool = True,
+        screenshots: bool = True,
+        sprites: bool = True,
+        transcodes: bool = True,
+    ) -> int:
+        """
+        Trigger the metadataCleanGenerated mutation. Use the parameters to select which clean steps should be performed
+
+        Args:
+            blobFiles (bool, optional): Whether or not to generated clean blob files (default: True)
+            dryRun (bool, optional): Whether or not to perform a dry-run (default: False)
+            imageThumbnails (bool, optional): Whether or not to clean generated image thumbnails (default: True)
+            markers (bool, optional): Whether or not to clean genereated markers (default: True)
+            screenshots (bool, optional): Whether or not to clean screenshots markers (default: True)
+            sprites (bool, optional): Whether or not to clean genereated sprites (default: True)
+            transcodes (bool, optional): Whether or not to clean genereated transcodes (default: True)
+
+        Returns:
+            The integer ID of the triggered generated clean job
+        """
         query = """
         mutation MetadataCleanGenerated($input: CleanGeneratedInput!) {
           metadataCleanGenerated(input: $input)
@@ -392,27 +565,48 @@ class StashInterface(GQLWrapper):
             "sprites": sprites,
             "transcodes": transcodes,
         }
-        result = self.call_GQL(query, {"input": clean_metadata_input})
-        return result
+        result = self.call_GQL(query, {"input": clean_metadata_input})["metadataCleanGenerated"]
+        return cast(int, result)
 
     def backup_database(self):
-        return self.call_GQL("mutation { backupDatabase(input: {download: false})}")
-
-    def optimise_database(self):
-        return self.call_GQL("mutation OptimiseDatabase { optimiseDatabase }")
-
-    def file_set_fingerprints(self, file_id, fingerprints: []):
-        if not file_id:
-            return
-
-        query = """
-        mutation FileSetFingerprints($input: FileSetFingerprintsInput!) {
-            fileSetFingerprints(input: $input)
-        }
         """
-        variables = {"input": {"id": file_id, "fingerprints": fingerprints}}
-        result = self.call_GQL(query, variables)
-        return result["fileSetFingerprints"]
+        Trigger the backupDatabase mutation.
+
+        Returns:
+            The integer ID of the triggered backup job
+        """
+        result = self.call_GQL("mutation BackupDatabase { backupDatabase(input: {download: false})}")["backupDatabase"]
+        return cast(int, result)
+
+    def optimise_database(self) -> int:
+        """
+        Trigger the optimizeDatabase mutation.
+
+        Returns:
+            The integer ID of the triggered optimize job
+        """
+        result = self.call_GQL("mutation OptimiseDatabase { optimiseDatabase }")["optimiseDatabase"]
+        return cast(int, result)
+
+    def file_set_fingerprints(self, file_id: int, fingerprints: list[GQLSetFingerprintsInput]) -> bool:
+        """
+        Trigger the fileSetFingerprints mutation in order to assign the given fingerprints to the file with the
+        given integer ID
+
+        Args:
+            file_id (int): Integer ID of the file to modify
+            fingerprints (int): List of dictionaries of fingerprint information.
+                Each dictionary is expected to have "type" and "value" entries which describe the fingerprint
+        """
+        # FIXME: feels like this check should not be necessary since the file_id parameter is mandatory?
+        if not file_id:
+            return False
+
+        query = "mutation FileSetFingerprints($input: FileSetFingerprintsInput!) { fileSetFingerprints(input: $input) }"
+
+        variables: dict[str, object] = {"input": {"id": file_id, "fingerprints": fingerprints}}
+        result = self.call_GQL(query, variables)["fileSetFingerprints"]
+        return cast(bool, result)
 
     def destroy_files(self, file_ids: list = []):
         if not file_ids:
