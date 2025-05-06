@@ -151,7 +151,7 @@ class GQLWrapper:
         )
         self.s.verify = True
 
-    def parse_fragments(self, fragments_in: str):
+    def parse_fragments(self, fragments_in: str) -> dict[str, str]:
         fragments: dict[str, str] = {}
         fragment_matches = re.finditer(r"fragment\s+([A-Za-z]+)\s+on\s+[A-Za-z]+(\s+)?{", fragments_in)
         for fragment_match in fragment_matches:
