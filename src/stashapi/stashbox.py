@@ -1,12 +1,13 @@
-import re, math, requests
 from enum import Enum
+import math
+import re
 
 from requests.structures import CaseInsensitiveDict
 
-from .classes import GQLWrapper
-from .stash_types import CallbackReturns
-
-from .tools import file_to_base64, url_to_base64, str_compare
+from stashapi.classes import GQLWrapper
+from stashapi.log import get_logger
+from stashapi.stash_types import CallbackReturns
+from stashapi.tools import file_to_base64, str_compare, url_to_base64
 
 STASH_ID_PATTERN = r"(?:[0-9a-fA-F]){8}-(?:[0-9a-fA-F]){4}-(?:[0-9a-fA-F]){4}-(?:[0-9a-fA-F]){4}-(?:[0-9a-fA-F]){12}"
 
@@ -19,18 +20,9 @@ class StashboxTarget(Enum):
 
 
 class StashBoxInterface(GQLWrapper):
-    port = None
-    url = None
-
     def __init__(self, conn={}, fragments: list[str] = []):
-        super().__init__()
         conn = CaseInsensitiveDict(conn)
-
-        self.log = conn.get("Logger", None)
-        if not self.log:
-            import stashapi.log as logger
-
-            self.log = logger
+        super().__init__(conn.get("Logger", None) or get_logger())
 
         self.url = conn.get("endpoint", "https://stashdb.org/graphql")
         self.endpoint = self.url

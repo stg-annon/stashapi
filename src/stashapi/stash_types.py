@@ -1,18 +1,7 @@
-from enum import Enum
+from enum import IntEnum, StrEnum
 
 
-class StashEnum(Enum):
-    def __repr__(self) -> str:
-        return f"{self.__class__.__name__}.{self.name}"
-
-    def __str__(self) -> str:
-        return str(self.value)
-
-    def serialize(self):
-        return self.value
-
-
-class CriterionModifier(StashEnum):
+class CriterionModifier(StrEnum):
     EQUALS = "EQUALS"
     NOT_EQUALS = "NOT_EQUALS"
     GREATER_THAN = "GREATER_THAN"
@@ -28,26 +17,27 @@ class CriterionModifier(StashEnum):
     NOT_BETWEEN = "NOT_BETWEEN"
 
 
-class BulkUpdateIdMode(StashEnum):
+class BulkUpdateIdMode(StrEnum):
     SET = "SET"
     ADD = "ADD"
     REMOVE = "REMOVE"
 
 
-class ScrapeType(StashEnum):
+class ScrapeType(StrEnum):
     NAME = "NAME"
     FRAGMENT = "FRAGMENT"
     URL = "URL"
 
 
-class ScrapeContentType(StashEnum):
+class ScrapeContentType(StrEnum):
     GALLERY = "GALLERY"
     MOVIE = "MOVIE"
     PERFORMER = "PERFORMER"
     SCENE = "SCENE"
     IMAGE = "IMAGE"
 
-class StashItem(StashEnum):
+
+class StashItem(StrEnum):
     SCENE = "SCENE"
     GALLERY = "GALLERY"
     PERFORMER = "PERFORMER"
@@ -55,7 +45,7 @@ class StashItem(StashEnum):
     IMAGE = "IMAGE"
 
 
-class Gender(StashEnum):
+class Gender(StrEnum):
     MALE = "MALE"
     FEMALE = "FEMALE"
     TRANSGENDER_MALE = "TRANSGENDER_MALE"
@@ -64,18 +54,18 @@ class Gender(StashEnum):
     NON_BINARY = "NON_BINARY"
 
 
-class PhashDistance(StashEnum):
+class PhashDistance(IntEnum):
     EXACT = 0
     HIGH = 4
     MEDIUM = 8
     LOW = 10
 
 
-class OnMultipleMatch(Enum):
+class OnMultipleMatch(IntEnum):
     RETURN_NONE = 0
     RETURN_LIST = 1
     RETURN_FIRST = 2
 
 
-class CallbackReturns(Enum):
+class CallbackReturns(IntEnum):
     STOP_ITERATION = 0
