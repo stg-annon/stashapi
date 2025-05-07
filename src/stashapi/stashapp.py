@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 import inspect
 import logging
 import math
@@ -10,17 +11,20 @@ from requests.structures import CaseInsensitiveDict
 from typing_extensions import deprecated, override
 
 from stashapi.classes import (
+    JSON,
     GQLJob,
     GQLJobStatus,
     GQLSqlExecResponse,
     GQLSqlQueryResponse,
     GQLStashVersion,
     GQLWrapper,
-    JSON,
-    JobStatus,
+    JSONDict,
+    JSONList,
+    JobStatusType,
     StashVersion,
 )
 from stashapi.gql_types import (
+    GQLAutoTagMetadataInput,
     GQLBulkGalleryUpdateInput,
     GQLBulkImageUpdateInput,
     GQLBulkPerformerUpdateInput,
@@ -32,6 +36,7 @@ from stashapi.gql_types import (
     GQLGalleryCreateInput,
     GQLGalleryFilterType,
     GQLGalleryUpdateInput,
+    GQLGenerateMetadataInput,
     GQLGroupCreateInput,
     GQLGroupFilterType,
     GQLGroupUpdateInput,
@@ -41,23 +46,30 @@ from stashapi.gql_types import (
     GQLPerformerCreateInput,
     GQLPerformerFilterType,
     GQLPerformerUpdateInput,
+    GQLScanMetadataInput,
     GQLSceneCreateInput,
     GQLSceneFilterType,
     GQLSceneHashInput,
+    GQLSceneMarkerCreateInput,
+    GQLSceneMarkerFilterType,
+    GQLSceneMarkerUpdateInput,
     GQLSceneUpdateInput,
+    GQLScrapeContentType,
+    GQLScraperSourceInput,
     GQLSetFingerprintsInput,
+    GQLStashIDInput,
     GQLStudioCreateInput,
     GQLStudioFilterType,
     GQLTagCreateInput,
     GQLTagFilterType,
     GQLTagUpdateInput,
+    ScrapeContentTypeEnumType,
 )
 from stashapi.log import get_logger
 from stashapi.stash_types import (
     CallbackReturns,
     OnMultipleMatch,
     PhashDistance,
-    StashItem,
 )
 from stashapi.tools import str_compare
 
@@ -134,8 +146,8 @@ class StashInterface(GQLWrapper):
         """
 
         if force_api_key:
-            result = cast(dict[str, JSON], self.call_GQL(query)["configuration"])
-            stash_api_key = cast(str, cast(dict[str, JSON], result["general"])["apiKey"])
+            result = cast(JSONDict, self.call_GQL(query)["configuration"])
+            stash_api_key = cast(str, cast(JSONDict, result["general"])["apiKey"])
 
             if stash_api_key:
                 self.log.debug("Persisting Connection to Stash with ApiKey...")
@@ -187,7 +199,7 @@ class StashInterface(GQLWrapper):
         query: str,
         item: dict[str, Any] | int,
         fragment: tuple[str, str | None] | None = None,
-    ) -> dict[str, JSON] | None:
+    ) -> JSONDict | None:
         item_id = None
 
         if isinstance(item, dict):
@@ -209,9 +221,9 @@ class StashInterface(GQLWrapper):
         result = self.call_GQL(query, {"id": item_id})
         queryType = list(result.keys())[0]
 
-        return cast(dict[str, JSON], result[queryType])
+        return cast(JSONDict, result[queryType])
 
-    def __match_alias_item(self, search: str, items: list[dict[str, JSON]]) -> list[dict[str, JSON]]:
+    def __match_alias_item(self, search: str, items: list[JSONDict]) -> list[JSONDict]:
         """
         Private function to match a name against a list of dicts (each containing at least "name", "id" and "aliases"
         keys) and return all matching dicts
@@ -231,9 +243,9 @@ class StashInterface(GQLWrapper):
                 self.log.debug(f'matched "{search}" to "{item["name"]}" ({item["id"]}) using primary name')
                 return [item]
 
-        item_matches: dict[int | str, dict[str, JSON]] = {}
+        item_matches: dict[int | str, JSONDict] = {}
         for item in items:
-            aliases = cast(dict[str, JSON] | None, item["aliases"])
+            aliases = cast(JSONDict | None, item["aliases"])
             if not aliases:
                 continue
 
@@ -247,12 +259,12 @@ class StashInterface(GQLWrapper):
     def __match_performer_alias(
         self,
         search: dict[str, str | int],
-        performers: list[dict[str, JSON]],
-    ) -> list[dict[str, JSON]] | None:
+        performers: list[JSONDict],
+    ) -> list[JSONDict] | None:
         """
         Private function to match a performer dict (containing at least a `name` key, and optionally a
         `disambiguation` key) against a list of dicts (each containing at least `name` key, optionally
-        `disambiguation` and `alias_list` (in newer versions of stash) or `aliases` (in older versions of stash)
+        `disambiguation`, and `alias_list` (in newer versions of stash) or `aliases` (in older versions of stash)
         and return all matching dicts
 
         Args:
@@ -276,7 +288,7 @@ class StashInterface(GQLWrapper):
                 self.log.debug(f'matched performer "{search["name"]}" to "{p["name"]}" ({p["id"]}) using primary name')
                 return [p]
 
-        performer_matches: dict[int, dict[str, JSON]] = {}
+        performer_matches: dict[int, JSONDict] = {}
         # no match on primary name attempt aliases
         for p in performers:
             aliases: list[str] = []
@@ -323,7 +335,7 @@ class StashInterface(GQLWrapper):
         variables: dict[str, object] | None = None,
         pages: int = -1,
         callback: Callable[..., CallbackReturns] | None = None,
-    ) -> dict[str, JSON] | None:
+    ) -> JSONDict | None:
         """
         auto paginate graphql query with an optional callback to process items in each page
 
@@ -403,7 +415,7 @@ class StashInterface(GQLWrapper):
         query: str,
         variables: dict[str, object] | None = None,
         callback: Callable[..., CallbackReturns] | None = None,
-    ) -> dict[str, JSON]:
+    ) -> JSONDict:
         if callback:
             # note: if `paginate_GQL` returns None, we return an empty dict so that we match the function signature
             # of the function we are overriding in the base class
@@ -411,114 +423,177 @@ class StashInterface(GQLWrapper):
         else:
             return self._GQL(query, variables)
 
-    def stash_version(self):
+    def stash_version(self) -> StashVersion:
         result = self.call_GQL("query StashVersion{ version { build_time hash version } }")
-        if result:
-            version = cast(GQLStashVersion, cast(object, result["version"]))
-            return StashVersion(version)
+        version = cast(GQLStashVersion, cast(object, result["version"]))
+        return StashVersion(version)
 
-    @deprecated("Deprecated, use API SQL mutations")
+    @deprecated("Deprecated, use API SQL mutations (`sql_query` or `sql_exec`)")
     def get_sql_interface(self):
-        self.log.warning("Deprecated use api SQL mutations (sql_query, sql_commit)")
+        self.log.warning("Deprecated use api SQL mutations (`sql_query`, `sql_exec`)")
 
-    def sql_query(self, sql: str, args: list[Any] | None = None) -> GQLSqlQueryResponse:
+    def sql_query(self, sql: str, args: list[JSON] | None = None) -> GQLSqlQueryResponse:
         """
         Run an arbitrary SQL query against the Stash database
 
         Args:
             sql (str): The SQL query to run
-            args (list, optional): Optional list of arguments to replace in the SQL query
+            args (list, optional): Optional list of arguments to replace in the SQL query. Note that only data that
+                can be serialized into JSON will be considered, other data will be silently ignored.
 
         Returns:
             The result of the SQL query
         """
         args = args or []
-        query = "mutation SQLquery($sql_query:String!, $sql_args:[Any]) { querySQL(sql: $sql_query, args: $sql_args){ ...SQLQueryResult } }"
+        query = """
+            mutation SQLquery($sql_query:String!, $sql_args:[Any]) {
+                querySQL(sql: $sql_query, args: $sql_args){
+                    ...SQLQueryResult
+                }
+            }
+        """
+        variables: dict[str, object] = {"sql_query": sql, "sql_args": args}
 
-        result = self.call_GQL(query, {"sql_query": sql, "sql_args": args})
-        assert "querySQL" in result, f"Got malformed result when running a SQL query: {result}"
-
-        return cast(GQLSqlQueryResponse, cast(object, result["querySQL"]))
+        result = cast(object, self.call_GQL(query, variables)["querySQL"])
+        return cast(GQLSqlQueryResponse, result)
 
     @deprecated("`sql_commit` is deprecated, use `sql_exec` instead")
-    def sql_commit(self, sql: str, args: list[Any] | None = None) -> GQLSqlExecResponse:
+    def sql_commit(self, *args: Any, **kwargs: Any) -> GQLSqlExecResponse:
         self.log.warning("`sql_commit` is deprecated, use `sql_exec` instead")
-        return self.sql_exec(sql, args)
+        return self.sql_exec(*args, **kwargs)
 
-    def sql_exec(self, sql: str, args: list[Any] | None = None) -> GQLSqlExecResponse:
+    def sql_exec(self, sql: str, args: list[JSON] | None = None) -> GQLSqlExecResponse:
         """
         Execute an arbitrary SQL query against the Stash database
 
         Args:
             sql (str): The SQL query to execute
-            args (list, optional): Optional list of arguments to replace in the SQL query
+            args (list, optional): List of arguments to replace in the SQL query
 
         Returns:
-            A dictionary which may contain the following keys:
+            A dictionary which may contain one or both of the following keys:
                 rows_affected (int)
                 last_insert_id (int)
         """
         args = args or []
-        query = "mutation SQLcommit($sql_query:String!, $sql_args:[Any]) { execSQL(sql: $sql_query, args: $sql_args){ ...SQLExecResult } }"
-        result = self.call_GQL(query, {"sql_query": sql, "sql_args": args})
-        assert "execSQL" in result, f"Got malformed result when running a SQL query: {result}"
-
-        return cast(GQLSqlExecResponse, cast(object, result["execSQL"]))
-
-    def graphql_configuration(self) -> dict[str, JSON]:
-        self.log.warning("Deprecated graphql_configuration() use get_configuration()")
-        return self.get_configuration()
-
-    def get_configuration(self, fragment: str | None = None) -> dict[str, JSON]:
         query = """
-            query Configuration {
-                configuration {
-                    ...ConfigResult
+            mutation SQLcommit($sql_query:String!, $sql_args:[Any]) {
+                execSQL(sql: $sql_query, args: $sql_args){
+                    ...SQLExecResult
                 }
             }
         """
-        if fragment:
-            query = re.sub(r"\.\.\.ConfigResult", fragment, query)
+        variables: dict[str, object] = {"sql_query": sql, "sql_args": args}
+
+        result = cast(object, self.call_GQL(query, variables)["execSQL"])
+        return cast(GQLSqlExecResponse, result)
+
+    @deprecated("`graphql_configuration()` is deprecated, use `get_configuration()` instead")
+    def graphql_configuration(self) -> JSONDict:
+        self.log.warning("`graphql_configuration()` is deprecated, use `get_configuration()` instead")
+        return self.get_configuration()
+
+    def get_configuration(self, fragment: str = "...ConfigResult") -> JSONDict:
+        """
+        Get the configuration from Stash
+
+        Args:
+            fragment (str, optional): override for gqlFragment. Defaults to "...ConfigResult".
+                Example override: 'fragment="id name"'
+
+        Returns:
+            A (potentially empty) dictionary containing the requested configuration. The dictionary may be empty
+            if no matches were found.
+        """
+        query = f"""
+            query Configuration {{
+                configuration {{
+                    {fragment}
+                }}
+            }}
+        """
 
         result = self.call_GQL(query)["configuration"]
-        return cast(dict[str, JSON], result)
+        return cast(JSONDict, result)
 
-    def job_queue(self) -> GQLJob:
-        result = self.call_GQL("query JobQueue { jobQueue{ ...Job } }")["jobQueue"]
-        return cast(GQLJob, cast(object, result))
+    def job_queue(self) -> list[GQLJob] | None:
+        """
+        Get the job queue from Stash
+
+        Returns:
+            A list of GQLJob objects representing the queued jobs, or None if no jobs are queued
+        """
+        query = """
+            query JobQueue {
+                jobQueue {
+                    ...Job
+                }
+            }
+        """
+        result = cast(object, self.call_GQL(query)["jobQueue"])
+        return cast(list[GQLJob] | None, result)
 
     def stop_job(self, job_id: int) -> bool:
+        """
+        Stop the job with the given ID
+
+        Args:
+            job_id (str | int): The int-like (i.e. 5 or "5") job ID to stop
+
+        Returns:
+            True if the operation was successful or if the given job ID does not exist, False otherwise.
+        """
         query = """
             mutation StopJob($job_id: ID!) {
                 stopJob(job_id: $job_id)
             }
         """
-        result = self.call_GQL(query, {"job_id": job_id})
-        return cast(bool, result["stopJob"])
+        result = self.call_GQL(query, {"job_id": job_id})["stopJob"]
+        return cast(bool, result)
 
-    def find_job(self, job_id: int) -> GQLJob:
-        query = "query FindJob($input:FindJobInput!) { findJob(input: $input){ ...Job } }"
-        result = self.call_GQL(query, {"input": {"id": job_id}})
-        return cast(GQLJob, cast(object, result["findJob"]))
+    def find_job(self, job_id: int) -> GQLJob | None:
+        """
+        Get information about the job with the given ID
+
+        Args:
+            job_id (str | int): The int-like (i.e. 5 or "5") job ID to look for
+
+        Returns:
+            The GQLJob object if a matching job is found, None otherwise
+        """
+        query = """
+            query FindJob($input:FindJobInput!) {
+                findJob(input: $input){
+                    ...Job
+                }
+            }
+        """
+        variables: dict[str, object] = {"input": {"id": job_id}}
+        result = cast(object, self.call_GQL(query, variables)["findJob"])
+        if result:
+            return cast(GQLJob, result)
+
+        return None
 
     def wait_for_job(
         self,
         job_id: int,
-        status: JobStatus = GQLJobStatus.FINISHED,
+        status: JobStatusType = GQLJobStatus.FINISHED,
         period: float = 1.5,
         timeout: int = 120,
     ) -> bool | None:
         """
-        Waits for stash job to match the given status
+        Checks the status of the job with the given ID every `period` seconds until the status matches the given status
+        or the given timeout is reached
 
         Args:
-                job_id (int): the integer ID of the job to wait for
-                status (str, optional): Desired status to wait for. Defaults to "FINISHED".
-                period (float, optional): Interval between checks for job status. Defaults to 1.5.
-                timeout (int, optional): time in seconds that if exceeded raises Exception. Defaults to 120.
+            job_id (int | str): the int-like (i.e. 5 or "5") ID of the job to wait for
+            status (str, optional): Desired status to wait for. Defaults to "FINISHED".
+            period (float, optional): Interval in seconds between checks for job status. Defaults to 1.5s.
+            timeout (int, optional): Timeout in seconds after which an Exception will be raised. Defaults to 120s.
 
         Raises:
-                Exception: timeout raised if wait task takes longer than timeout
+            Exception: timeout raised if wait task takes longer than timeout
 
         Returns:
             None if the job could not be found, otherwise True if the job matches the specified status, or False if the
@@ -539,7 +614,17 @@ class StashInterface(GQLWrapper):
             time.sleep(period)
         raise Exception(f"Hit timeout waiting for Job with ID '{job_id}' to complete")
 
-    def get_configuration_defaults(self, default_field: str) -> dict[str, JSON]:
+    def get_configuration_defaults(self, default_field: str) -> JSONDict:
+        """
+        Get the default configuration for a particular field.
+
+        Args:
+            default_field (str): the fragment to use to get the default configuration. See the playground for all
+                available default fields. Example default field: default_field="scan { ...ScanMetadataOptions }"
+
+        Returns:
+
+        """
         query = f"""
             query ConfigurationDefaults {{
                 configuration {{
@@ -547,108 +632,111 @@ class StashInterface(GQLWrapper):
                 }}
             }}
         """
-        result = cast(dict[str, JSON], self.call_GQL(query)["configuration"])
-        return cast(dict[str, JSON], result["defaults"])
+        result = cast(JSONDict, self.call_GQL(query)["configuration"])
+        return cast(JSONDict, result["defaults"])
 
     def metadata_scan(
         self,
         paths: list[str | Path] | None = None,
-        flags: dict[str, Any] | None = None,
+        flags: GQLScanMetadataInput | None = None,
     ) -> int:
         """
-        Trigger the metadataScan mutation on the given paths. Flags are used if provided, otherwise the default
+        Queue a metadata scan job on the given paths. Flags are used if provided, otherwise the default scan
         configuration is first fetched from Stash
 
         Args:
-            paths (list[str | Path]): Paths to scan
-            flags (dict[str, Any]): Configuration to use for the scan. If not provided, current configuration is
-                fetched from Stash
+            paths (list, optional): Paths to scan. Default: empty list
+            flags (GQLScanMetadataInput, optional): Configuration to use for the scan. See type def or playground for
+                details. If not provided, current configuration is fetched from Stash. Note that if both the `paths`
+                key in this dict and the `paths` parameter to this function are provided, the parameter will be used.
 
         Returns:
-            The integer ID of the triggered scan job
+            The ID of the triggered scan job
         """
-        paths = paths or []
-        flags = flags or {}
-
         query = """
             mutation MetadataScan($input:ScanMetadataInput!) {
                 metadataScan(input: $input)
             }
         """
-        scan_metadata_input: dict[str, object] = {"paths": paths}
-        if flags:
-            scan_metadata_input.update(flags)
-        elif scan_config := self.get_configuration_defaults("scan { ...ScanMetadataOptions }").get("scan"):
-            scan_metadata_input.update(cast(dict[str, JSON], scan_config))
 
-        result = self.call_GQL(query, {"input": scan_metadata_input})["metadataScan"]
-        return cast(int, result)
+        flags = flags or cast(
+            GQLScanMetadataInput,
+            cast(object, self.get_configuration_defaults("scan { ...ScanMetadataOptions }").get("scan")),
+        )
+        if paths:
+            flags["paths"] = [str(path) for path in paths]
 
-    def metadata_generate(self, flags: dict[str, Any] | None = None) -> int:
+        variables: dict[str, object] = {"input": flags}
+        result = cast(str, self.call_GQL(query, variables)["metadataScan"])
+        return int(result)
+
+    def metadata_generate(self, flags: GQLGenerateMetadataInput | None = None) -> int:
         """
-        Trigger the metadataGenerate mutation. Flags are used if provided, otherwise the default configuration is first
+        Queue a metadata generate job. Flags are used if provided, otherwise the default configuration is first
         fetched from Stash
 
         Args:
-            flags (dict[str, Any]): Configuration to use for the generate job. If not provided, current configuration
-                is fetched from Stash
+            flags (GQLGenerateMetadataInput, optional): Configuration to use for the generate job. See type def or
+            playground for details. If not provided, current configuration is fetched from Stash.
 
         Returns:
-            The integer ID of the triggered scan job
+            The ID of the triggered generate job
         """
-        flags = flags or {}
-
         query = """
             mutation MetadataGenerate($input:GenerateMetadataInput!) {
                 metadataGenerate(input: $input)
             }
         """
-        if flags:
-            generate_metadata_input = flags
-        else:
-            generate_metadata_input = self.get_configuration_defaults("generate { ...GenerateMetadataOptions }")[
-                "generate"
-            ]
-        result = self.call_GQL(query, {"input": generate_metadata_input})["metadataGenerate"]
-        return cast(int, result)
+
+        flags = flags or cast(
+            GQLGenerateMetadataInput,
+            cast(object, self.get_configuration_defaults("generate { ...GenerateMetadataOptions }")["generate"]),
+        )
+
+        variables: dict[str, object] = {"input": flags}
+        result = cast(str, self.call_GQL(query, variables)["metadataGenerate"])
+        return int(result)
 
     def metadata_clean(self, paths: list[Path | str] | None = None, dry_run: bool = False) -> int:
         """
-        Trigger the metadataClean mutation on the given paths. Optionally, trigger a dry_run.
+        Queue a metadata clean job on the given paths. Optionally, trigger a dry_run.
 
         Args:
-            paths (list[str | Path]): Paths to clean
+            paths (list, optional): Paths to clean. Default: empty list
             dry_run (bool, optional): Set to True to trigger a dry-run (default: False)
 
         Returns:
-            The integer ID of the triggered clean job
+            The ID of the triggered clean job
         """
-        paths = paths or []
         query = """
             mutation MetadataClean($input:CleanMetadataInput!) {
                 metadataClean(input: $input)
             }
         """
 
-        clean_metadata_input = {"paths": paths, "dryRun": dry_run}
-        result = self.call_GQL(query, {"input": clean_metadata_input})["metadataClean"]
-        return cast(int, result)
+        paths = paths or []
+        variables: dict[str, object] = {"input": {"paths": paths, "dryRun": dry_run}}
+        result = cast(str, self.call_GQL(query, variables)["metadataClean"])
+        return int(result)
 
     def metadata_autotag(
         self,
         paths: list[Path | str] | None = None,
-        performers: list[int | Literal["*"]] | None = None,
-        studios: list[int | Literal["*"]] | None = None,
-        tags: list[int | Literal["*"]] | None = None,
+        performers: list[str | Literal["*"]] | None = None,
+        studios: list[str | Literal["*"]] | None = None,
+        tags: list[str | Literal["*"]] | None = None,
     ) -> int:
         """
-        Trigger the metadataAutotag mutation on the given paths, performers, studios, and/or tags.
+        Queue a metadata autotag job on the given paths, performers, studios, and/or tags.
 
         Args:
-            paths (list[str | Path]): Paths to clean
-            performers (list[int | Literal["*"]]): List of integer performer IDs to scan, or simply the string "*" to scan all
-            studios (list[int | Literal["*"]]): List of integer studio IDs to scan, or simply the string "*" to scan all
-            tags (list[int | Literal["*"]]): List of integer tag IDs to scan, or simply the string "*" to scan all
+            paths (list, optional): Paths to autotag. Default: empty list
+            performers (list, optional): List of performer names (not aliases) to scan, or simply `["*"]` for all.
+                Default: empty list
+            studios (list, optional): List of studio names (not aliases) to scan, or simply `["*"]` for all.
+                Default: empty list
+            tags (list, optional): List of tag names (not aliases) to scan, or simply `["*"]` for all.
+                Default: empty list
 
         Returns:
             The integer ID of the triggered autotag job
@@ -658,13 +746,19 @@ class StashInterface(GQLWrapper):
                 metadataAutoTag(input: $input)
             }
         """
-        metadata_autotag_input = {
-            "paths": paths or [],
+
+        paths = paths or []
+        paths_str = [str(path) for path in paths]
+
+        # FIXME: what is the difference between running this job with an empty list for these parameters and running it with `["*"]`?
+        metadata_autotag_input: GQLAutoTagMetadataInput = {
+            "paths": paths_str,
             "performers": performers or [],
             "studios": studios or [],
             "tags": tags or [],
         }
-        result = self.call_GQL(query, {"input": metadata_autotag_input})["metadataAutotag"]
+        variables: dict[str, object] = {"input": metadata_autotag_input}
+        result = self.call_GQL(query, variables)["metadataAutotag"]
         return cast(int, result)
 
     def metadata_clean_generated(
@@ -678,19 +772,19 @@ class StashInterface(GQLWrapper):
         transcodes: bool = True,
     ) -> int:
         """
-        Trigger the metadataCleanGenerated mutation. Use the parameters to select which clean steps should be performed
+        Queue a generated metadata clean job. Use the parameters to select which clean steps should be performed
 
         Args:
             blobFiles (bool, optional): Whether or not to generated clean blob files (default: True)
             dryRun (bool, optional): Whether or not to perform a dry-run (default: False)
             imageThumbnails (bool, optional): Whether or not to clean generated image thumbnails (default: True)
-            markers (bool, optional): Whether or not to clean genereated markers (default: True)
+            markers (bool, optional): Whether or not to clean generated markers (default: True)
             screenshots (bool, optional): Whether or not to clean screenshots markers (default: True)
-            sprites (bool, optional): Whether or not to clean genereated sprites (default: True)
-            transcodes (bool, optional): Whether or not to clean genereated transcodes (default: True)
+            sprites (bool, optional): Whether or not to clean generated sprites (default: True)
+            transcodes (bool, optional): Whether or not to clean generated transcodes (default: True)
 
         Returns:
-            The integer ID of the triggered generated clean job
+            The ID of the triggered generated clean job
         """
         query = """
             mutation MetadataCleanGenerated($input: CleanGeneratedInput!) {
@@ -706,51 +800,51 @@ class StashInterface(GQLWrapper):
             "sprites": sprites,
             "transcodes": transcodes,
         }
-        result = self.call_GQL(query, {"input": clean_metadata_input})["metadataCleanGenerated"]
-        return cast(int, result)
+        variables: dict[str, object] = {"input": clean_metadata_input}
+        result = cast(str, self.call_GQL(query, variables)["metadataCleanGenerated"])
+        return int(result)
 
-    def backup_database(self):
+    def backup_database(self) -> int:
         """
-        Trigger the backupDatabase mutation.
+        Queue a database backup job.
 
         Returns:
-            The integer ID of the triggered backup job
+            The ID of the triggered backup job
         """
         query = """
             mutation BackupDatabase {
                 backupDatabase(input: { download: false })
             }
         """
-        result = self.call_GQL(query)["backupDatabase"]
-        return cast(int, result)
+        result = cast(str, self.call_GQL(query)["backupDatabase"])
+        return int(result)
 
     def optimise_database(self) -> int:
         """
-        Trigger the optimizeDatabase mutation.
+        Queue a database optimise job.
 
         Returns:
-            The integer ID of the triggered optimize job
+            The ID of the triggered optimize job
         """
         query = """
             mutation OptimiseDatabase {
                 optimiseDatabase
             }
         """
-        result = self.call_GQL(query)["optimiseDatabase"]
-        return cast(int, result)
+        result = cast(str, self.call_GQL(query)["optimiseDatabase"])
+        return int(result)
 
-    def file_set_fingerprints(self, file_id: int, fingerprints: list[GQLSetFingerprintsInput]) -> bool:
+    def file_set_fingerprints(self, file_id: int | str, fingerprints: list[GQLSetFingerprintsInput]) -> bool:
         """
-        Trigger the fileSetFingerprints mutation in order to assign the given fingerprints to the file with the
-        given integer ID
+        Queue a fingerprints setting job in order to assign the given fingerprints to the file with the given ID
 
         Args:
-            file_id (int): Integer ID of the file to modify
-            fingerprints (int): List of dictionaries of fingerprint information.
+            file_id (int | str): int-like (i.e. 5 or "5") ID of the file to modify
+            fingerprints (list): List of dictionaries of fingerprint information.
                 Each dictionary is expected to have "type" and "value" entries which describe the fingerprint
 
         Returns:
-            True if the mutation was successful, False otherwise
+            True if the operation was successful, False otherwise
         """
         # FIXME: feels like this check should not be necessary since the file_id parameter is mandatory?
         if not file_id:
@@ -761,20 +855,19 @@ class StashInterface(GQLWrapper):
                 fileSetFingerprints(input: $input)
             }
         """
-
         variables: dict[str, object] = {"input": {"id": file_id, "fingerprints": fingerprints}}
         result = self.call_GQL(query, variables)["fileSetFingerprints"]
         return cast(bool, result)
 
-    def destroy_files(self, file_ids: list[int]) -> bool:
+    def destroy_files(self, file_ids: list[int | str]) -> bool:
         """
-        Trigger the deleteFiles mutation in order to delete the files with the given integer IDs
+        Trigger the deleteFiles mutation in order to delete the files with the given IDs
 
         Args:
-            file_id (int): Integer ID of the file to delete
+            file_ids (list): list of int-like (i.e. 5 or "5") IDs of the files to delete
 
         Returns:
-            True if the mutation was successful, False otherwise
+            True if the operation was successful, False otherwise
         """
         if not file_ids:
             return False
@@ -791,14 +884,14 @@ class StashInterface(GQLWrapper):
     # FILES
     def move_files(self, move_files_input: GQLMoveFilesInput) -> bool:
         """
-        Trigger the moveFiles mutation in order to move the files with the given integer IDs to the target directory.
+        Trigger the moveFiles mutation in order to move the files with the given IDs to the target directory.
 
         Args:
             move_files_input (GQLMoveFilesInput): A dictionary containing the following keys:
-                ids: list of integer IDs of files to move
+                ids: list of int-like (i.e. 5 or "5") IDs of files to move
                 one of the following two keys specifying the target folder:
                     destination_folder: string path to destination folder
-                    destination_folder_id: integer ID of a destination folder known to Stash
+                    destination_folder_id: int-like ID of a destination folder known to Stash
                 destination_basename: optional string basename of the file in the destination
 
         Returns:
@@ -813,17 +906,20 @@ class StashInterface(GQLWrapper):
         return cast(bool, result)
 
     # PLUGINS
-    def configure_plugin(self, plugin_id: str, values: dict[str, Any], init_defaults: bool = False) -> dict[str, JSON]:
+    def configure_plugin(self, plugin_id: str, values: dict[str, JSON], init_defaults: bool = False) -> JSONDict:
         """
         Set configuration values for the plugin with the given plugin id
 
         Args:
             plugin_id (str): the name of the config.yml file
             values (dict): plugin configuration values to set
-            init_defaults (bool, optional): use values to initialize configuration values, existing configuration will override passed values. Defaults to False.
+            init_defaults (bool, optional): whether or not to prefer existing plugin configuration options. If this is
+                set to True, existing configuration options from the plugin will be preferred over those given in the
+                `values` parameter. If set to False, options given in the `values` parameter will override the existing
+                plugin configuration. Default: False
 
         Returns:
-            dict: current plugin configuration values
+            A dictionary of the plugin configuration values after modification
         """
         query = """
             mutation ConfigurePlugin($plugin_id: ID!, $input: Map!) {
@@ -831,46 +927,49 @@ class StashInterface(GQLWrapper):
             }
         """
         plugin_values = self.find_plugin_config(plugin_id)
+
         if init_defaults:
             values.update(plugin_values)
+
         plugin_values.update(values)
 
         result = self.call_GQL(query, {"plugin_id": plugin_id, "input": plugin_values})["configurePlugin"]
-        return cast(dict[str, JSON], result)
+        return cast(JSONDict, result)
 
-    def find_plugin_config(self, plugin_id: str, defaults: dict[str, Any] | None = None) -> dict[str, JSON]:
+    def find_plugin_config(self, plugin_id: str, defaults: dict[str, JSON] | None = None) -> JSONDict:
         """
-        Finds the current configuration for the plugin with the given plugin id, optionally setting the plugin
-        configuration to the given defaults if no configuration is found.
+        Finds the configuration for the plugin with the given plugin id, optionally setting any missing plugin
+        configuration options to those given in `defaults`. Plugin configuration options that have already been set
+        will not be updated with the given defaults.
 
         Args:
             plugin_id (str): the name of the config.yml file
-            defaults (dict[str, Any], optional): default values to configure the plugin with if no configuration
+            defaults (dict, optional): default values with which to configure the plugin with if no configuration
                 is found. (default: empty dict).
 
         Returns:
-            dict[str, Any]: current plugin configuration values
+            A dictionary of the plugin configuration values after any modifications are performed
         """
         if defaults:
             return self.configure_plugin(plugin_id, defaults, init_defaults=True)
 
         return self.find_plugins_config(plugin_id)
 
-    def find_plugins_config(self, plugin_ids: list[str] | str | None) -> dict[str, JSON]:
+    def find_plugins_config(self, plugin_ids: list[str] | str | None) -> JSONDict:
         """
-        Finds the configuration information for one or more plugins
+        Finds the configuration information for one, multiple, or all plugins
 
         Args:
-            plugin_ids (list[str], str, optional): List of string plugin ids or string of plugin id to retrieve.
-                If omitted or set to an empty list, values for all plugins is returned.
-                (default: None, returns info on all plugins).
+            plugin_ids (list[str] | str, optional): Plugin ID or list of plugin IDs whose configuration(s) will be
+                retrieved.
+                If omitted or set to an empty list, configurations for all plugins are returned.
+                (default: None, returns configurations for all plugins).
 
         Returns:
-            If no plugins are found, returns an empty dictionary. Otherwise:
-                If called with a string or a list containing only a single plugin id, returns the configuration
-                dictionary for the given plugin.
-                If called with a list containing multiple plugins, returns a dictionary of plugin configurations,
-                where the keys are the plugin ids
+            If only a single plugin ID was given, returns a dictionary containing that plugin's config (if found).
+            Otherwise, returns a dictionary - with plugin IDs as keys - containing the configuration for all given
+            plugins if they were found.
+            If no plugins were found, returns an empty dictionary.
         """
         query = """
             query FindPluginConfig($input: [ID!]){
@@ -884,35 +983,37 @@ class StashInterface(GQLWrapper):
         if isinstance(plugin_ids, str):
             plugin_ids = [plugin_ids]
 
-        result = cast(dict[str, JSON], self.call_GQL(query, {"input": plugin_ids})["configuration"])
-        config = cast(dict[str, JSON], result["plugins"])
+        variables: dict[str, object] = {"input": plugin_ids}
 
-        if len(plugin_ids) == 1:
-            config = config.get(plugin_ids[0])
+        result = cast(JSONDict, self.call_GQL(query, variables)["configuration"])
+        config = cast(JSONDict, result["plugins"])
 
         if config:
-            return cast(dict[str, JSON], config)
+            if len(plugin_ids) == 1:
+                config = config.get(plugin_ids[0])
+
+            return cast(JSONDict, config)
         else:
             self.log.debug(f"no plugin configs found with any of the following IDs: {plugin_ids}")
             return {}
 
     def run_plugin_task(
         self,
-        plugin_id: int,
+        plugin_id: int | str,
         task_name: str,
-        args: dict[str, str | int | bool | float | Any] | None = None,
-    ):
+        args: JSONDict | None = None,
+    ) -> int:
         """
         Queues a plugin task to run
 
         Args:
-            plugin_id (int): Integer plugin ID
+            plugin_id (int | str): int-like (i.e. 5 or "5") plugin ID
             task_name (str): plugin task to perform, task must exist in plugin config
             args (dict, optional): arguments to pass to plugin. Note that only str, int, float and bool arguments will
-                be passed to the config. Other types are silently dropped. (default: empty dict)
+                be passed to the config. Other types are silently dropped. (default: no args)
 
         Returns:
-            The integer ID of the triggered backup job
+            The ID of the triggered plugin task job
         """
         args = args or {}
         query = """
@@ -921,31 +1022,28 @@ class StashInterface(GQLWrapper):
             }
         """
 
-        args_list: list[dict[str, Any]] = []
+        args_list: list[JSONDict] = []
         for k, v in args.items():
-            if isinstance(v, str):
+            value: JSONDict
+            if isinstance(v, bool):
+                value = {"b": v}
+            elif isinstance(v, str):
                 value = {"str": v}
             elif isinstance(v, int):
                 value = {"i": v}
-            elif isinstance(v, bool):
-                value = {"b": v}
             elif isinstance(v, float):
                 value = {"f": v}
             else:
                 continue
             args_list.append({"key": k, "value": value})
 
-        variables: dict[str, object] = {
-            "plugin_id": plugin_id,
-            "task_name": task_name,
-            "args": args_list,
-        }
+        variables: dict[str, object] = {"plugin_id": plugin_id, "task_name": task_name, "args": args_list}
 
-        result = self.call_GQL(query, variables)["runPluginTask"]
-        return cast(dict[str, JSON], result)
+        result = cast(str, self.call_GQL(query, variables)["runPluginTask"])
+        return int(result)
 
     # TAG
-    def create_tag(self, tag_in: GQLTagCreateInput) -> dict[str, JSON]:
+    def create_tag(self, tag_in: GQLTagCreateInput) -> JSONDict:
         """
         Creates a tag with the given details
 
@@ -958,7 +1056,7 @@ class StashInterface(GQLWrapper):
 
         query = """
             mutation tagCreate($input:TagCreateInput!) {
-                tagCreate(input: $input){
+                tagCreate(input: $input) {
                     ...Tag
                 }
             }
@@ -966,7 +1064,7 @@ class StashInterface(GQLWrapper):
         variables: dict[str, object] = {"input": tag_in}
 
         result = self.call_GQL(query, variables)["tagCreate"]
-        return cast(dict[str, JSON], result)
+        return cast(JSONDict, result)
 
     def find_tag(
         self,
@@ -974,21 +1072,29 @@ class StashInterface(GQLWrapper):
         create: bool = False,
         fragment: str | None = None,
         on_multiple: OnMultipleMatch = OnMultipleMatch.RETURN_FIRST,
-    ) -> list[dict[str, JSON]] | dict[str, JSON] | None:
+    ) -> list[JSONDict] | JSONDict | None:
         """
-        Looks for a tag matching the given integer ID, name, or alias(es)
+        Looks for a tag by ID, name, or alias(es)
 
         Args:
-            tag_in (int, str, dict): Tag ID, name, or dict to find.
+            tag_in (int | str | dict): int-like (i.e. 5 or "5") tag ID, tag name, or dict (containing a "stored_id" or
+                "name" key) to look for.
             create (bool, optional): Creates the tag if it does not exist. Defaults to False.
-            fragment (str, optional): override for gqlFragment. Defaults to "...Tag". example override 'fragment="id name"'
+            fragment (str, optional): override for gqlFragment. Defaults to "...Tag".
+                Example override: 'fragment="id name"'
             on_multiple (OnMultipleMatch): behavior if multiple matching tags are found. Default: RETURN_FIRST
 
         Returns:
-            dict: stash Tag dict
+            The dictionary representing the tag in Stash
         """
 
-        # assume input is an ID if int
+        # assume input is an ID if int or int-like
+        if isinstance(tag_in, str):
+            try:
+                tag_in = int(tag_in)
+            except:
+                pass
+
         if isinstance(tag_in, int):
             query = """
                 query FindTag($id: ID!) {
@@ -1000,9 +1106,9 @@ class StashInterface(GQLWrapper):
         name = None
 
         if isinstance(tag_in, dict):
-            if tag_in.get("stored_id"):
+            if stored_id := tag_in.get("stored_id"):
                 try:
-                    stored_id = int(tag_in["stored_id"])
+                    stored_id = int(stored_id)
                     return self.find_tag(stored_id, fragment=fragment)
                 except:
                     del tag_in["stored_id"]
@@ -1014,11 +1120,12 @@ class StashInterface(GQLWrapper):
             tag_in = {"name": name}
 
         if not name:
+            # FIXME: should this just raise an exception?
             self.log.warning(f'find_tag expects int, str, or dict not {type(tag_in)} "{tag_in}"')
             return
 
         matches: set[int] | list[int] = set()
-        tags = cast(list[dict[str, JSON]], self.find_tags(q=name, fragment="id name aliases"))
+        tags = cast(list[JSONDict], self.find_tags(q=name, fragment="id name aliases"))
         for tag in tags:
             if str_compare(cast(str, tag["name"]), name):
                 matches.add(cast(int, tag["id"]))
@@ -1028,31 +1135,32 @@ class StashInterface(GQLWrapper):
 
         matches = list(matches)
         if len(matches) > 1:
-            msg = f"Matched multiple tags with {name=} {matches}"
+            msg = f"Matched multiple tags with {name=}: {matches}"
             match on_multiple:
                 case OnMultipleMatch.RETURN_NONE:
-                    self.log.debug(f"{msg} returning None")
+                    self.log.debug(f"{msg}, returning None")
                     return None
                 case OnMultipleMatch.RETURN_LIST:
-                    self.log.debug(f"{msg} returning all matches")
+                    self.log.debug(f"{msg}, returning all matches")
                     found = [self.find_tag(int(tag_id), fragment=fragment) for tag_id in matches]
-                    return cast(list[dict[str, JSON]], list(filter(None, found)))
+                    return cast(list[JSONDict], list(filter(None, found)))
                 case OnMultipleMatch.RETURN_FIRST:
-                    self.log.debug(f"{msg} returning first match")
+                    self.log.debug(f"{msg}, returning first match")
                     # singular match returned from next if-statement
 
+        # handle single match
         if matches:
             return self.find_tag(int(matches[0]), fragment=fragment)
 
         if create:
             self.log.info(f"Could not find tag with {name=} creating")
+
             # at this point we know that tag_in contains at least a key `name` with str value, which is all that is
             # required to createa a new tag. Any unrecognized keys will just be ignored
             creation_options = cast(GQLTagCreateInput, cast(object, tag_in))
-
             return self.create_tag(creation_options)
 
-    def update_tag(self, tag_update: GQLTagUpdateInput) -> dict[str, JSON]:
+    def update_tag(self, tag_update: GQLTagUpdateInput) -> JSONDict | None:
         """
         Update the tag per the given inputs
 
@@ -1060,7 +1168,7 @@ class StashInterface(GQLWrapper):
             tag_update (GQLTagUpdateInput): see type def or playground for details
 
         Returns:
-            A dictionary containing information on the updated tag from Stash
+            A dictionary containing information on the updated tag from Stash, or None if no matching tag was found
         """
         query = """
             mutation TagUpdate($input: TagUpdateInput!) {
@@ -1073,7 +1181,10 @@ class StashInterface(GQLWrapper):
         variables: dict[str, object] = {"input": tag_update}
 
         result = self.call_GQL(query, variables)["tagUpdate"]
-        return cast(dict[str, JSON], result)
+        if result:
+            return cast(JSONDict, result)
+
+        return None
 
     def destroy_tag(self, tag_id: int) -> bool:
         """
@@ -1104,7 +1215,7 @@ class StashInterface(GQLWrapper):
         q: str = "",
         fragment: str | None = None,
         get_count: bool = False,
-    ) -> tuple[int, list[dict[str, JSON]]] | list[dict[str, JSON]]:
+    ) -> tuple[int, list[JSONDict]] | list[JSONDict]:
         """
         Gets tags matching filter/query
 
@@ -1138,9 +1249,9 @@ class StashInterface(GQLWrapper):
         filter["q"] = q
         variables: dict[str, object] = {"filter": filter, "tag_filter": f}
 
-        result = cast(dict[str, JSON], self.call_GQL(query, variables)["findTags"])
+        result = cast(JSONDict, self.call_GQL(query, variables)["findTags"])
         count = cast(int, result["count"])
-        tags = cast(list[dict[str, JSON]], result["tags"])
+        tags = cast(list[JSONDict], result["tags"])
         if get_count:
             return count, tags
         else:
@@ -1174,7 +1285,9 @@ class StashInterface(GQLWrapper):
         Searches for tags matching the given criteria, optionally creating them if the `create` parameter is True.
 
         Args:
-            tags_input (): the tags to search for and optionally create
+            tags_input(list): list of tags to search for and optionally create. Each entry in the list should be either
+                an int-like (i.e. 5 or "5") tag id, a tag name, or a dict containing either a "stored_id" key or a
+                "name" key
             create (bool): whether or not to create tags that are not found
 
         Returns:
@@ -1182,18 +1295,20 @@ class StashInterface(GQLWrapper):
         """
         tag_ids: list[int] = []
         for tag_input in tags_input:
-            if tag := cast(
-                dict[str, JSON], self.find_tag(tag_input, create=create, on_multiple=OnMultipleMatch.RETURN_NONE)
-            ):
-                tag_ids.append(cast(int, tag["id"]))
+            if tag := cast(JSONDict, self.find_tag(tag_input, create=create, on_multiple=OnMultipleMatch.RETURN_NONE)):
+                tag_ids.append(int(cast(str, tag["id"])))
 
         return tag_ids
 
-    def destroy_tags(self, tag_ids: list[int]):
-        """deletes tags from stash
+    def destroy_tags(self, tag_ids: list[int | int]) -> bool:
+        """
+        Deletes the given tags from stash
 
         Args:
-                 tag_ids ([int]): tag IDs from stash to delete
+            tag_ids (list): int-like (i.e. 5 or "5") tag IDs to delete
+
+        Returns:
+            True if the operation was successful, false otherwise
         """
 
         query = """
@@ -1202,10 +1317,11 @@ class StashInterface(GQLWrapper):
             }
         """
 
-        self.call_GQL(query, {"ids": tag_ids})
+        result = self.call_GQL(query, {"ids": tag_ids})["tagsDestroy"]
+        return cast(bool, result)
 
     # PERFORMER
-    def create_performer(self, performer_in: GQLPerformerCreateInput) -> dict[str, JSON]:
+    def create_performer(self, performer_in: GQLPerformerCreateInput) -> JSONDict:
         """
         Creates performer in Stash
 
@@ -1226,7 +1342,7 @@ class StashInterface(GQLWrapper):
         variables: dict[str, object] = {"input": performer_in}
 
         result = self.call_GQL(query, variables)["performerCreate"]
-        return cast(dict[str, JSON], result)
+        return cast(JSONDict, result)
 
     def find_performer(
         self,
@@ -1234,13 +1350,16 @@ class StashInterface(GQLWrapper):
         create: bool = False,
         fragment: str | None = None,
         on_multiple: OnMultipleMatch = OnMultipleMatch.RETURN_FIRST,
-    ) -> list[dict[str, JSON]] | dict[str, JSON] | None:
+    ) -> list[JSONDict] | JSONDict | None:
         """
-        Looks for performer from stash, matching on name or aliases
+        Looks for performer from stash, matching on ID, name, or aliases
 
         Args:
-            performer (int, str, dict): int of performer id, str of performer name/alias, dict of performer object
-            create (bool, optional): create performer if not found. Defaults to False.
+            performer (int | str | dict): an int-like (i.e. 5 or "5") performer ID, a performer name/alias, or a dict.
+                If a dict is provided, it should contain a "stored_id" key or "id" key to be used to look up the
+                performer, or sufficient information to create a performer.
+            create (bool, optional): create performer if not found. If true, `performer` parameter must contain
+                sufficient information to create the performer (a "name" key at minimum). Defaults to False.
 
         Returns:
             dict: stash performer object
@@ -1269,7 +1388,7 @@ class StashInterface(GQLWrapper):
 
         name = cast(str, _performer["name"])
         performer_search = cast(
-            list[dict[str, JSON]],
+            list[JSONDict],
             self.find_performers(q=name, f=performer_filter, fragment="id name disambiguation alias_list"),
         )
         performer_matches = self.__match_performer_alias(_performer, performer_search)
@@ -1285,7 +1404,7 @@ class StashInterface(GQLWrapper):
                     found = [
                         self.find_performer(int(cast(int | str, p["id"])), fragment=fragment) for p in performer_matches
                     ]
-                    return cast(list[dict[str, JSON]], list(filter(None, found)))
+                    return cast(list[JSONDict], list(filter(None, found)))
                 case OnMultipleMatch.RETURN_FIRST:
                     self.log.warning(f"{warn_msg} returning first match")
                     # singular match returned from next if-statement
@@ -1301,7 +1420,7 @@ class StashInterface(GQLWrapper):
             creation_options = cast(GQLPerformerCreateInput, cast(object, _performer))
             return self.create_performer(creation_options)
 
-    def update_performer(self, performer_in: GQLPerformerUpdateInput) -> dict[str, JSON]:
+    def update_performer(self, performer_in: GQLPerformerUpdateInput) -> JSONDict:
         """
         Updates an existing performer
 
@@ -1322,33 +1441,59 @@ class StashInterface(GQLWrapper):
         variables: dict[str, object] = {"input": performer_in}
 
         result = self.call_GQL(query, variables)["performerUpdate"]
-        return cast(dict[str, JSON], result)
+        return cast(JSONDict, result)
 
-    def destroy_performer(self, performer_ids: int | list[int]) -> bool:
+    def destroy_performer(self, performer_ids: int | str | Sequence[int | str]) -> bool:
         """
         Deletes the given performer(s)
 
         Args:
-            performer_ids (int | list[int]): Performer id(s) to delete
+            performer_ids (int | str | list): int-like (i.e. 5 or "5") or list of int-like performer IDs to delete
 
         Returns:
             True if the operation was successful, False otherwise
         """
-        if not isinstance(performer_ids, (int, list)):  # pyright: ignore[reportUnnecessaryIsInstance]
-            raise Exception("destroy_gallery only accepts an int or list of ints")  # pyright: ignore[reportUnreachable]
-
-        if isinstance(performer_ids, int):
+        if isinstance(performer_ids, (str, int)):
             performer_ids = [performer_ids]
+
+        if isinstance(performer_ids, list):
+            for id in performer_ids:
+                if isinstance(id, str):
+                    try:
+                        id = int(id)
+                    except:
+                        raise Exception(
+                            f"destroy_gallery only accepts an int-like or list of int-like IDs, got {performer_ids}"
+                        )
 
         query = """
             mutation performersDestroy($performer_ids:[ID!]!) {
                 performersDestroy(ids: $performer_ids)
             }
         """
+
         result = self.call_GQL(query, {"performer_ids": performer_ids})["performersDestroy"]
         return cast(bool, result)
 
-    def merge_performers(self, source: list, destination, values={}):
+    def merge_performers(
+        self,
+        source: int | str | list[int | str],
+        destination: int | str,
+        # FIXME: this looks unused, can we just remove it?
+        values: dict[Any, Any] | None = None,
+    ) -> bool:
+        """
+        Merges the given performer(s) into the given target performer and deletes the source performers.
+        Note: If there are any errors in merging, the source performers will not be deleted and a warning will be
+        printed.
+
+        Args:
+            source (list): int-like (i.e. 5 or "5") or list of int-like performer ID(s) to merge into the target
+            destination (int | str): int-like (i.e. 5 or "5") performer ID to merge source performers into
+
+        Returns:
+            True if the operation was a success, False otherwise
+        """
 
         performer_update_fragment = """
             id
@@ -1380,32 +1525,49 @@ class StashInterface(GQLWrapper):
             ignore_auto_tag
         """
 
-        if isinstance(source, str):
-            source = int(source)
-
-        if isinstance(destination, str):
-            destination = int(destination)
-
-        if isinstance(source, int):
+        if isinstance(source, (int, str)):
             source = [source]
 
-        if not isinstance(source, list):
-            raise Exception("merge_performers() source attribute must be a list of ints")
+        if isinstance(source, list):  # pyright: ignore[reportUnnecessaryIsInstance]
+            for id in source:
+                if isinstance(id, str):
+                    try:
+                        id = int(id)
+                    except:
+                        raise Exception(
+                            f"`merge_performers()` only accepts an int-like or list of int-like IDs, got {source}"
+                        )
 
-        if not isinstance(destination, int):
-            raise Exception("merge_performers() destination attribute must be an int")
+        if isinstance(destination, str):
+            try:
+                destination = int(destination)
+            except:
+                raise Exception(
+                    f"`merge_performers()` only accepts an int-like or list of int-like IDs, got {destination}"
+                )
 
-        destination = self.find_performer(destination, fragment=performer_update_fragment)
-        sources = [self.find_performer(pid) for pid in source]
+        if not isinstance(destination, int):  # pyright: ignore[reportUnnecessaryIsInstance]
+            raise Exception(
+                "merge_performers() destination attribute must be an int"
+            )  # pyright: ignore[reportUnreachable]
 
-        performer_update = {}
-        for attr in destination:
+        _destination = cast(JSONDict | None, self.find_performer(destination, fragment=performer_update_fragment))
+        if not _destination:
+            return False
+
+        sources = cast(list[JSONDict | None], [self.find_performer(pid) for pid in source])
+        sources = list(filter(None, sources))
+        if not sources:
+            return False
+
+        performer_update: GQLPerformerUpdateInput = {"id": -1}
+        for attr in _destination:
             if attr == "tags":
-                performer_update["tag_ids"] = [t["id"] for t in destination["tags"]]
+                performer_update["tag_ids"] = [cast(str, t["id"]) for t in cast(list[JSONDict], _destination["tags"])]
             else:
-                performer_update[attr] = destination[attr]
+                performer_update[attr] = _destination[attr]
 
-        def pick_string(s1, s2):
+        def pick_longer(s1: str, s2: str) -> str:
             if len(s1.replace(" ", "")) > len(s2.replace(" ", "")):
                 return s1
             else:
@@ -1419,71 +1581,129 @@ class StashInterface(GQLWrapper):
             "piercings",
             "details",
         ]
+
         for d_attr in performer_update:
             if d_attr in ignore_attrs:
                 continue
-            for source in sources:
+            for src in sources:
                 if d_attr in use_longest_string:
-                    performer_update[d_attr] = pick_string(performer_update[d_attr], source[d_attr])
+                    performer_update[d_attr] = pick_longer(cast(str, performer_update[d_attr]), cast(str, src[d_attr]))
                     continue
+
                 if d_attr == "stash_ids":
-                    existing_ids = [id["stash_id"] for id in performer_update["stash_ids"]]
-                    performer_update["stash_ids"].extend(
-                        [id for id in source["stash_ids"] if id["stash_id"] not in existing_ids]
-                    )
+                    tar_stash_ids = performer_update.setdefault("stash_ids", [])
+                    existing_ids = [id["stash_id"] for id in tar_stash_ids]
+                    for id in cast(list[GQLStashIDInput], src["stash_ids"]):
+                        if id["stash_id"] not in existing_ids:
+                            tar_stash_ids.append(id)
                     continue
+
                 if d_attr == "tags":
-                    performer_update["tag_ids"].extend([t["id"] for t in source["tags"]])
-                    performer_update["tag_ids"] = list(set(performer_update["tag_ids"]))
+                    if not "tags" in src:
+                        continue
+                    src_tags = cast(list[JSONDict], src["tags"])
+                    tar_tag_ids = performer_update.setdefault("tag_ids", [])
+                    tar_tag_ids.extend([cast(str, t["id"]) for t in src_tags])
+                    tar_tag_ids = list(set(tar_tag_ids))
                     continue
+
                 if d_attr == "alias_list":
-                    source_name = source["name"]
-                    if source.get("disambiguation"):
-                        source_name = f'{source_name} ({source["disambiguation"]})'
-                    performer_update["alias_list"].append(source_name)
-                    performer_update["alias_list"].extend(source["alias_list"])
-                    performer_update["alias_list"] = list(set(performer_update["alias_list"]))
+                    src_name = cast(str, src["name"])
+                    src_alias_list = cast(list[str], src["alias_list"])
+
+                    if src.get("disambiguation"):
+                        src_name = f'{src_name} ({src["disambiguation"]})'
+
+                    tar_alias_list = performer_update.setdefault("alias_list", [])
+                    tar_alias_list.append(src_name)
+                    tar_alias_list.extend(src_alias_list)
+                    tar_alias_list = list(set(tar_alias_list))
                     continue
-                if not performer_update[d_attr] and d_attr in source and source[d_attr]:
-                    performer_update[d_attr] = source[d_attr]
+
+                if not performer_update[d_attr] and d_attr in src and src[d_attr]:
+                    performer_update[d_attr] = src[d_attr]
 
         # merge all values of disambiguation
-        disambiguation_list = [performer_update["disambiguation"]]
-        disambiguation_list.extend([s["disambiguation"] for s in sources])
+        disambiguation_list = [cast(str, s["disambiguation"]) for s in sources]
+        if tar_disamb := performer_update.get("disambiguation"):
+            disambiguation_list = [tar_disamb] + disambiguation_list
         performer_update["disambiguation"] = ", ".join([d for d in disambiguation_list if d])
 
         # remove 'name' from alias_list to avoid GQL error on update
-        performer_update["alias_list"] = [a for a in performer_update["alias_list"] if a != performer_update["name"]]
+        assert "name" in performer_update
+        if alias_list := performer_update.get("alias_list"):
+            alias_list = list(filter(lambda alias: alias.lower() != performer_update["name"].lower(), alias_list))
 
-        # Fix for case-insensitive alias conflict
-        alias_map_lowercase = {}
-        for alias in performer_update["alias_list"]:
-            if alias.lower() in alias_map_lowercase:
-                continue
-            alias_map_lowercase[alias.lower()] = alias
-        performer_update["alias_list"] = list(alias_map_lowercase.values())
+            # Fix for case-insensitive alias conflict
+            alias_map_lowercase: dict[str, str] = {}
+            for alias in alias_list:
+                if alias.lower() in alias_map_lowercase:
+                    continue
+                alias_map_lowercase[alias.lower()] = alias
+            performer_update["alias_list"] = list(alias_map_lowercase.values())
 
         self.update_performer(performer_update)
 
-        source_ids = [p["id"] for p in sources]
+        error_happened = False
+        source_ids = [cast(str, p["id"]) for p in sources]
         # reassign items with performers
-        scenes = self.find_scenes(f={"performers": {"value": source_ids, "modifier": "INCLUDES"}}, fragment="id")
+        scenes = cast(
+            list[JSONDict],
+            self.find_scenes(f={"performers": {"value": source_ids, "modifier": "INCLUDES"}}, fragment="id"),
+        )
         if scenes:
-            self.update_scenes(
-                {"ids": [s["id"] for s in scenes], "performer_ids": {"ids": [destination["id"]], "mode": "ADD"}}
-            )
-        galleries = self.find_galleries(f={"performers": {"value": source_ids, "modifier": "INCLUDES"}}, fragment="id")
-        if galleries:
-            self.update_galleries(
-                {"ids": [g["id"] for g in galleries], "performer_ids": {"ids": [destination["id"]], "mode": "ADD"}}
-            )
-        images = self.find_images(f={"performers": {"value": source_ids, "modifier": "INCLUDES"}}, fragment="id")
-        if images:
-            self.update_images(
-                {"ids": [i["id"] for i in images], "performer_ids": {"ids": [destination["id"]], "mode": "ADD"}}
-            )
+            if not self.update_scenes(
+                {
+                    "ids": cast(list[str], [s["id"] for s in scenes]),
+                    "performer_ids": {
+                        "ids": [cast(str, _destination["id"])],
+                        "mode": "ADD",
+                    },
+                }
+            ):
+                self.log.error("Error updating scenes to new performer!")
+                error_happened = True
 
-        self.destroy_performer(source_ids)
+        galleries = cast(
+            list[JSONDict],
+            self.find_galleries(f={"performers": {"value": source_ids, "modifier": "INCLUDES"}}, fragment="id"),
+        )
+        if galleries:
+            if not self.update_galleries(
+                {
+                    "ids": cast(list[str], [g["id"] for g in galleries]),
+                    "performer_ids": {
+                        "ids": [cast(str, _destination["id"])],
+                        "mode": "ADD",
+                    },
+                }
+            ):
+                self.log.error("Error updating galleries to new performer!")
+                error_happened = True
+
+        images = cast(
+            list[JSONDict],
+            self.find_images(f={"performers": {"value": source_ids, "modifier": "INCLUDES"}}, fragment="id"),
+        )
+        if images:
+            if not self.update_images(
+                {
+                    "ids": cast(list[str], [i["id"] for i in images]),
+                    "performer_ids": {
+                        "ids": [cast(str, _destination["id"])],
+                        "mode": "ADD",
+                    },
+                }
+            ):
+                self.log.error("Error updating images to new performer!")
+                error_happened = True
+
+        if error_happened:
+            self.log.warning("An error occurred while merging performers, see previous log entries.")
+            self.log.warning("** Original performer HAS NOT been deleted **")
+            return False
+        else:
+            return self.destroy_performer(source_ids)
 
     # PERFORMERS
     def find_performers(
@@ -1494,7 +1714,7 @@ class StashInterface(GQLWrapper):
         fragment: str | None = None,
         get_count: bool = False,
         callback: Callable[..., CallbackReturns] | None = None,
-    ) -> tuple[int, list[dict[str, JSON]]] | list[dict[str, JSON]]:
+    ) -> tuple[int, list[JSONDict]] | list[JSONDict]:
         """
         Get performers matching filter/query
 
@@ -1527,16 +1747,16 @@ class StashInterface(GQLWrapper):
         filter["q"] = q
         variables: dict[str, object] = {"filter": filter, "performer_filter": f}
 
-        result = cast(dict[str, JSON], self.call_GQL(query, variables, callback=callback)["findPerformers"])
+        result = cast(JSONDict, self.call_GQL(query, variables, callback=callback)["findPerformers"])
         count = cast(int, result["count"])
-        performers = cast(list[dict[str, JSON]], result["performers"])
+        performers = cast(list[JSONDict], result["performers"])
 
         if get_count:
             return count, performers
         else:
             return performers
 
-    def update_performers(self, bulk_performer_update_input: GQLBulkPerformerUpdateInput) -> list[dict[str, JSON]]:
+    def update_performers(self, bulk_performer_update_input: GQLBulkPerformerUpdateInput) -> list[JSONDict]:
         """
         Update multiple existing performers
 
@@ -1555,7 +1775,7 @@ class StashInterface(GQLWrapper):
         """
         variables: dict[str, object] = {"input": bulk_performer_update_input}
 
-        result = cast(list[dict[str, JSON]], self.call_GQL(query, variables)["bulkPerformerUpdate"])
+        result = cast(list[JSONDict], self.call_GQL(query, variables)["bulkPerformerUpdate"])
         return result
 
     def map_performer_ids(
@@ -1566,7 +1786,7 @@ class StashInterface(GQLWrapper):
         performer_ids: list[int] = []
         for performer_input in performers_input:
             if performer := cast(
-                dict[str, JSON],
+                JSONDict,
                 self.find_performer(
                     performer_input, create=create, fragment="id", on_multiple=OnMultipleMatch.RETURN_NONE
                 ),
@@ -1576,7 +1796,7 @@ class StashInterface(GQLWrapper):
         return performer_ids
 
     # Studio CRUD
-    def create_studio(self, studio_create_input: GQLStudioCreateInput) -> dict[str, JSON]:
+    def create_studio(self, studio_create_input: GQLStudioCreateInput) -> JSONDict:
         """
         Create a studio in Stash
 
@@ -1595,12 +1815,12 @@ class StashInterface(GQLWrapper):
         """
         variables: dict[str, object] = {"input": studio_create_input}
 
-        result = cast(dict[str, JSON], self.call_GQL(query, variables)["studioCreate"])
+        result = cast(JSONDict, self.call_GQL(query, variables)["studioCreate"])
         return result
 
     def find_studio(
         self, studio: int | str | dict[str, Any], fragment: str | None = None, create: bool = False
-    ) -> dict[str, JSON] | None:
+    ) -> JSONDict | None:
         """
         Looks for a studio by matching against the given studio information, optionally creating the studio if a
         match is not found.
@@ -1631,11 +1851,11 @@ class StashInterface(GQLWrapper):
             """
             return self.__generic_find(query, _studio, (r"\.\.\.Studio", fragment))
 
-        studio_matches: list[dict[str, JSON]] = []
+        studio_matches: list[JSONDict] = []
 
         if url := cast(str, _studio.get("url")):
             url_search = cast(
-                list[dict[str, JSON]],
+                list[JSONDict],
                 self.find_studios(
                     f={"url": {"value": url, "modifier": GQLCriterionModifier.INCLUDES}}, fragment="id name"
                 ),
@@ -1645,7 +1865,7 @@ class StashInterface(GQLWrapper):
 
         if name := cast(str, _studio.get("name")):
             _studio["name"] = name.strip()
-            name_results = cast(list[dict[str, JSON]], self.find_studios(q=name, fragment="id name aliases"))
+            name_results = cast(list[JSONDict], self.find_studios(q=name, fragment="id name aliases"))
             studio_matches.extend(self.__match_alias_item(name, name_results))
 
         # FIXME: what's going on here?? Is matching against multiple studio names separated by spaces meant to be
@@ -1663,7 +1883,7 @@ class StashInterface(GQLWrapper):
             creation_options = cast(GQLStudioCreateInput, cast(object, _studio))
             return self.create_studio(creation_options)
 
-    def update_studio(self, studio: GQLStudioCreateInput) -> dict[str, JSON]:
+    def update_studio(self, studio: GQLStudioCreateInput) -> JSONDict:
         """
         Update existing studio on Stash
 
@@ -1683,7 +1903,7 @@ class StashInterface(GQLWrapper):
         """
         variables: dict[str, object] = {"input": studio}
 
-        result = cast(dict[str, JSON], self.call_GQL(query, variables)["studioUpdate"])
+        result = cast(JSONDict, self.call_GQL(query, variables)["studioUpdate"])
         return result
 
     # TODO destroy_studio()
@@ -1693,8 +1913,8 @@ class StashInterface(GQLWrapper):
         self,
         studio: int | str | dict[str, Any],
         fragment: str | None = None,
-        hierarchy: list[dict[str, JSON]] | None = None,
-    ) -> list[dict[str, JSON]]:
+        hierarchy: list[JSONDict] | None = None,
+    ) -> list[JSONDict]:
         """
         Find all parents of the given studio.
 
@@ -1715,13 +1935,13 @@ class StashInterface(GQLWrapper):
         if not (s and s.get("parent_studio")):
             return hierarchy[::-1]  # invert hierarchy so root is at idx 0
 
-        return self.find_studio_hierarchy(cast(dict[str, JSON], s["parent_studio"]), fragment, hierarchy)
+        return self.find_studio_hierarchy(cast(JSONDict, s["parent_studio"]), fragment, hierarchy)
 
     def find_studio_root(
         self,
         studio: int | str | dict[str, Any],
         fragment: str | None = None,
-    ) -> dict[str, JSON] | None:
+    ) -> JSONDict | None:
         """
         Find the root studio (i.e. topmost studio) for the given studio
 
@@ -1735,7 +1955,7 @@ class StashInterface(GQLWrapper):
 
         if s:
             if parent_studio := s.get("parent_studio"):
-                return self.find_studio_root(cast(dict[str, JSON], parent_studio))
+                return self.find_studio_root(cast(JSONDict, parent_studio))
 
             return self.find_studio(s, fragment)
 
@@ -1751,7 +1971,7 @@ class StashInterface(GQLWrapper):
         q: str = "",
         fragment: str | None = None,
         get_count: bool = False,
-    ) -> tuple[int, list[dict[str, JSON]]] | list[dict[str, JSON]]:
+    ) -> tuple[int, list[JSONDict]] | list[JSONDict]:
         """
         Get studios matching filter/query
 
@@ -1784,8 +2004,8 @@ class StashInterface(GQLWrapper):
         filter["q"] = q
         variables: dict[str, object] = {"filter": filter, "studio_filter": f}
 
-        result = cast(dict[str, JSON], self.call_GQL(query, variables)["findStudios"])
-        studios = cast(list[dict[str, JSON]], result["studios"])
+        result = cast(JSONDict, self.call_GQL(query, variables)["findStudios"])
+        studios = cast(list[JSONDict], result["studios"])
         count = cast(int, result["count"])
 
         if get_count:
@@ -1794,7 +2014,7 @@ class StashInterface(GQLWrapper):
             return studios
 
     # GROUP
-    def create_group(self, group_in: str | GQLGroupCreateInput) -> dict[str, JSON]:
+    def create_group(self, group_in: str | GQLGroupCreateInput) -> JSONDict:
         """
         Creates a group in Stash
 
@@ -1822,14 +2042,14 @@ class StashInterface(GQLWrapper):
         """
         variables: dict[str, object] = {"input": group_in}
         result = self.call_GQL(query, variables)["groupCreate"]
-        return cast(dict[str, JSON], result)
+        return cast(JSONDict, result)
 
     def find_group(
         self,
         group_in: int | str | dict[str, str | int],
         fragment: str | None = None,
         create: bool = False,
-    ) -> dict[str, JSON] | None:
+    ) -> JSONDict | None:
         # assume input is an ID if int
         if isinstance(group_in, int):
             return self.__generic_find(
@@ -1851,7 +2071,7 @@ class StashInterface(GQLWrapper):
         if not name:
             raise Exception(f"Could not find group with the given information: {group_in}")
 
-        groups = cast(list[dict[str, JSON]], self.find_groups(q=name))
+        groups = cast(list[JSONDict], self.find_groups(q=name))
         group_matches = self.__match_alias_item(name, groups)
 
         if group_matches:
@@ -1869,7 +2089,7 @@ class StashInterface(GQLWrapper):
             creation_options = cast(GQLGroupCreateInput, cast(object, group_in))
             return self.create_group(creation_options)
 
-    def update_group(self, group_in: GQLGroupUpdateInput) -> dict[str, JSON]:
+    def update_group(self, group_in: GQLGroupUpdateInput) -> JSONDict:
         """
         Update the group per the given inputs
 
@@ -1889,7 +2109,7 @@ class StashInterface(GQLWrapper):
         variables: dict[str, object] = {"input": group_in}
 
         result = self.call_GQL(query, variables)["groupUpdate"]
-        return cast(dict[str, JSON], result)
+        return cast(JSONDict, result)
 
     def destroy_group(self, group_id: int) -> bool:
         """
@@ -1921,7 +2141,7 @@ class StashInterface(GQLWrapper):
         fragment: str | None = None,
         get_count: bool = False,
         callback: Callable[..., CallbackReturns] | None = None,
-    ) -> tuple[int, list[dict[str, JSON]]] | list[dict[str, JSON]]:
+    ) -> tuple[int, list[JSONDict]] | list[JSONDict]:
         """
         Gets groups matching filter/query
 
@@ -1956,9 +2176,9 @@ class StashInterface(GQLWrapper):
         filter["q"] = q
         variables: dict[str, object] = {"filter": filter, "group_filter": f}
 
-        result = cast(dict[str, JSON], self.call_GQL(query, variables, callback=callback)["findGroups"])
+        result = cast(JSONDict, self.call_GQL(query, variables, callback=callback)["findGroups"])
         count = cast(int, result["count"])
-        groups = cast(list[dict[str, JSON]], result["groups"])
+        groups = cast(list[JSONDict], result["groups"])
 
         if get_count:
             return count, groups
@@ -2005,7 +2225,7 @@ class StashInterface(GQLWrapper):
         self,
         gallery_in: int | str | dict[str, int],
         fragment: str | None = None,
-    ) -> dict[str, JSON] | None:
+    ) -> JSONDict | None:
         """
         Gets galleries matching filter/query
 
@@ -2066,7 +2286,7 @@ class StashInterface(GQLWrapper):
         variables: dict[str, object] = {"input": gallery_data}
 
         # FIXME: why are we returning an int here when all the other update_xxx methods return the updated object?
-        result = cast(dict[str, JSON], self.call_GQL(query, variables)["galleryUpdate"])
+        result = cast(JSONDict, self.call_GQL(query, variables)["galleryUpdate"])
         return cast(int, result["id"])
 
     def destroy_gallery(
@@ -2074,7 +2294,7 @@ class StashInterface(GQLWrapper):
         gallery_ids: int | list[int],
         delete_file: bool = False,
         delete_generated: bool = True,
-    ) -> dict[str, JSON]:
+    ) -> JSONDict:
         """
         Deletes the given galler(y/ies)
 
@@ -2102,10 +2322,10 @@ class StashInterface(GQLWrapper):
             "input": {"delete_file": delete_file, "delete_generated": delete_generated, "ids": gallery_ids}
         }
         result = self.call_GQL(query, variables)["galleryDestroy"]
-        return cast(dict[str, JSON], result)
+        return cast(JSONDict, result)
 
     # Gallery Images
-    def find_gallery_images(self, gallery_id: int, fragment: str | None = None) -> list[dict[str, JSON]]:
+    def find_gallery_images(self, gallery_id: int, fragment: str | None = None) -> list[JSONDict]:
         """
         Gets gallery images matching gallery filter/query
 
@@ -2118,7 +2338,7 @@ class StashInterface(GQLWrapper):
         """
         # TODO: finish updating this
         return cast(
-            list[dict[str, JSON]],
+            list[JSONDict],
             self.find_images(f={"galleries": {"value": [gallery_id], "modifier": "INCLUDES_ALL"}}, fragment=fragment),
         )
 
@@ -2205,7 +2425,7 @@ class StashInterface(GQLWrapper):
             }
         """
         variables: dict[str, object] = {"input": chapter_data}
-        result = cast(dict[str, JSON], self.call_GQL(query, variables)["galleryChapterCreate"])
+        result = cast(JSONDict, self.call_GQL(query, variables)["galleryChapterCreate"])
         # FIXME: why are we returning an int here when all the other create_xxx methods return the created object?
         return cast(int, result["id"])
 
@@ -2227,7 +2447,7 @@ class StashInterface(GQLWrapper):
             }
         """
         variables: dict[str, object] = {"input": chapter_data}
-        result = cast(dict[str, JSON], self.call_GQL(query, variables)["galleryChapterUpdate"])
+        result = cast(JSONDict, self.call_GQL(query, variables)["galleryChapterUpdate"])
         # FIXME: why are we returning an int here when all the other update_xxx methods return the updated object?
         return cast(int, result["id"])
 
@@ -2261,7 +2481,7 @@ class StashInterface(GQLWrapper):
         fragment: str | None = None,
         get_count: bool = False,
         callback: Callable[..., CallbackReturns] | None = None,
-    ) -> tuple[int, list[dict[str, JSON]]] | list[dict[str, JSON]]:
+    ) -> tuple[int, list[JSONDict]] | list[JSONDict]:
         """
         Gets galleries matching filter/query
 
@@ -2296,15 +2516,15 @@ class StashInterface(GQLWrapper):
         filter["q"] = q
         variables: dict[str, object] = {"filter": filter, "gallery_filter": f}
 
-        result = cast(dict[str, JSON], self.call_GQL(query, variables, callback=callback)["findGalleries"])
+        result = cast(JSONDict, self.call_GQL(query, variables, callback=callback)["findGalleries"])
         count = cast(int, result["count"])
-        galleries = cast(list[dict[str, JSON]], result["galleries"])
+        galleries = cast(list[JSONDict], result["galleries"])
         if get_count:
             return count, galleries
         else:
             return galleries
 
-    def update_galleries(self, galleries_input: GQLBulkGalleryUpdateInput) -> list[dict[str, JSON]]:
+    def update_galleries(self, galleries_input: GQLBulkGalleryUpdateInput) -> list[JSONDict]:
         """
         Bulk update galleries with the given input
 
@@ -2324,7 +2544,7 @@ class StashInterface(GQLWrapper):
         variables: dict[str, object] = {"input": galleries_input}
 
         result = self.call_GQL(query, variables)["bulkGalleryUpdate"]
-        return cast(list[dict[str, JSON]], result)
+        return cast(list[JSONDict], result)
 
     # Image CRUD
     def create_image(self, path: str | Path) -> int:
@@ -2343,7 +2563,7 @@ class StashInterface(GQLWrapper):
         self,
         image_in: int | str | dict[str, str | int],
         fragment: str | None = None,
-    ) -> dict[str, JSON] | None:
+    ) -> JSONDict | None:
         """
         Gets image matching filter/query
 
@@ -2380,7 +2600,7 @@ class StashInterface(GQLWrapper):
         if image_id:
             return self.find_image(image_id, fragment)
 
-    def update_image(self, update_input: GQLImageUpdateInput) -> dict[str, JSON]:
+    def update_image(self, update_input: GQLImageUpdateInput) -> JSONDict:
         """
         Update the image per the given inputs
 
@@ -2400,7 +2620,7 @@ class StashInterface(GQLWrapper):
         variables: dict[str, object] = {"input": update_input}
 
         result = self.call_GQL(query, variables)["imageUpdate"]
-        return cast(dict[str, JSON], result)
+        return cast(JSONDict, result)
 
     def destroy_image(self, image_id: int, delete_file: bool = False) -> bool:
         """
@@ -2432,7 +2652,7 @@ class StashInterface(GQLWrapper):
         fragment: str | None = None,
         get_count: bool = False,
         callback: Callable[..., CallbackReturns] | None = None,
-    ) -> tuple[int, list[dict[str, JSON]]] | list[dict[str, JSON]]:
+    ) -> tuple[int, list[JSONDict]] | list[JSONDict]:
         """
         Gets images matching filter/query
 
@@ -2467,15 +2687,15 @@ class StashInterface(GQLWrapper):
         filter["q"] = q
         variables: dict[str, object] = {"filter": filter, "image_filter": f}
 
-        result = cast(dict[str, JSON], self.call_GQL(query, variables, callback=callback)["findImages"])
+        result = cast(JSONDict, self.call_GQL(query, variables, callback=callback)["findImages"])
         count = cast(int, result["count"])
-        images = cast(list[dict[str, JSON]], result["images"])
+        images = cast(list[JSONDict], result["images"])
         if get_count:
             return count, images
         else:
             return images
 
-    def update_images(self, updates_input: GQLBulkImageUpdateInput) -> dict[str, JSON]:
+    def update_images(self, updates_input: GQLBulkImageUpdateInput) -> JSONDict:
         """
         Update multiple existing images
 
@@ -2495,7 +2715,7 @@ class StashInterface(GQLWrapper):
         variables: dict[str, object] = {"input": updates_input}
 
         result = self.call_GQL(query, variables)["bulkImageUpdate"]
-        return cast(dict[str, JSON], result)
+        return cast(JSONDict, result)
 
     def destroy_images(self, image_ids: list[int], delete_file: bool = False) -> bool:
         """
@@ -2521,7 +2741,7 @@ class StashInterface(GQLWrapper):
         return cast(bool, result)
 
     # Scene CRUD
-    def create_scene(self, scene_create_input: GQLSceneCreateInput) -> dict[str, JSON]:
+    def create_scene(self, scene_create_input: GQLSceneCreateInput) -> JSONDict:
         """
         Creates a scene with the given details
 
@@ -2542,9 +2762,9 @@ class StashInterface(GQLWrapper):
         variables: dict[str, object] = {"input": scene_create_input}
 
         result = self.call_GQL(query, variables)["sceneCreate"]
-        return cast(dict[str, JSON], result)
+        return cast(JSONDict, result)
 
-    def find_scene(self, id: int, fragment: str | None = None) -> dict[str, JSON] | None:
+    def find_scene(self, id: int, fragment: str | None = None) -> JSONDict | None:
         """
         Looks for a scene matching the given integer ID
 
@@ -2568,9 +2788,9 @@ class StashInterface(GQLWrapper):
         variables: dict[str, object] = {"scene_id": id}
 
         result = self.call_GQL(query, variables)["findScene"]
-        return cast(dict[str, JSON] | None, result)
+        return cast(JSONDict | None, result)
 
-    def find_scene_by_hash(self, hash_input: GQLSceneHashInput, fragment: str | None = None) -> dict[str, JSON]:
+    def find_scene_by_hash(self, hash_input: GQLSceneHashInput, fragment: str | None = None) -> JSONDict:
         """
         Looks for a scene matching the given hash
 
@@ -2594,7 +2814,7 @@ class StashInterface(GQLWrapper):
         variables: dict[str, object] = {"hash_input": hash_input}
 
         result = self.call_GQL(query, variables)["findSceneByHash"]
-        return cast(dict[str, JSON], result)
+        return cast(JSONDict, result)
 
     def find_scenes_by_hash(
         self,
@@ -2602,7 +2822,7 @@ class StashInterface(GQLWrapper):
         value: str | None = None,
         fragment: str | None = None,
         ids_only: bool = False,
-    ) -> list[dict[str, JSON]]:
+    ) -> list[JSONDict]:
         """
         Returns a list of Scenes that have a file matching the given hash
 
@@ -2674,7 +2894,7 @@ class StashInterface(GQLWrapper):
         variables: dict[str, object] = {"input": update_input}
 
         # FIXME: why are we returning an int here when all the other update_xxx methods return the updated object?
-        result = cast(dict[str, JSON], self.call_GQL(query, variables)["sceneUpdate"])
+        result = cast(JSONDict, self.call_GQL(query, variables)["sceneUpdate"])
         return cast(int, result["id"])
 
     def destroy_scene(self, scene_id: int, delete_file: bool = False) -> bool:
@@ -2699,7 +2919,7 @@ class StashInterface(GQLWrapper):
         return cast(bool, result)
 
     # BULK Scenes
-    def create_scenes(self, scene_create_inputs: list[GQLSceneCreateInput]) -> list[dict[str, JSON]]:
+    def create_scenes(self, scene_create_inputs: list[GQLSceneCreateInput]) -> list[JSONDict]:
         """
         Creates scenes with the given details
 
@@ -2709,7 +2929,7 @@ class StashInterface(GQLWrapper):
         Returns:
             A list of dictionaries representing the scenes as created by Stash
         """
-        responses: list[dict[str, JSON]] = []
+        responses: list[JSONDict] = []
         for input in scene_create_inputs:
             responses.append(self.create_scene(input))
 
@@ -2723,7 +2943,7 @@ class StashInterface(GQLWrapper):
         fragment: str | None = None,
         get_count: bool = False,
         callback: Callable[..., CallbackReturns] | None = None,
-    ) -> tuple[int, list[dict[str, JSON]]] | list[dict[str, JSON]]:
+    ) -> tuple[int, list[JSONDict]] | list[JSONDict]:
         """
         Gets tags matching filter/query
 
@@ -2760,20 +2980,20 @@ class StashInterface(GQLWrapper):
         filter["q"] = q
         variables: dict[str, object] = {"filter": filter, "scene_filter": f}
 
-        result = cast(dict[str, JSON], self.call_GQL(query, variables, callback=callback)["findScenes"])
+        result = cast(JSONDict, self.call_GQL(query, variables, callback=callback)["findScenes"])
         count = cast(int, result["count"])
-        scenes = cast(list[dict[str, JSON]], result["scenes"])
+        scenes = cast(list[JSONDict], result["scenes"])
         if get_count:
             return count, scenes
         else:
             return scenes
 
-    def update_scenes(self, updates_input: GQLBulkSceneUpdateInput) -> dict[str, JSON]:
+    def update_scenes(self, updates_input: GQLBulkSceneUpdateInput) -> JSONDict:
         """
         Update multiple existing scenes
 
         Args:
-            updates_input (GQLBulkSceneUpdateInput):  see type def or playground for details
+            updates_input (GQLBulkSceneUpdateInput): see type def or playground for details
 
         Returns:
             list of stash scene objects
@@ -2788,7 +3008,7 @@ class StashInterface(GQLWrapper):
         variables: dict[str, object] = {"input": updates_input}
 
         result = self.call_GQL(query, variables)["bulkSceneUpdate"]
-        return cast(dict[str, JSON], result)
+        return cast(JSONDict, result)
 
     def destroy_scenes(self, scene_ids: list[int], delete_file: bool = False) -> bool:
         """
@@ -2819,7 +3039,7 @@ class StashInterface(GQLWrapper):
         values: GQLSceneUpdateInput | None = None,
         play_history: bool = False,
         o_history: bool = False,
-    ) -> dict[str, JSON]:
+    ) -> JSONDict:
         """
         Merges the scene with the given id into the scene with given destination id
 
@@ -2881,50 +3101,64 @@ class StashInterface(GQLWrapper):
         }
 
         result = self.call_GQL(query, variables)["sceneMerge"]
-        return cast(dict[str, JSON], result)
+        return cast(JSONDict, result)
 
     # Markers CRUD
-    # TODO: remove deprecated function
-    def get_scene_markers(self, scene_id, fragment=None) -> list:
-        """returns a list of markers for a particular Scene given the scene_id
+    def get_scene_markers(self, scene_id: int | str, fragment: str | None = None) -> list[JSONDict]:
+        """
+        Thin wrapper around `find_scene_markers()` which takes a simple scene ID instead of having to construct a
+        GQLSceneMarkerFilterType dict if all you want is to find scene markers associated with a particular scene
 
         Args:
-                scene_id: the stash ID of the scene to get markers for
+            scene_id (str | int): the int-like (i.e. 5 or "5") ID of the scene to get markers for
 
         Returns:
-                list: list of marker objects from stash
+            list of marker dictionaries from stash
         """
-        query = """
-            query FindSceneMarkers($scene_id: ID) {
-                findScene(id: $scene_id) {
-                    scene_markers {
-                        ...SceneMarker
-                    }
+        return self.find_scene_markers(
+            {
+                "scenes": {
+                    "value": [scene_id],
+                    "modifier": "EQUALS",
+                }
+            },
+            fragment=fragment,
+        )
+
+    def find_scene_markers(
+        self,
+        scene_marker_filter: GQLSceneMarkerFilterType,
+        filter: GQLFindFilterType | None = None,
+        fragment: str | None = None,
+    ) -> list[JSONDict]:
+        """
+        Finds scene markers matching a GQLSceneMarkerFilterType dict, as opposed to get_scene_markers() which only
+        gets the markers for a particular scene id. This is useful for finding a list of markers that use a specific
+        tag, performer, etc.
+
+        Args:
+            scene_marker_filter (GQLSceneMarkerFilterType): see type def or playground for details
+            filter (GQLFindFilterType, optional): See playground for details. Defaults to {"per_page": -1}.
+            fragment (str, optional): override for gqlFragment. Defaults to "...Tag". example override 'fragment="id name"'
+
+        Returns:
+            A dictionary containing markers matching the filter
+        """
+
+        filter = filter or {"per_page": -1}
+
+        # Catch legacy find_scene_markers() calls and reformat the parameter to work with this call
+        if isinstance(scene_marker_filter, str | int):
+            self.log.warning(
+                "`find_scene_markers()` no longer accepts a scene_id, use `get_scene_markers()` or call"
+                + "`find_scene_markers` with a GQLSceneMarkerFilterType parameter instead"
+            )
+            scene_marker_filter = {
+                "scenes": {
+                    "value": [cast(str | int, scene_marker_filter)],
+                    "modifier": "EQUALS",
                 }
             }
-        """
-        if fragment:
-            query = re.sub(r"\.\.\.SceneMarker", fragment, query)
-
-        variables = {"scene_id": scene_id}
-        return self.call_GQL(query, variables)["findScene"]["scene_markers"]
-
-    def find_scene_markers(self, scene_marker_filter, filter: dict = {"per_page": -1}, fragment=None) -> list:
-        """Finds markers matching a SceneMarkerFilterType dict, as get_scene_markers() only takes a scene_id.
-        This is useful for finding a list of markers that use a specific tag.
-
-        Args:
-                 scene_marker_filter (SceneMarkerFilterType, optional)
-                        See https://github.com/stashapp/stash/blob/develop/pkg/models/scene_marker.go for details on SceneMarkerFilterType
-
-        Returns:
-                dict: containing markers matching the filter
-        """
-
-        # Catch legacy find_scene_markers() calls and redirect to get_scene_markers().
-        if not isinstance(scene_marker_filter, dict):
-            self.log.warning("find_scene_markers() no longer accepts scene_id, use get_scene_markers() instead")
-            return self.get_scene_markers(scene_marker_filter)
 
         query = """
             query findSceneMarkers($scene_marker_filter: SceneMarkerFilterType, $filter: FindFilterType) {
@@ -2938,10 +3172,22 @@ class StashInterface(GQLWrapper):
         if fragment:
             query = re.sub(r"\.\.\.SceneMarker", fragment, query)
 
-        variables = {"scene_marker_filter": scene_marker_filter, "filter": filter}
-        return self.call_GQL(query, variables)["findSceneMarkers"]["scene_markers"]
+        variables: dict[str, object] = {"scene_marker_filter": scene_marker_filter, "filter": filter}
+        result = cast(JSONDict, self.call_GQL(query, variables)["findSceneMarkers"])
+        return cast(list[JSONDict], result["scene_markers"])
 
-    def create_scene_marker(self, marker_create_input: dict, fragment=None):
+    def create_scene_marker(
+        self, marker_create_input: GQLSceneMarkerCreateInput, fragment: str | None = None
+    ) -> JSONDict:
+        """
+        Creates a scene marker in Stash
+
+        Args:
+            marker_create_input (GQLSceneMarkerCreateInput): see type def or playground for details
+
+        Returns:
+            A dictionary containing the marker object
+        """
         query = """
             mutation SceneMarkerCreate($marker_input: SceneMarkerCreateInput!) {
                 sceneMarkerCreate(input: $marker_input) {
@@ -2952,10 +3198,20 @@ class StashInterface(GQLWrapper):
         if fragment:
             query = re.sub(r"\.\.\.SceneMarker", fragment, query)
 
-        variables = {"marker_input": marker_create_input}
-        return self.call_GQL(query, variables)["sceneMarkerCreate"]
+        variables: dict[str, object] = {"marker_input": marker_create_input}
+        result = self.call_GQL(query, variables)["sceneMarkerCreate"]
+        return cast(JSONDict, result)
 
-    def update_scene_marker(self, scene_marker_update: dict):
+    def update_scene_marker(self, scene_marker_update: GQLSceneMarkerUpdateInput) -> JSONDict | None:
+        """
+        Update the scene marker per the given inputs
+
+        Args:
+            scene_marker_update (GQLSceneMarkerUpdateInput): see type def or playground for details
+
+        Returns:
+            A dictionary containing information on the updated marker from Stash, or None if no matching tag was found
+        """
         query = """
             mutation SceneMarkerUpdate($input: SceneMarkerUpdateInput!) {
                 sceneMarkerUpdate(input: $input) {
@@ -2963,30 +3219,104 @@ class StashInterface(GQLWrapper):
                 }
             }
         """
-        self.call_GQL(query, {"input": scene_marker_update})
+        variables: dict[str, object] = {"input": scene_marker_update}
+        result = self.call_GQL(query, variables)["sceneMarkerUpdate"]
+        return cast(JSONDict, result)
 
-    def destroy_scene_marker(self, marker_id: int):
+    def destroy_scene_marker(self, marker_id: int | str) -> bool:
+        """
+        Trigger the sceneMarkerDestroy mutation in order to delete the scene markers with the given IDs
+
+        Args:
+            marker_id (str | int): int-like (i.e. 5 or "5") ID of the scene marker to delete
+
+        Returns:
+            True if the operation was successful, False otherwise
+        """
         query = """
-            mutation DestroySceneMarkers($marker_id: ID!) {
+            mutation DestroySceneMarker($marker_id: ID!) {
                 sceneMarkerDestroy(id: $marker_id)
             }
         """
-        self.call_GQL(query, {"marker_id": marker_id})
+        variables: dict[str, object] = {"marker_id": marker_id}
+        result = self.call_GQL(query, variables)["sceneMarkerDestroy"]
+        return cast(bool, result)
 
     # BULK Markers
-    def destroy_scene_markers(self, scene_id: int):
-        scene_markers = self.get_scene_markers(scene_id, fragment="id")
-        for marker in scene_markers:
-            self.destroy_scene_marker(marker["id"])
+    def destroy_scene_markers(self, scene_id: int) -> bool:
+        """
+        Destroy all of the scene markers associated with the given scene ID
 
-    def merge_scene_markers(self, target_scene_id: int, source_scene_ids: list):
+        Args:
+            scene_id (list): list of int-like (i.e. 5 or "5") IDs of the files to delete
+
+        Returns:
+            True if the operation was successful or no markers associated with the scene were found, False otherwise
+        """
+        scene_markers = self.get_scene_markers(scene_id, fragment="id")
+        if not scene_markers:
+            return True
+        marker_ids: list[str] = [cast(str, sm["id"]) for sm in scene_markers]
+
+        query = """
+            mutation DestroySceneMarkers($marker_ids: [ID!]) {
+                sceneMarkersDestroy(ids: $marker_ids)
+            }
+        """
+
+        variables: dict[str, object] = {"marker_ids": marker_ids}
+        result = self.call_GQL(query, variables)["sceneMarkersDestroy"]
+        return cast(bool, result)
+
+    def merge_scene_markers(
+        self,
+        source_scene_ids: int | str | list[int | str],
+        target_scene_id: int | str,
+    ) -> list[JSONDict]:
+        """
+        Merge the markers from the source scenes into the target scene
+
+        WARNING: this API has changed. The order of the parameters is now reversed. Previously, the first parameter was
+        the target_scene_id and the second parameter was the source_scene_ids. Now, the first parameter is the
+        source_scene_ids and the second parameter is the target_scene_id. This function will fail early if a list is
+        passed in the first position in order to prevent any incorrect data modifications.
+
+        Args:
+            source_scene_ids (int | str | list): int-like (i.e. 5 or "5") or list of int-like scene ids from which to
+                gather all markers to be merged into the target scene
+            target_scene_id (int | str): the int-like (i.e. 5 or "5") scene id of the scene in which to merge the
+                markers from the scenes specified in the source_scene_ids
+
+        Returns:
+            A list of dictionaries representing the newly created markers in the target scene
+        """
+        if isinstance(target_scene_id, list):
+            self.log.error(
+                "The `merge_scene_markers()` API has changed! Please review the updated function signature and"
+                + "adjust your call. Exiting now to protect your data."
+            )
+            raise Exception("Incorrect call to `merge_scene_markers`, see previous error messages")
+
+        if isinstance(source_scene_ids, (int, str)):
+            source_scene_ids = [source_scene_ids]
+
+        for scene in source_scene_ids:
+            if isinstance(scene, str):
+                try:
+                    scene = int(scene)
+                except:
+                    self.log.warning(
+                        f'merge_scene_markers expects int-like (i.e. 5 or "5") scene marker id, got "{scene}"'
+                    )
+                    raise
+
         existing_marker_timestamps = [marker["seconds"] for marker in self.get_scene_markers(target_scene_id)]
 
-        markers_to_merge = []
+        markers_to_merge: list[JSONDict] = []
         for source_scene_id in source_scene_ids:
             markers_to_merge.extend(self.get_scene_markers(source_scene_id))
 
-        created_markers = []
+        created_markers: list[JSONDict] = []
         for marker in markers_to_merge:
             if marker["seconds"] in existing_marker_timestamps:
                 # skip existing marker
@@ -2994,28 +3324,64 @@ class StashInterface(GQLWrapper):
                 continue
             marker_id = self.create_scene_marker(
                 {
-                    "title": marker["title"],
-                    "seconds": marker["seconds"],
+                    "title": cast(str, marker["title"]),
+                    "seconds": cast(float, marker["seconds"]),
                     "scene_id": target_scene_id,
-                    "primary_tag_id": marker["primary_tag"]["id"],
-                    "tag_ids": [t["id"] for t in marker["tags"]],
+                    "primary_tag_id": cast(str, cast(JSONDict, marker["primary_tag"])["id"]),
+                    "tag_ids": [cast(str, cast(JSONDict, t)["id"]) for t in cast(JSONList, marker["tags"])],
                 }
             )
             created_markers.append(marker_id)
         return created_markers
 
     # Scene Utils
-    def destroy_scene_stash_id(self, stash_id):
-        scenes = self.find_scenes(
-            f={"stash_id_endpoint": {"value": stash_id, "modifier": "EQUALS"}},
-            fragment="id stash_ids {endpoint stash_id}",
+    def destroy_scene_stash_id(self, stash_id: str) -> bool:
+        """
+        Remove the given stash_id from any scenes that have it set
+
+        Args:
+            stash_id (str): the stash_id to remove
+
+        Returns:
+            True if the operation was successful, False otherwise
+        """
+        scenes = cast(
+            list[JSONDict],
+            self.find_scenes(
+                f={"stash_id_endpoint": {"stash_id": stash_id, "modifier": "EQUALS"}},
+                fragment="id stash_ids {endpoint stash_id}",
+            ),
         )
 
+        success = True
         for scene in scenes:
-            scene["stash_ids"] = [sid for sid in scene["stash_ids"] if sid["stash_id"] != stash_id]
-            self.update_scene(scene)
+            scene["stash_ids"] = [
+                sid for sid in cast(JSONList, scene["stash_ids"]) if cast(JSONDict, sid)["stash_id"] != stash_id
+            ]
+            if not self.update_scene(cast(GQLSceneUpdateInput, cast(object, scene))):
+                success = False
 
-    def find_duplicate_scenes(self, distance: PhashDistance = PhashDistance.EXACT, fragment="id"):
+        return success
+
+    def find_duplicate_scenes(
+        self,
+        distance: PhashDistance = PhashDistance.EXACT,
+        fragment: str = "id",
+    ) -> list[list[JSONDict]]:
+        """
+        Find scenes which have a phash distance small enough to be considered duplicates, based on the given
+        distance threshold
+
+        Args:
+            distance (PhashDistance, optional): how close of a match the scenes need to be in order to be considered
+            duplicates. Default: PhashDistance.EXACT
+            fragment (str, optional): override for gqlFragment. Defaults to "id".
+                Example override: 'fragment="id title"'
+
+        Returns:
+            A list of lists of dictionaries of duplicated scene information, where each dictionary contains the data
+            specified in the fragment
+        """
         query = """
             query FindDuplicateScenes($distance: Int) {
                 findDuplicateScenes(distance: $distance) {
@@ -3025,70 +3391,194 @@ class StashInterface(GQLWrapper):
         """
         query = re.sub(r"\.\.\.SceneSlim", fragment, query)
 
-        variables = {"distance": distance}
-        result = self.call_GQL(query, variables)
-        return result["findDuplicateScenes"]
+        variables: dict[str, object] = {"distance": distance}
+        result = self.call_GQL(query, variables)["findDuplicateScenes"]
+        return cast(list[list[JSONDict]], result)
 
     # Scraper Operations
-    def reload_scrapers(self):
+    def reload_scrapers(self) -> bool:
+        """
+        Reloads all scrapers
+
+        Returns:
+            True if the operation was successful, False otherwise
+        """
         query = """
             mutation ReloadScrapers {
                 reloadScrapers
             }
         """
 
-        result = self.call_GQL(query)
-        return result["reloadScrapers"]
+        result = self.call_GQL(query)["reloadScrapers"]
+        return cast(bool, result)
 
-    def list_scrapers(self, types: list[StashItem]):
-        query = """
-        query ListScrapers ($types: [ScrapeContentType!]!) {
-            listScrapers(types: $types) {
-              id
-              name
-              performer { supported_scrapes }
-              scene { supported_scrapes }
-              gallery { supported_scrapes }
-              movie { supported_scrapes }
-              image { supported_scrapes }
-            }
-          }
+    def list_scrapers(self, types: list[ScrapeContentTypeEnumType], fragment: str | None = None) -> list[JSONDict]:
         """
-        result = self.call_GQL(query, {"types": [t.value for t in types]})
-        return result["listScrapers"]
+        List available scrapers for each of the given content types
 
-    def list_performer_scrapers(self):
-        return [
-            {k: scraper[k] for k in ["id", "name", "performer"]}
-            for scraper in self.list_scrapers([StashItem.PERFORMER])
-        ]
+        Args:
+            types (list): the list of content types for which scrapers should be listed. See type def or playground
+            for details on the available content types
+            fragment (str, optional): override for gqlFragment. Defaults to:\n
+                {
+                    id
+                    name
+                    performer { supported_scrapes }
+                    scene { supported_scrapes }
+                    gallery { supported_scrapes }
+                    movie { supported_scrapes }
+                    image { supported_scrapes }
+                }
+                Example override: 'fragment="id name performer"'
+
+        Returns:
+            A list of dictionaries of scrapers for the requested content types
+        """
+        fragment = (
+            fragment
+            or """
+            id
+            name
+            performer { supported_scrapes }
+            scene { supported_scrapes }
+            gallery { supported_scrapes }
+            movie { supported_scrapes }
+            image { supported_scrapes }
+        """
+        )
+
+        query = """
+            query ListScrapers ($types: [ScrapeContentType!]!) {
+                listScrapers(types: $types) {
+                    ...Scraper
+                }
+            }
+        """
+        query = re.sub(r"\.\.\.SceneSlim", fragment, query)
+
+        variables: dict[str, object] = {"types": [str(t) for t in types]}
+        result = self.call_GQL(query, variables)["listScrapers"]
+        return cast(list[JSONDict], result)
+
+    def list_performer_scrapers(self) -> list[JSONDict]:
+        """
+        Thin wrapper around `list_scrapers` which filters the list of scrapers to just those which can scraper
+        performers.
+
+        Returns:
+            A list of dictionaries containing the name, id, and supported scrape types (name, fragment, and/or url)
+        """
+        return self.list_scrapers([GQLScrapeContentType.PERFORMER], "id name performer { supported_scrapes }")
 
     def list_scene_scrapers(self):
-        return [{k: scraper[k] for k in ["id", "name", "scene"]} for scraper in self.list_scrapers([StashItem.SCENE])]
+        """
+        Thin wrapper around `list_scrapers` which filters the list of scrapers to just those which can scraper
+        scenes.
+
+        Returns:
+            A list of dictionaries containing the name, id, and supported scrape types (name, fragment, and/or url)
+        """
+        return self.list_scrapers([GQLScrapeContentType.SCENE], "id name scene { supported_scrapes }")
 
     def list_gallery_scrapers(self):
-        return [
-            {k: scraper[k] for k in ["id", "name", "gallery"]} for scraper in self.list_scrapers([StashItem.GALLERY])
-        ]
+        """
+        Thin wrapper around `list_scrapers` which filters the list of scrapers to just those which can scraper
+        galleries.
 
+        Returns:
+            A list of dictionaries containing the name, id, and supported scrape types (name, fragment, and/or url)
+        """
+        return self.list_scrapers([GQLScrapeContentType.GALLERY], "id name gallery { supported_scrapes }")
+
+    @deprecated("`list_movie_scrapers` is deprecated, use `list_group_scrapers` instead")
     def list_movie_scrapers(self):
-        return [{k: scraper[k] for k in ["id", "name", "movie"]} for scraper in self.list_scrapers([StashItem.MOVIE])]
+        """
+        Thin wrapper around `list_scrapers` which filters the list of scrapers to just those which can scraper
+        movies.
+
+        Returns:
+            A list of dictionaries containing the name, id, and supported scrape types (name, fragment, and/or url)
+        """
+        return self.list_scrapers([GQLScrapeContentType.MOVIE], "id name movie { supported_scrapes }")
+
+    def list_group_scrapers(self):
+        """
+        Thin wrapper around `list_scrapers` which filters the list of scrapers to just those which can scraper
+        groups.
+
+        Returns:
+            A list of dictionaries containing the name, id, and supported scrape types (name, fragment, and/or url)
+        """
+        return self.list_scrapers([GQLScrapeContentType.GROUP], "id name group { supported_scrapes }")
 
     def list_image_scrapers(self):
-        return [{k: scraper[k] for k in ["id", "name", "image"]} for scraper in self.list_scrapers([StashItem.IMAGE])]
+        """
+        Thin wrapper around `list_scrapers` which filters the list of scrapers to just those which can scraper
+        images.
+
+        Returns:
+            A list of dictionaries containing the name, id, and supported scrape types (name, fragment, and/or url)
+        """
+        return self.list_scrapers([GQLScrapeContentType.IMAGE], "id name image { supported_scrapes }")
 
     # Fragment Scrape
-    def scrape_scenes(self, source, input, fragment=None):
-        query = """query ScrapeMultiScenes($source: ScraperSourceInput!, $input: ScrapeMultiScenesInput!) {
-        scrapeMultiScenes(source: $source, input: $input) {
-            ...ScrapedScene
-        }
-        }"""
+    def scrape_scenes(
+        self,
+        source: GQLScraperSourceInput,
+        scene_ids: int | str | list[int | str],
+        fragment: str | None = None,
+    ) -> list[list[JSONDict]]:
+        """
+        Runs a scrape job with the given scraper source on the given scenes
+
+        Args:
+            source (GQLScraperSourceInput): see type def or playground for details
+            scene_ids (int | str | list): int-like (i.e. 5 or "5") or list of int-like scene IDs to scrape
+
+        Returns:
+            A list of lists of dictionaries of scraped scene information
+        """
+        query = """
+            query ScrapeMultiScenes($source: ScraperSourceInput!, $input: ScrapeMultiScenesInput!) {
+                scrapeMultiScenes(source: $source, input: $input) {
+                    ...ScrapedScene
+                }
+            }
+        """
+
         if fragment:
             query = re.sub(r"\.\.\.ScrapedScene", fragment, query)
-        return self.call_GQL(query, {"source": source, "input": input})["scrapeMultiScenes"]
+
+        if isinstance(scene_ids, (int, str)):
+            scene_ids = [scene_ids]
+
+        if isinstance(scene_ids, dict):
+            self.log.warning(
+                "The signature of `scrape_scenes` has changed, you can now simply pass a list of scene IDs to scrape"
+            )
+            if not "scene_ids" in scene_ids:
+                self.log.error(
+                    f'Bad parameter passed to `scrape_scenes`, expecting a list of int-like (i.e. 5 or "5") scene IDs, got {scene_ids}'
+                )
+                raise Exception("Parameter error in call to `scrape_scenes`, see previous log entries")
+
+            scene_ids = cast(dict[str, list[int | str]], scene_ids)["scene_ids"]
+
+        for id in scene_ids:
+            try:
+                int(id)
+            except:
+                self.log.error(f"`scrape_scenes()` expects a list of scene IDs as its second argument, got {scene_ids}")
+                raise
+
+        variables: dict[str, object] = {"source": source, "input": {"scene_ids": scene_ids}}
+        result = self.call_GQL(query, variables)["scrapeMultiScenes"]
+        return cast(list[list[JSONDict]], result)
 
     def scrape_scene(self, source, input):
+        """
+        Run a scrape job on a single scene
+        """
         if isinstance(source, str):
             source = {"scraper_id": source}
         if isinstance(input, (str, int)):

@@ -1,44 +1,19 @@
+from collections.abc import Sequence
 from enum import StrEnum
 from typing import Literal, NotRequired, Required, Self, TypeAlias, TypedDict
 
 from stashapi.classes import JSON
 
+# Depending on the context, GQL IDs can be ints, int-like strs (i.e. 5 or "5"), or full-on strings (like plugin names)
+GQLId: TypeAlias = int | str
+GQLPerformerID: TypeAlias = int | str
+GQLTagID: TypeAlias = int | str
 
-class GQLSetFingerprintsInput(TypedDict):
-    type: str
-    value: NotRequired[str]
-
-
-class GQLMoveFilesInput(TypedDict):
-    ids: list[int]
-    destination_folder: NotRequired[str]
-    destination_folder_id: NotRequired[int]
-    destination_basename: NotRequired[str]
-
-
-class GQLTagCreateInput(TypedDict, total=False):
-    name: Required[str]
-    sort_name: str
-    description: str
-    aliases: list[str]
-    ignore_auto_tag: bool
-    favorite: bool
-    image: str
-    parent_ids: list[int]
-    child_ids: list[int]
-
-
-class GQLTagUpdateInput(TypedDict, total=False):
-    id: Required[int]
-    name: str
-    sort_name: str
-    description: str
-    aliases: list[str]
-    ignore_auto_tag: bool
-    favorite: bool
-    image: str
-    parent_ids: list[int]
-    child_ids: list[int]
+########################################################################################################################
+#                                                                                                                      #
+#                                                   ENUM TYPES                                                         #
+#                                                                                                                      #
+########################################################################################################################
 
 
 class GQLCriterionModifier(StrEnum):
@@ -151,22 +126,225 @@ ResolutionEnumType: TypeAlias = (
 )
 
 
+class GQLOrientationEnum(StrEnum):
+    LANDSCAPE = "LANDSCAPE"
+    PORTRAIT = "PORTRAIT"
+    SQUARE = "SQUARE"
+
+
+OrientationEnumType: TypeAlias = (
+    GQLOrientationEnum
+    | Literal[
+        "LANDSCAPE",
+        "PORTRAIT",
+        "SQUARE",
+    ]
+)
+
+
+class GQLSortDirectionEnum(StrEnum):
+    ASC = "ASC"
+    DESC = "DESC"
+
+
+SortDirectionEnumType: TypeAlias = (
+    GQLSortDirectionEnum
+    | Literal[
+        "ASC",
+        "DESC",
+    ]
+)
+
+
+class GQLBulkUpdateIdMode(StrEnum):
+    SET = "SET"
+    ADD = "ADD"
+    REMOVE = "REMOVE"
+
+
+BulkUpdateIdModeType: TypeAlias = (
+    GQLBulkUpdateIdMode
+    | Literal[
+        "SET",
+        "ADD",
+        "REMOVE",
+    ]
+)
+
+
+class PreviewPreset(StrEnum):
+    ULTRAFAST = "ultrafast"  # X264_ULTRAFAST
+    VERYFAST = "veryfast"  # X264_VERYFAST
+    FAST = "fast"  # X264_FAST
+    MEDIUM = "medium"  # X264_MEDIUM
+    SLOW = "slow"  # X264_SLOW
+    SLOWER = "slower"  # X264_SLOWER
+    VERYSLOW = "veryslow"  # X264_VERYSLOW
+
+
+PreviewPresetType: TypeAlias = (
+    PreviewPreset
+    | Literal[
+        "ultrafast",
+        "veryfast",
+        "fast",
+        "medium",
+        "slow",
+        "slower",
+        "veryslow",
+    ]
+)
+
+########################################################################################################################
+#                                                                                                                      #
+#                                                   OTHER TYPES                                                        #
+#                                                                                                                      #
+########################################################################################################################
+
+
+class GQLBulkUpdateStrings(TypedDict):
+    values: NotRequired[list[str]]
+    mode: BulkUpdateIdModeType
+
+
+class GQLBulkUpdateIds(TypedDict):
+    ids: NotRequired[Sequence[GQLId]]
+    mode: BulkUpdateIdModeType
+
+
+class GQLScrapeContentType(StrEnum):
+    GALLERY = "GALLERY"
+    IMAGE = "IMAGE"
+    MOVIE = "MOVIE"
+    GROUP = "GROUP"
+    PERFORMER = "PERFORMER"
+    SCENE = "SCENE"
+
+
+ScrapeContentTypeEnumType: TypeAlias = (
+    GQLScrapeContentType
+    | Literal[
+        "GALLERY",
+        "IMAGE",
+        "MOVIE",
+        "GROUP",
+        "PERFORMER",
+        "SCENE",
+    ]
+)
+
+
+class GQLScraperSourceInput(TypedDict, total=False):
+    stash_box_index: int
+    stash_box_endpoint: str
+    scraper_id: GQLId
+
+
+########################################################################################################################
+#                                                                                                                      #
+#                                                   INPUT TYPES                                                        #
+#                                                                                                                      #
+########################################################################################################################
+
+
+class GQLScanMetadataInput(TypedDict, total=False):
+    paths: list[str]
+    rescan: bool
+    scanGenerateCovers: bool
+    scanGeneratePreviews: bool
+    scanGenerateImagePreviews: bool
+    scanGenerateSprites: bool
+    scanGeneratePhashes: bool
+    scanGenerateThumbnails: bool
+    scanGenerateClipPreviews: bool
+    filter: "GQLScanMetadataFilterInput"
+
+
+class GeneratePreviewOptionsInput(TypedDict, total=False):
+    previewSegments: int
+    previewSegmentDuration: float
+    previewExcludeStart: str
+    previewExcludeEnd: str
+    previewPreset: PreviewPresetType
+
+
+class GQLGenerateMetadataInput(TypedDict, total=False):
+    covers: bool
+    sprites: bool
+    previews: bool
+    imagePreviews: bool
+    previewOptions: GeneratePreviewOptionsInput
+    markers: bool
+    markerImagePreviews: bool
+    markerScreenshots: bool
+    transcodes: bool
+    forceTranscodes: bool
+    phashes: bool
+    interactiveHeatmapsSpeeds: bool
+    imageThumbnails: bool
+    clipPreviews: bool
+    sceneIDs: Sequence[GQLId]
+    markerIDs: Sequence[GQLId]
+    overwrite: bool
+
+
+class GQLAutoTagMetadataInput(TypedDict, total=False):
+    paths: list[str]
+    performers: list[str]
+    studios: list[str]
+    tags: list[str]
+
+
+class GQLSetFingerprintsInput(TypedDict):
+    type: str
+    value: NotRequired[str]
+
+
+class GQLMoveFilesInput(TypedDict):
+    ids: Sequence[GQLId]
+    destination_folder: NotRequired[str]
+    destination_folder_id: NotRequired[int]
+    destination_basename: NotRequired[str]
+
+
+class GQLTagCreateInput(TypedDict, total=False):
+    name: Required[str]
+    sort_name: str
+    description: str
+    aliases: list[str]
+    ignore_auto_tag: bool
+    favorite: bool
+    image: str
+    parent_ids: list[int]
+    child_ids: list[int]
+
+
+class GQLTagUpdateInput(TypedDict, total=False):
+    id: Required[int]
+    name: str
+    sort_name: str
+    description: str
+    aliases: list[str]
+    ignore_auto_tag: bool
+    favorite: bool
+    image: str
+    parent_ids: list[int]
+    child_ids: list[int]
+
+
 class GQLStringCriterionInput(TypedDict):
     value: str
     modifier: CriterionModifierType
 
 
-class GQLMultiCriterionInput(TypedDict):
-    value: NotRequired[list[int]]
-    modifier: CriterionModifierType
-    excludes: NotRequired[list[int]]
+class GQLMultiCriterionInput(TypedDict, total=False):
+    value: Sequence[GQLId]
+    modifier: Required[CriterionModifierType]
+    excludes: Sequence[GQLId]
 
 
 class GQLStashIDCriterionInput(TypedDict):
-    # If present, this value is treated as a predicate.
-    # That is, it will filter based on stash_ids with the matching endpoint
     endpoint: NotRequired[str]
-
     stash_id: str
     modifier: NotRequired[CriterionModifierType]
 
@@ -235,45 +413,8 @@ class GQLResolutionCriterionInput(TypedDict):
     modifier: CriterionModifierType
 
 
-class GQLOrientationEnum(StrEnum):
-    LANDSCAPE = "LANDSCAPE"
-    PORTRAIT = "PORTRAIT"
-    SQUARE = "SQUARE"
-
-
 class GQLOrientationCriterionInput(TypedDict):
     value: list[GQLOrientationEnum]
-
-
-class GQLSortDirectionEnum(StrEnum):
-    ASC = "ASC"
-    DESC = "DESC"
-
-
-class GQLBulkUpdateIdMode(StrEnum):
-    SET = "SET"
-    ADD = "ADD"
-    REMOVE = "REMOVE"
-
-
-BulkUpdateIdModeType: TypeAlias = (
-    GQLBulkUpdateIdMode
-    | Literal[
-        "SET",
-        "ADD",
-        "REMOVE",
-    ]
-)
-
-
-class GQLBulkUpdateStrings(TypedDict):
-    values: list[str]
-    mode: Required[BulkUpdateIdModeType]
-
-
-class GQLBulkUpdateIds(TypedDict):
-    ids: list[int]
-    mode: Required[BulkUpdateIdModeType]
 
 
 class GQLCustomFieldsInput(TypedDict, total=False):
@@ -282,6 +423,399 @@ class GQLCustomFieldsInput(TypedDict, total=False):
 
     # If populated, only the keys in this map will be updated
     partial: dict[str, JSON]
+
+
+class GQLStashIDInput(TypedDict):
+    endpoint: str
+    stash_id: str
+    updated_at: NotRequired[str]
+
+
+class GQLStudioCreateInput(TypedDict):
+    name: str
+    url: NotRequired[str]
+    parent_id: NotRequired[int]
+    image: NotRequired[str]
+    stash_ids: NotRequired[list[GQLStashIDInput]]
+    rating100: NotRequired[int]
+    favorite: NotRequired[bool]
+    details: NotRequired[str]
+    aliases: NotRequired[list[str]]
+    tag_ids: NotRequired[list[int]]
+    ignore_auto_tag: NotRequired[bool]
+
+
+class GQLStudioUpdateInput(TypedDict, total=False):
+    id: Required[int]
+    name: str
+    url: str
+    parent_id: int
+    image: str
+    stash_ids: list[GQLStashIDInput]
+    rating100: int
+    favorite: bool
+    details: str
+    aliases: list[str]
+    tag_ids: list[int]
+    ignore_auto_tag: bool
+
+
+class GQLPerformerCreateInput(TypedDict, total=False):
+    name: Required[str]
+    disambiguation: str
+    url: str
+    urls: list[str]
+    gender: GenderEnumType
+    birthdate: str
+    ethnicity: str
+    country: str
+    eye_color: str
+    height_cm: int
+    measurements: str
+    fake_tits: str
+    penis_length: float
+    circumcised: CircumsisedEnumType
+    career_length: str
+    tattoos: str
+    piercings: str
+    alias_list: list[str]
+    twitter: str
+    instagram: str
+    favorite: bool
+    tag_ids: list[int]
+    image: str
+    stash_ids: list[GQLStashIDInput]
+    rating100: int
+    details: str
+    death_date: str
+    hair_color: str
+    weight: int
+    ignore_auto_tag: bool
+    custom_fields: dict[str, JSON]
+
+
+class GQLPerformerUpdateInput(TypedDict, total=False):
+    id: Required[GQLPerformerID]
+    name: str
+    disambiguation: str
+    url: str
+    urls: list[str]
+    gender: GenderEnumType
+    birthdate: str
+    ethnicity: str
+    country: str
+    eye_color: str
+    height_cm: int
+    measurements: str
+    fake_tits: str
+    penis_length: float
+    circumcised: CircumsisedEnumType
+    career_length: str
+    tattoos: str
+    piercings: str
+    alias_list: list[str]
+    twitter: str
+    instagram: str
+    favorite: bool
+    tag_ids: list[GQLTagID]
+    image: str
+    stash_ids: list[GQLStashIDInput]
+    rating100: int
+    details: str
+    death_date: str
+    hair_color: str
+    weight: int
+    ignore_auto_tag: bool
+    custom_fields: GQLCustomFieldsInput
+
+
+class GQLBulkPerformerUpdateInput(TypedDict, total=False):
+    clientMutationId: str
+    ids: list[int]
+    disambiguation: str
+    url: str
+    urls: GQLBulkUpdateStrings
+    gender: GenderEnumType
+    birthdate: str
+    ethnicity: str
+    country: str
+    eye_color: str
+    height_cm: int
+    measurements: str
+    fake_tits: str
+    penis_length: float
+    circumcised: CircumsisedEnumType
+    career_length: str
+    tattoos: str
+    piercings: str
+    alias_list: GQLBulkUpdateStrings
+    twitter: str
+    instagram: str
+    favorite: bool
+    tag_ids: GQLBulkUpdateIds
+    rating100: int
+    details: str
+    death_date: str
+    hair_color: str
+    weight: int
+    ignore_auto_tag: bool
+    custom_fields: GQLCustomFieldsInput
+
+
+class GQLGroupDescriptionInput(TypedDict):
+    group_id: int
+    description: NotRequired[str]
+
+
+class GQLGroupCreateInput(TypedDict, total=False):
+    name: Required[str]
+    aliases: str
+    duration: int
+    date: str
+    rating100: int
+    studio_id: int
+    director: str
+    synopsis: str
+    urls: list[str]
+    tag_ids: list[int]
+    containing_groups: list[GQLGroupDescriptionInput]
+    sub_groups: list[GQLGroupDescriptionInput]
+    front_image: str
+    back_image: str
+
+
+class GQLGroupUpdateInput(TypedDict, total=False):
+    id: Required[int]
+    name: str
+    aliases: str
+    duration: int
+    date: str
+    rating100: int
+    studio_id: int
+    director: str
+    synopsis: str
+    urls: list[str]
+    tag_ids: list[int]
+    containing_groups: list[GQLGroupDescriptionInput]
+    sub_groups: list[GQLGroupDescriptionInput]
+    front_image: str
+    back_image: str
+
+
+class GQLGalleryCreateInput(TypedDict, total=False):
+    title: Required[str]
+    code: str
+    url: str
+    urls: list[str]
+    date: str
+    details: str
+    photographer: str
+    rating100: int
+    organized: bool
+    scene_ids: list[int]
+    studio_id: int
+    tag_ids: list[int]
+    performer_ids: list[int]
+
+
+class GQLGalleryUpdateInput(TypedDict, total=False):
+    clientMutationId: str
+    id: Required[int]
+    title: str
+    code: str
+    url: str
+    urls: list[str]
+    date: str
+    details: str
+    photographer: str
+    rating100: int
+    organized: bool
+    scene_ids: list[int]
+    studio_id: int
+    tag_ids: list[int]
+    performer_ids: list[int]
+    primary_file_id: int
+
+
+class GQLGalleryChapterCreateInput(TypedDict):
+    gallery_id: int
+    title: str
+    image_index: int
+
+
+class GQLGalleryChapterUpdateInput(TypedDict, total=False):
+    id: Required[int]
+    gallery_id: int
+    title: str
+    image_index: int
+
+
+class GQLBulkGalleryUpdateInput(TypedDict, total=False):
+    clientMutationId: str
+    ids: Sequence[GQLId]
+    code: str
+    url: str
+    urls: GQLBulkUpdateStrings
+    date: str
+    details: str
+    photographer: str
+    rating100: int
+    organized: bool
+    scene_ids: GQLBulkUpdateIds
+    studio_id: int
+    tag_ids: GQLBulkUpdateIds
+    performer_ids: GQLBulkUpdateIds
+
+
+class GQLImageUpdateInput(TypedDict, total=False):
+    clientMutationId: str
+    id: Required[int]
+    title: str
+    code: str
+    rating100: int
+    organized: bool
+    url: str
+    urls: list[str]
+    date: str
+    details: str
+    photographer: str
+    studio_id: int
+    performer_ids: list[int]
+    tag_ids: list[int]
+    gallery_ids: list[int]
+    primary_file_id: int
+
+
+class GQLBulkImageUpdateInput(TypedDict, total=False):
+    clientMutationId: str
+    ids: Sequence[GQLId]
+    title: str
+    code: str
+    rating100: int
+    organized: bool
+    url: str
+    urls: GQLBulkUpdateStrings
+    date: str
+    details: str
+    photographer: str
+    studio_id: int
+    performer_ids: GQLBulkUpdateIds
+    tag_ids: GQLBulkUpdateIds
+    gallery_ids: GQLBulkUpdateIds
+
+
+class GQLSceneGroupInput(TypedDict):
+    group_id: int
+    scene_index: NotRequired[int]
+
+
+class GQLSceneMovieInput(TypedDict):
+    movie_id: int
+    scene_index: NotRequired[int]
+
+
+class GQLSceneCreateInput(TypedDict, total=False):
+    title: str
+    code: str
+    details: str
+    director: str
+    url: str
+    urls: list[str]
+    date: str
+    rating100: int
+    organized: bool
+    studio_id: int
+    gallery_ids: list[int]
+    performer_ids: list[int]
+    groups: list[GQLSceneGroupInput]
+    movies: list[GQLSceneMovieInput]
+    tag_ids: list[int]
+    cover_image: str
+
+    stash_ids: list[GQLStashIDInput]
+    file_ids: list[int]
+
+
+class GQLSceneHashInput(TypedDict, total=False):
+    checksum: str
+    oshash: str
+
+
+class GQLSceneUpdateInput(TypedDict, total=False):
+    clientMutationId: str
+    id: Required[int]
+    title: str
+    code: str
+    details: str
+    director: str
+    url: str
+    urls: list[str]
+    date: str
+    rating100: int
+    o_counter: int
+    organized: bool
+    studio_id: int
+    gallery_ids: list[int]
+    performer_ids: list[int]
+    groups: list[GQLSceneGroupInput]
+    movies: list[GQLSceneMovieInput]
+    tag_ids: list[int]
+    cover_image: str
+    stash_ids: list[GQLStashIDInput]
+    resume_time: float
+    play_duration: float
+    play_count: int
+    primary_file_id: int
+
+
+class GQLBulkSceneUpdateInput(TypedDict, total=False):
+    clientMutationId: str
+    ids: Sequence[GQLId]
+    title: str
+    code: str
+    details: str
+    director: str
+    url: str
+    urls: GQLBulkUpdateStrings
+    date: str
+    rating100: int
+    organized: bool
+    studio_id: int
+    gallery_ids: GQLBulkUpdateIds
+    performer_ids: GQLBulkUpdateIds
+    tag_ids: GQLBulkUpdateIds
+    group_ids: GQLBulkUpdateIds
+    movie_ids: GQLBulkUpdateIds
+
+
+class GQLSceneMarkerCreateInput(TypedDict):
+    title: str
+    seconds: float
+    end_seconds: NotRequired[float]
+    scene_id: GQLId
+    primary_tag_id: GQLId
+    tag_ids: NotRequired[Sequence[GQLId]]
+
+
+class GQLSceneMarkerUpdateInput(TypedDict, total=False):
+    id: Required[GQLId]
+    title: str
+    seconds: float
+    end_seconds: float
+    scene_id: GQLId
+    primary_tag_id: GQLId
+    tag_ids: Sequence[GQLId]
+
+
+########################################################################################################################
+#                                                                                                                      #
+#                                                  FILTER TYPES                                                        #
+#                                                                                                                      #
+########################################################################################################################
+
+
+class GQLScanMetadataFilterInput(TypedDict):
+    minModTime: NotRequired[str]
 
 
 class GQLFindFilterType(TypedDict, total=False):
@@ -599,364 +1133,3 @@ class GQLGalleryFilterType(TypedDict, total=False):
     performers_filter: GQLPerformerFilterType
     studios_filter: GQLStudioFilterType
     tags_filter: GQLTagFilterType
-
-
-class GQLStashIDInput(TypedDict):
-    endpoint: str
-    stash_id: str
-    updated_at: NotRequired[str]
-
-
-class GQLStudioCreateInput(TypedDict):
-    name: str
-    url: NotRequired[str]
-    parent_id: NotRequired[int]
-    image: NotRequired[str]
-    stash_ids: NotRequired[list[GQLStashIDInput]]
-    rating100: NotRequired[int]
-    favorite: NotRequired[bool]
-    details: NotRequired[str]
-    aliases: NotRequired[list[str]]
-    tag_ids: NotRequired[list[int]]
-    ignore_auto_tag: NotRequired[bool]
-
-
-class GQLStudioUpdateInput(TypedDict, total=False):
-    id: Required[int]
-    name: str
-    url: str
-    parent_id: int
-    image: str
-    stash_ids: list[GQLStashIDInput]
-    rating100: int
-    favorite: bool
-    details: str
-    aliases: list[str]
-    tag_ids: list[int]
-    ignore_auto_tag: bool
-
-
-class GQLPerformerCreateInput(TypedDict, total=False):
-    name: Required[str]
-    disambiguation: str
-    url: str
-    urls: list[str]
-    gender: GenderEnumType
-    birthdate: str
-    ethnicity: str
-    country: str
-    eye_color: str
-    height_cm: int
-    measurements: str
-    fake_tits: str
-    penis_length: float
-    circumcised: CircumsisedEnumType
-    career_length: str
-    tattoos: str
-    piercings: str
-    alias_list: list[str]
-    twitter: str
-    instagram: str
-    favorite: bool
-    tag_ids: list[int]
-    image: str
-    stash_ids: list[GQLStashIDInput]
-    rating100: int
-    details: str
-    death_date: str
-    hair_color: str
-    weight: int
-    ignore_auto_tag: bool
-    custom_fields: dict[str, JSON]
-
-
-class GQLPerformerUpdateInput(TypedDict, total=False):
-    clientMutationId: str
-    ids: list[int]
-    disambiguation: str
-    url: str
-    urls: GQLBulkUpdateStrings
-    gender: GenderEnumType
-    birthdate: str
-    ethnicity: str
-    country: str
-    eye_color: str
-    height_cm: int
-    measurements: str
-    fake_tits: str
-    penis_length: float
-    circumcised: CircumsisedEnumType
-    career_length: str
-    tattoos: str
-    piercings: str
-    alias_list: GQLBulkUpdateStrings
-    twitter: str
-    instagram: str
-    favorite: bool
-    tag_ids: GQLBulkUpdateIds
-    rating100: int
-    details: str
-    death_date: str
-    hair_color: str
-    weight: int
-    ignore_auto_tag: bool
-    custom_fields: GQLCustomFieldsInput
-
-
-class GQLBulkPerformerUpdateInput(TypedDict, total=False):
-    clientMutationId: str
-    ids: list[int]
-    disambiguation: str
-    url: str
-    urls: GQLBulkUpdateStrings
-    gender: GenderEnumType
-    birthdate: str
-    ethnicity: str
-    country: str
-    eye_color: str
-    height_cm: int
-    measurements: str
-    fake_tits: str
-    penis_length: float
-    circumcised: CircumsisedEnumType
-    career_length: str
-    tattoos: str
-    piercings: str
-    alias_list: GQLBulkUpdateStrings
-    twitter: str
-    instagram: str
-    favorite: bool
-    tag_ids: GQLBulkUpdateIds
-    rating100: int
-    details: str
-    death_date: str
-    hair_color: str
-    weight: int
-    ignore_auto_tag: bool
-    custom_fields: GQLCustomFieldsInput
-
-
-class GQLGroupDescriptionInput(TypedDict):
-    group_id: int
-    description: NotRequired[str]
-
-
-class GQLGroupCreateInput(TypedDict, total=False):
-    name: Required[str]
-    aliases: str
-    duration: int
-    date: str
-    rating100: int
-    studio_id: int
-    director: str
-    synopsis: str
-    urls: list[str]
-    tag_ids: list[int]
-    containing_groups: list[GQLGroupDescriptionInput]
-    sub_groups: list[GQLGroupDescriptionInput]
-    front_image: str
-    back_image: str
-
-
-class GQLGroupUpdateInput(TypedDict, total=False):
-    id: Required[int]
-    name: str
-    aliases: str
-    duration: int
-    date: str
-    rating100: int
-    studio_id: int
-    director: str
-    synopsis: str
-    urls: list[str]
-    tag_ids: list[int]
-    containing_groups: list[GQLGroupDescriptionInput]
-    sub_groups: list[GQLGroupDescriptionInput]
-    front_image: str
-    back_image: str
-
-
-class GQLGalleryCreateInput(TypedDict, total=False):
-    title: Required[str]
-    code: str
-    url: str
-    urls: list[str]
-    date: str
-    details: str
-    photographer: str
-    rating100: int
-    organized: bool
-    scene_ids: list[int]
-    studio_id: int
-    tag_ids: list[int]
-    performer_ids: list[int]
-
-
-class GQLGalleryUpdateInput(TypedDict, total=False):
-    clientMutationId: str
-    id: Required[int]
-    title: str
-    code: str
-    url: str
-    urls: list[str]
-    date: str
-    details: str
-    photographer: str
-    rating100: int
-    organized: bool
-    scene_ids: list[int]
-    studio_id: int
-    tag_ids: list[int]
-    performer_ids: list[int]
-    primary_file_id: int
-
-
-class GQLGalleryChapterCreateInput(TypedDict):
-    gallery_id: int
-    title: str
-    image_index: int
-
-
-class GQLGalleryChapterUpdateInput(TypedDict, total=False):
-    id: Required[int]
-    gallery_id: int
-    title: str
-    image_index: int
-
-
-class GQLBulkGalleryUpdateInput(TypedDict, total=False):
-    clientMutationId: str
-    ids: list[int]
-    code: str
-    url: str
-    urls: GQLBulkUpdateStrings
-    date: str
-    details: str
-    photographer: str
-    rating100: int
-    organized: bool
-    scene_ids: GQLBulkUpdateIds
-    studio_id: int
-    tag_ids: GQLBulkUpdateIds
-    performer_ids: GQLBulkUpdateIds
-
-
-class GQLImageUpdateInput(TypedDict, total=False):
-    clientMutationId: str
-    id: Required[int]
-    title: str
-    code: str
-    rating100: int
-    organized: bool
-    url: str
-    urls: list[str]
-    date: str
-    details: str
-    photographer: str
-    studio_id: int
-    performer_ids: list[int]
-    tag_ids: list[int]
-    gallery_ids: list[int]
-    primary_file_id: int
-
-
-class GQLBulkImageUpdateInput(TypedDict, total=False):
-    clientMutationId: str
-    ids: list[int]
-    title: str
-    code: str
-    rating100: int
-    organized: bool
-    url: str
-    urls: GQLBulkUpdateStrings
-    date: str
-    details: str
-    photographer: str
-    studio_id: int
-    performer_ids: GQLBulkUpdateIds
-    tag_ids: GQLBulkUpdateIds
-    gallery_ids: GQLBulkUpdateIds
-
-
-class GQLSceneGroupInput(TypedDict):
-    group_id: int
-    scene_index: NotRequired[int]
-
-
-class GQLSceneMovieInput(TypedDict):
-    movie_id: int
-    scene_index: NotRequired[int]
-
-
-class GQLSceneCreateInput(TypedDict, total=False):
-    title: str
-    code: str
-    details: str
-    director: str
-    url: str
-    urls: list[str]
-    date: str
-    rating100: int
-    organized: bool
-    studio_id: int
-    gallery_ids: list[int]
-    performer_ids: list[int]
-    groups: list[GQLSceneGroupInput]
-    movies: list[GQLSceneMovieInput]
-    tag_ids: list[int]
-    cover_image: str
-
-    stash_ids: list[GQLStashIDInput]
-    file_ids: list[int]
-
-
-class GQLSceneHashInput(TypedDict, total=False):
-    checksum: str
-    oshash: str
-
-
-class GQLSceneUpdateInput(TypedDict, total=False):
-    clientMutationId: str
-    id: Required[int]
-    title: str
-    code: str
-    details: str
-    director: str
-    url: str
-    urls: list[str]
-    date: str
-    rating100: int
-    o_counter: int
-    organized: bool
-    studio_id: int
-    gallery_ids: list[int]
-    performer_ids: list[int]
-    groups: list[GQLSceneGroupInput]
-    movies: list[GQLSceneMovieInput]
-    tag_ids: list[int]
-    cover_image: str
-    stash_ids: list[GQLStashIDInput]
-    resume_time: float
-    play_duration: float
-    play_count: int
-    primary_file_id: int
-
-
-class GQLBulkSceneUpdateInput(TypedDict, total=False):
-    clientMutationId: str
-    ids: list[int]
-    title: str
-    code: str
-    details: str
-    director: str
-    url: str
-    urls: GQLBulkUpdateStrings
-    date: str
-    rating100: int
-    organized: bool
-    studio_id: int
-    gallery_ids: GQLBulkUpdateIds
-    performer_ids: GQLBulkUpdateIds
-    tag_ids: GQLBulkUpdateIds
-    group_ids: GQLBulkUpdateIds
-    movie_ids: GQLBulkUpdateIds

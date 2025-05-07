@@ -11,7 +11,9 @@ from typing_extensions import deprecated, override
 from .stash_types import CallbackReturns
 
 
-JSON: TypeAlias = dict[str, "JSON"] | list["JSON"] | str | int | float | bool | None
+JSON: TypeAlias = "JSONDict" | "JSONList" | str | int | float | bool | None
+JSONDict: TypeAlias = dict[str, "JSON"]
+JSONList: TypeAlias = list["JSON"]
 
 
 class GQLTypeKind(StrEnum):
@@ -115,7 +117,7 @@ GQLJobStatusLiteral: TypeAlias = Literal[
     "FAILED",
 ]
 
-JobStatus: TypeAlias = GQLJobStatusLiteral | GQLJobStatus
+JobStatusType: TypeAlias = GQLJobStatusLiteral | GQLJobStatus
 
 
 class GQLJob(TypedDict):
