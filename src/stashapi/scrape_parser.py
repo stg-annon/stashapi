@@ -369,6 +369,9 @@ class ScrapeParser:
             except:
                 log.warning(f'Could not map performer Gender "{scrape["gender"]}" for {scrape["name"]}')
 
+        if self.create_missing_performers:
+            return self.stash.find_performer(performer_update, create=True)
+            
         return performer_update
 
     def scene_from_scrape(self, scene):
