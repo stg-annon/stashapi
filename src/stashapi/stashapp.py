@@ -1928,11 +1928,11 @@ class StashInterface(GQLWrapper):
 			listScrapers(types: $types) {
 			  id
 			  name
-			  performer { supported_scrapes }
-			  scene { supported_scrapes }
-			  gallery { supported_scrapes }
-			  movie { supported_scrapes }
-              image { supported_scrapes }
+			  performer { urls, supported_scrapes }
+			  scene { urls, supported_scrapes }
+			  gallery { urls, supported_scrapes }
+			  movie { urls, supported_scrapes }
+              image { urls, supported_scrapes }
 			}
 		  }
 		"""
