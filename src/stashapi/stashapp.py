@@ -76,6 +76,8 @@ class StashInterface(GQLWrapper):
             "Image": "{ id }",
             "Gallery": "{ id }",
             "Group": "{ id }",
+            "BasicFile": "{ id }",
+            "Folder": "{ id }",
         }
         attribute_overrides = {
             "ScrapedStudio": {"parent": "{ stored_id }"},
@@ -83,6 +85,7 @@ class StashInterface(GQLWrapper):
             "Studio": {"parent_studio": "{ id }"},
             "VideoFile": {"fingerprint": None},
             "ImageFile": {"fingerprint": None},
+            "BasicFile": {"fingerprint": None},
             "GalleryFile": {"fingerprint": None},
             "Gallery": {"image": None},
         }
