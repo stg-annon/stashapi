@@ -66,6 +66,7 @@ class StashInterface(GQLWrapper):
             self.s.headers.update({"ApiKey": api_key})
             self.s.cookies.clear()
 
+        # Fragment overrides prevent recursive lookups and help keep requests manageable by limiting an object's sub-fragments to only those defined here
         fragment_overrides = {
             "Scene": "{ id }",
             "Studio": "{ id }",
@@ -76,13 +77,14 @@ class StashInterface(GQLWrapper):
             "BasicFile": "{ id }",
             "Folder": "{ id }",
         }
+        # Attribute overrides allow you to replace the attributes of specific objects with custom values, overriding those obtained through introspection. If an attribute override is set to None, that attribute will be excluded from the object's default fragment.
         attribute_overrides = {
             "ScrapedStudio": {"parent": "{ stored_id }"},
             "Tag": {"parents": "{ id }", "children": "{ id }"},
             "Studio": {"parent_studio": "{ id }"},
+            "BasicFile": {"fingerprint": None},
             "VideoFile": {"fingerprint": None},
             "ImageFile": {"fingerprint": None},
-            "BasicFile": {"fingerprint": None},
             "GalleryFile": {"fingerprint": None},
             "Gallery": {"image": None},
         }
