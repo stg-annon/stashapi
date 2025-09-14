@@ -1,5 +1,6 @@
-import re, math
+import re
 import requests
+from collections import defaultdict
 from enum import Enum
 from pathlib import Path
 from .stash_types import StashEnum
@@ -76,7 +77,7 @@ class GQLWrapper:
                 attribute_overrides = { "ScrapedStudio": {"parent": "{ stored_id }"} }
 
         """
-
+        deprecated = defaultdict(dict)
         fragments = {}
 
         query = """{ __schema { types { ...FullType } } }
@@ -177,6 +178,7 @@ fragment TypeRef on __Type {
             fragment = "{"
             for field in type["fields"]:
                 if field.get("isDeprecated"):
+                    deprecated[type_name][field["name"]] = field["deprecationReason"]
                     continue
                 attr = field["name"]
                 if attribute_override.get(field["name"], "") == None:
@@ -203,11 +205,13 @@ fragment TypeRef on __Type {
             fragment = "{"
             for field in type["possibleTypes"]:
                 if field.get("isDeprecated"):
+                    deprecated[type_name][field["name"]] = field["deprecationReason"]
                     continue
                 fragment += f'\n\t...{field["name"]}'
             fragment += "\n}"
             fragments[type_name] = fragment
 
+        self.deprecations = deprecated
         for type_name, fragment in fragments.items():
             fragments[type_name] = f"fragment {type_name} on {type_name} {fragment}"
         return fragments
@@ -223,9 +227,6 @@ fragment TypeRef on __Type {
 
         response = self.s.post(self.url, json=json_request)
 
-        try:
-            return self._handle_GQL_response(response)
-        except:
             self.log.debug(f"{rm_query_whitespace(query)}\nVariables: {variables}")
             raise
 
