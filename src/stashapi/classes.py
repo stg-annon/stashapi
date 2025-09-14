@@ -232,8 +232,7 @@ fragment TypeRef on __Type {
 
         response = self.s.post(self.url, json=json_request)
 
-            self.log.debug(f"{rm_query_whitespace(query)}\nVariables: {variables}")
-            raise
+        return self._handle_GQL_response(response)
 
     def _handle_GQL_response(self, response):
         try:
@@ -335,18 +334,6 @@ class StashVersion:
 
     def __gt__(self, other: object) -> bool:
         return self.pad_version() > other.pad_version()
-
-
-def rm_query_whitespace(query):
-    whitespace = re.search(r"([\t ]+)(query|mutation)", query)
-    if whitespace:
-        whitespace = whitespace.group(1)
-        query_lines = []
-        for line in query.split("\n"):
-            query_lines.append(re.sub(whitespace, "", line, 1))
-        query = "\n".join(query_lines)
-    return query
-
 
 def serialize_dict(input_dict):
     for key, value in input_dict.items():
