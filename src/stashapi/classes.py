@@ -14,6 +14,7 @@ class GQLWrapper:
     port = ""
     url = ""
     version = None
+    fragments = {}
     RAISE_GQL_ERRORS = False
 
     def __init__(self):
@@ -221,7 +222,7 @@ fragment TypeRef on __Type {
             fragments[type_name] = f"fragment {type_name} on {type_name} {fragment}"
         return fragments
 
-    def _GQL(self, query, variables={}):
+    def _GQL(self, query, variables={}) -> dict:
 
         query = self.__resolve_fragments(query)
 
@@ -234,7 +235,7 @@ fragment TypeRef on __Type {
 
         return self._handle_GQL_response(response)
 
-    def _handle_GQL_response(self, response):
+    def _handle_GQL_response(self, response) -> dict:
         try:
             content = response.json()
         except ValueError:
@@ -330,9 +331,11 @@ class StashVersion:
         return str(self)
 
     def __eq__(self, other: object) -> bool:
-        return self.hash and other.hash and self.hash == other.hash
+        if not isinstance(other, StashVersion):
+            raise NotImplementedError("Can only compare <StashVersion> to other <StashVersion> Objects")
+        return bool(self.hash and other.hash and self.hash == other.hash)
 
-    def __gt__(self, other: object) -> bool:
+    def __gt__(self, other: 'StashVersion') -> bool:
         return self.pad_version() > other.pad_version()
 
 def serialize_dict(input_dict):
