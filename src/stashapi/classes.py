@@ -1,4 +1,5 @@
 import re
+import types
 import requests
 from collections import defaultdict
 from enum import Enum
@@ -7,6 +8,7 @@ from .stash_types import StashEnum
 
 
 class GQLWrapper:
+    log: types.ModuleType
     port = ""
     url = ""
     version = None
