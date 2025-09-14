@@ -20,35 +20,32 @@ class StashInterface(GQLWrapper):
         super().__init__()
         self.s.verify = verify_ssl
 
-        conn = CaseInsensitiveDict(conn)
+        connection = CaseInsensitiveDict(conn)
 
-        self.log = conn.get("Logger", None)
-        if not self.log:
-            import stashapi.log as logger
+        import stashapi.log as fallbacklogger
+        self.log = connection.get("Logger", fallbacklogger)
 
-            self.log = logger
-
-        scheme = conn.get("Scheme", "http")
-        if conn.get("Domain"):
+        scheme = connection.get("Scheme", "http")
+        if connection.get("Domain"):
             self.log.warning("conn['Domain'] is deprecated use conn['Host'] instead")
-            host = conn["Domain"]
+            host = connection["Domain"]
         else:
-            host = conn.get("Host", "localhost")
+            host = connection.get("Host", "localhost")
 
         if host == "0.0.0.0":
             host = "127.0.0.1"
 
-        self.port = conn.get("Port", 9999)
+        self.port = connection.get("Port", 9999)
 
         # Stash GraphQL endpoint
         self.url = f"{scheme}://{host}:{self.port}/graphql"
 
         # ApiKey authentication
-        if conn.get("ApiKey"):
-            self.s.headers.update({"ApiKey": conn["ApiKey"]})
+        if connection.get("ApiKey"):
+            self.s.headers.update({"ApiKey": connection["ApiKey"]})
         # Session cookie for authentication
-        if conn.get("SessionCookie"):
-            self.s.cookies.update({"session": conn["SessionCookie"]["Value"]})
+        if connection.get("SessionCookie"):
+            self.s.cookies.update({"session": connection["SessionCookie"]["Value"]})
 
         try:
             # test query to ensure good connection
