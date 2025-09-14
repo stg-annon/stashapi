@@ -280,6 +280,7 @@ fragment TypeRef on __Type {
             raise Exception(error_msg)
         else:
             self.log.error(error_msg)
+        return {}
 
     # shim for older plugins
     def callGQL(self, query, variables={}):
