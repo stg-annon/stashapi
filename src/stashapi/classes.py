@@ -6,12 +6,15 @@ from enum import Enum
 from pathlib import Path
 from .stash_types import StashEnum
 
+class GQLException(Exception):
+    pass
 
 class GQLWrapper:
     log: types.ModuleType
     port = ""
     url = ""
     version = None
+    RAISE_GQL_ERRORS = False
 
     def __init__(self):
         self.s = requests.session()
@@ -256,8 +259,10 @@ fragment TypeRef on __Type {
                 code = "DATABASE_LOCKED"
                 database_locked = 1
             path = error.get("path", "")
-            fmt_error = f"{code}:{path} {message}".strip()
-            self.log.error(fmt_error)
+            if self.RAISE_GQL_ERRORS:
+                raise GQLException(f"{path} {message}".strip())
+            else:
+                self.log.error(f"{code}:{path} {message}".strip())
 
         if response.status_code == 401:
             self.log.error(
@@ -271,8 +276,10 @@ fragment TypeRef on __Type {
         elif response.status_code == 200:
             return content["data"]
         error_msg = f"{response.status_code} {response.reason} query failed. {self.version}"
-        self.log.error(error_msg)
-        raise Exception(error_msg)
+        if self.RAISE_GQL_ERRORS:
+            raise Exception(error_msg)
+        else:
+            self.log.error(error_msg)
 
     # shim for older plugins
     def callGQL(self, query, variables={}):
