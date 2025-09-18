@@ -15,6 +15,7 @@ class GQLWrapper:
     url = ""
     version = None
     fragments = {}
+    deprecations = {}
     RAISE_GQL_ERRORS = False
 
     def __init__(self):
@@ -240,6 +241,11 @@ fragment TypeRef on __Type {
             content = response.json()
         except ValueError:
             content = {}
+
+        deprecation_dict = self.deprecations.get("Query",{}) | self.deprecations.get("Mutation",{})
+        query_type = list(content["data"].keys())[0]
+        if query_type in deprecation_dict:
+            self.log.warning(deprecation_dict[query_type])
 
         # Set database locked bit to 0 on fresh response.
         # Database locked errors send a 200 response code (normal),
