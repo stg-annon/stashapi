@@ -428,7 +428,7 @@ class StashInterface(GQLWrapper):
 	# FILES
 	def move_files(self, move_files_input):
 		result = self.call_GQL(
-			"query MoveFiles($input: MoveFilesInput!) { moveFiles(input: $input) }",
+			"mutation MoveFiles($input: MoveFilesInput!) { moveFiles(input: $input) }",
 			{"input": move_files_input}
 		)
 		return result['moveFiles']
