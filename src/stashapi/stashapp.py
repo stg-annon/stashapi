@@ -1518,7 +1518,7 @@ class StashInterface(GQLWrapper):
 
     # BULK Images
     def find_images(
-        self, f: dict = {}, filter: dict = {"per_page": -1}, q="", fragment=None, get_count=False, callback=None
+        self, f: dict = {}, filter: dict = {"per_page": -1}, image_ids=[], q="", fragment=None, get_count=False, callback=None
     ):
         query = """
 		query FindImages($filter: FindFilterType, $image_filter: ImageFilterType, $image_ids: [Int!]) {
@@ -1534,7 +1534,7 @@ class StashInterface(GQLWrapper):
             query = re.sub(r"\.\.\.Image", fragment, query)
 
         filter["q"] = q
-        variables = {"filter": filter, "image_filter": f}
+        variables = {"filter": filter, "image_filter": f, "image_ids": image_ids}
 
         result = self.call_GQL(query, variables, callback=callback)
         if get_count:
@@ -1858,10 +1858,16 @@ class StashInterface(GQLWrapper):
         self.call_GQL(query, {"marker_id": marker_id})
 
     # BULK Markers
-    def destroy_scene_markers(self, scene_id: int):
-        scene_markers = self.get_scene_markers(scene_id, fragment="id")
-        for marker in scene_markers:
-            self.destroy_scene_marker(marker["id"])
+    def destroy_scene_markers(self, scene_ids):
+        if isinstance(scene_ids, int):
+            # compatibillity with old args of single int
+            scene_ids = [scene_ids]
+        query = """
+			mutation SceneMarkersDestroy($scene_ids: [ID!]!) {
+				sceneMarkersDestroy(id: $scene_ids)
+			}
+		"""
+        self.call_GQL(query, {"scene_ids": scene_ids})
 
     def merge_scene_markers(self, target_scene_id: int, source_scene_ids: list):
         existing_marker_timestamps = [marker["seconds"] for marker in self.get_scene_markers(target_scene_id)]
