@@ -242,11 +242,6 @@ fragment TypeRef on __Type {
         except ValueError:
             content = {}
 
-        deprecation_dict = self.deprecations.get("Query",{}) | self.deprecations.get("Mutation",{})
-        query_type = list(content["data"].keys())[0]
-        if query_type in deprecation_dict:
-            self.log.warning(deprecation_dict[query_type])
-
         # Set database locked bit to 0 on fresh response.
         # Database locked errors send a 200 response code (normal),
         # so they are not handled correctly without special intervention.
@@ -269,6 +264,11 @@ fragment TypeRef on __Type {
                 raise GQLException(f"{path} {message}".strip())
             else:
                 self.log.error(f"{code}:{path} {message}".strip())
+
+        deprecation_dict = self.deprecations.get("Query",{}) | self.deprecations.get("Mutation",{})
+        query_type = list(content["data"].keys())[0]
+        if query_type in deprecation_dict:
+            self.log.warning(deprecation_dict[query_type])
 
         if response.status_code == 401:
             self.log.error(

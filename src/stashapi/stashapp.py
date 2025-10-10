@@ -1858,16 +1858,24 @@ class StashInterface(GQLWrapper):
         self.call_GQL(query, {"marker_id": marker_id})
 
     # BULK Markers
-    def destroy_scene_markers(self, scene_ids):
-        if isinstance(scene_ids, int):
-            # compatibillity with old args of single int
-            scene_ids = [scene_ids]
+    def destroy_markers(self, marker_ids: list[int]):
+        """
+        """
         query = """
-			mutation SceneMarkersDestroy($scene_ids: [ID!]!) {
-				sceneMarkersDestroy(id: $scene_ids)
+			mutation SceneMarkersDestroy($marker_ids: [ID!]!) {
+				sceneMarkersDestroy(ids: $marker_ids)
 			}
 		"""
-        self.call_GQL(query, {"scene_ids": scene_ids})
+        self.call_GQL(query, {"marker_ids": marker_ids})
+
+    def destroy_scene_markers(self, scene_id: int):
+        """deletes all markers associated with a Scene
+        Args:
+            scene_id (int): Scene ID to remove markers from
+        """
+        scene_markers = self.get_scene_markers(scene_id, fragment="id")
+        for marker in scene_markers:
+            self.destroy_scene_marker(marker["id"])
 
     def merge_scene_markers(self, target_scene_id: int, source_scene_ids: list):
         existing_marker_timestamps = [marker["seconds"] for marker in self.get_scene_markers(target_scene_id)]
