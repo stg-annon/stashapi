@@ -265,15 +265,17 @@ fragment TypeRef on __Type {
             else:
                 self.log.error(f"{code}:{path} {message}".strip())
 
-        deprecation_dict = self.deprecations.get("Query",{}) | self.deprecations.get("Mutation",{})
-        query_type = list(content["data"].keys())[0]
-        if query_type in deprecation_dict:
-            self.log.warning(deprecation_dict[query_type])
+        if "data" in content:
+            deprecation_dict = self.deprecations.get("Query",{}) | self.deprecations.get("Mutation",{})
+            query_type = list(content["data"].keys())[0]
+            if query_type in deprecation_dict:
+                self.log.warning(deprecation_dict[query_type])
 
         if response.status_code == 401:
             self.log.error(
                 f"{response.status_code} {response.reason}. Could not access endpoint {self.url}. Did you provide an API key? Are you running a proxy?"
             )
+            raise Exception("Authentication error")
         elif content.get("data") == None:
             self.log.error(f"{response.status_code} {response.reason} GQL data response is null")
         elif database_locked == 1:
