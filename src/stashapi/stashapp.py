@@ -142,6 +142,11 @@ class StashInterface(GQLWrapper):
         for item in items:
             if not item["aliases"]:
                 continue
+            # exception for when "aliases" attribute is just a string, attempt to match do not attempt to determine delim
+            if isinstance(item["aliases"], str):
+                if str_compare(search, item["aliases"]):
+                    item_matches[item["id"]] = item
+                continue
             for alias in item["aliases"]:
                 if re.match(rf"{search}$", alias.strip(), re.IGNORECASE):
                     self.log.info(f'matched "{search}" to "{item["name"]}" ({item["id"]}) using alias')
@@ -1234,15 +1239,15 @@ class StashInterface(GQLWrapper):
         if isinstance(group_in, str):
             name = group_in
 
-        groups = self.find_groups(q=name)
+        groups = self.find_groups(q=str(name))
         group_matches = self.__match_alias_item(name, groups)
 
         if len(group_matches) > 0:
             if len(group_matches) == 1:
                 return group_matches[0]
             else:
-                self.log.warning(f'Too many matches for Group "{name}"')
-                return None
+                self.log.warning(f'Too many matches ({len(group_matches)}) for Group "{name}"')
+                return {}
 
         if create:
             self.log.info(f'Creating missing Group "{name}"')
@@ -1297,6 +1302,19 @@ class StashInterface(GQLWrapper):
             return result["findGroups"]["count"], result["findGroups"]["groups"]
         else:
             return result["findGroups"]["groups"]
+
+    def update_groups(self, groups_input):
+        query = """
+            mutation BulkGroupUpdate($input:BulkGroupUpdateInput!) {
+                bulkGroupUpdate(input: $input) {
+                    id
+                }
+            }
+        """
+        variables = {"input": groups_input}
+
+        result = self.call_GQL(query, variables)
+        return result["bulkGroupUpdate"]
 
     # MOVIE Shims
     def create_movie(self, *args, **kwargs):
