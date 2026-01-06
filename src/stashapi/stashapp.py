@@ -74,19 +74,19 @@ class StashInterface(GQLWrapper):
             "Image": "{ id }",
             "Gallery": "{ id }",
             "Group": "{ id }",
-            "BasicFile": "{ id }",
-            "Folder": "{ id }",
         }
-        # Attribute overrides allow you to replace the attributes of specific objects with custom values, overriding those obtained through introspection. If an attribute override is set to None, that attribute will be excluded from the object's default fragment.
+        # Attribute overrides allow you to replace the attributes of specific objects with custom values, overriding those obtained through introspection.
+        # If an attribute override is set to None, that attribute will be excluded from the object's default fragment.
         attribute_overrides = {
             "ScrapedStudio": {"parent": "{ stored_id }"},
             "Tag": {"parents": "{ id }", "children": "{ id }"},
             "Studio": {"parent_studio": "{ id }"},
-            "BasicFile": {"fingerprint": None},
             "VideoFile": {"fingerprint": None},
             "ImageFile": {"fingerprint": None},
             "GalleryFile": {"fingerprint": None},
             "Gallery": {"image": None},
+            "Folder": {"parent_folder": "{ id }", "zip_file": "{ id }"},
+            "BasicFile": {"parent_folder": "{ id }", "zip_file": "{ id }", "fingerprint": None},
         }
         self.fragments = self._get_fragments_introspection(fragment_overrides, attribute_overrides)
         for fragment in fragments:
