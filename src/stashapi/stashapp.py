@@ -2,6 +2,12 @@ import re, math, time, inspect
 
 from requests.structures import CaseInsensitiveDict
 
+from importlib.metadata import version, PackageNotFoundError
+try:
+    __version__ = version("stashapi")
+except PackageNotFoundError:
+    __version__ = "DEV"
+
 from .tools import str_compare
 
 from .stash_types import StashItem
@@ -54,8 +60,7 @@ class StashInterface(GQLWrapper):
             self.log.error(f"Could not connect to Stash at {self.url}")
             self.log.error(e)
             raise
-
-        self.log.debug(f"Using stash ({self.version}) endpoint at {self.url}")
+        self.log.debug(f"connected to stash ({self.version}) endpoint {self.url} using stashapi ({__version__})")
 
         # grab API key to persist connection past session cookie duration
         api_key = self.call_GQL("query getApiKey{ configuration { general { apiKey } } }")["configuration"]["general"][
