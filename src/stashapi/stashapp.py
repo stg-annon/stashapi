@@ -66,7 +66,10 @@ class StashInterface(GQLWrapper):
             self.s.headers.update({"ApiKey": api_key})
             self.s.cookies.clear()
 
-        # Fragment overrides prevent recursive lookups and help keep requests manageable by limiting an object's sub-fragments to only those defined here
+        if connection.get("PluginDir"):
+            self.plugin_path = Path(connection["PluginDir"])
+
+        # Fragment overrides prevent recursive lookups and limits an objects size helping to keep requests manageable by limiting an object's sub-fragments to only those defined here
         fragment_overrides = {
             "Scene": "{ id }",
             "Studio": "{ id }",
@@ -463,6 +466,28 @@ class StashInterface(GQLWrapper):
             values.update(plugin_values)
         plugin_values.update(values)
         return self.call_GQL(query, {"plugin_id": plugin_id, "input": plugin_values})["configurePlugin"]
+
+    def ensure_plugin_config_file(self, template_file="config_example.py", config_file="config.py"):
+        """Ensures python based config file is created from a template file in the plugin DIR, useful for complex objects and not squashing user changes to configs afer a package is updated.
+        Does NOT merge config file versions only copies example config on first setup
+
+        Args:
+            template_file (str, optional): _description_. Defaults to "config_example.py".
+            config_file (str, optional): _description_. Defaults to "config.py".
+        """
+        template_file = Path(self.plugin_path, template_file)
+        config_file = Path(self.plugin_path, config_file)
+
+        if not template_file.exists():
+            self.log.error(f"No config template file found to copy: {template_file}")
+            return
+        if not config_file.exists():
+            import shutil
+            self.log.info(f"No config file found, copying template file to: {config_file}")
+            shutil.copyfile(template_file, config_file)
+        else:
+            # ensure is just to make sure the config exists, the config exists pass
+            pass 
 
     def find_plugin_config(self, plugin_id, defaults={}) -> dict:
         """finds config for a single plugin
