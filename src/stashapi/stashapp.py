@@ -2285,19 +2285,22 @@ class StashInterface(GQLWrapper):
         result = self.call_GQL(query, variables)
         return result["submitStashBoxFingerprints"]
 
-    def stashbox_identify_task(self, scene_ids, stashbox_endpoint="https://stashdb.org/graphql"):
+    def stashbox_identify_task(self, scene_ids, stashbox_endpoint="https://stashdb.org/graphql", source_confg=None):
         query = """
             mutation MetadataIdentify($input: IdentifyMetadataInput!) {
             metadataIdentify(input: $input)
             }
         """
+        if source_confg == None:
+            source_confg = self.get_identify_source_config(stashbox_endpoint)
+
         variables = {}
         variables["input"] = {
             "options": self.get_identify_config(),
             "sceneIDs": scene_ids,
             "sources": [
                 {
-                    "options": self.get_identify_source_config(stashbox_endpoint),
+                    "options": source_confg,
                     "source": {"stash_box_endpoint": stashbox_endpoint},
                 }
             ],
