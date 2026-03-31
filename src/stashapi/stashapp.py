@@ -1,5 +1,6 @@
 import re, math, time, inspect
-
+from typing import overload, Any, Literal
+from pathlib import Path
 from requests.structures import CaseInsensitiveDict
 
 from importlib.metadata import version, PackageNotFoundError
@@ -679,15 +680,13 @@ class StashInterface(GQLWrapper):
         self.call_GQL(query, variables)
 
     # TAGS
-    def find_tags(
-        self, f: dict = {}, filter: dict = {"per_page": -1}, q: str = "", fragment: str = None, get_count: bool = False
-    ) -> list[dict]:
+    def find_tags(self, f:dict={}, filter:dict={"per_page": -1}, q:str="", fragment:str="", get_count: bool = False) -> list[dict]:
         """gets tags matching filter/query
 
         Args:
                  f (TagFilterType, optional): See playground for details. Defaults to {}.
                  filter (FindFilterType, optional): See playground for details. Defaults to {"per_page": -1}.
-                 q (str, optional): query string, same search bar in stash. Defaults to "".
+                 q (str, optional): query string, same as search bar in stash. Defaults to "".
                  fragment (str, optional): override for gqlFragment. Defaults to "...Tag". example override 'fragment="id name"'
                  get_count (bool, optional): returns tuple (count, [tags]) where count is the number of results from the query, useful when paging. Defaults to False.
 
@@ -705,6 +704,7 @@ class StashInterface(GQLWrapper):
                 }
             }
         """
+        if fragment != "":
             query = re.sub(r"\.\.\.Tag", fragment, query)
 
         filter["q"] = q
@@ -795,7 +795,7 @@ class StashInterface(GQLWrapper):
             )
         if not performer:
             self.log.warning(f'find_performer() expects int, str, or dict not {type(performer)} "{performer}"')
-            return
+            return {}
 
         performer_filter = {}
         if performer.get("disambiguation"):
@@ -1331,7 +1331,7 @@ class StashInterface(GQLWrapper):
         return self.update_group(*args, **kwargs)
 
     def find_movies(self, *args, **kwargs):
-        self.log.warning("find_movies() is depracated use find_gruops()")
+        self.log.warning("find_movies() is depracated use find_groups()")
         return self.find_groups(*args, **kwargs)
 
     # Gallery CRUD
