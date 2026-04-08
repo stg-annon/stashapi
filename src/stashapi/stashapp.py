@@ -125,7 +125,7 @@ class StashInterface(GQLWrapper):
         if isinstance(item, int):
             item_id = item
         if not item_id:
-            return
+            return {}
         pattern, substitution = fragment
         if substitution:
             query = re.sub(pattern, substitution, query)
@@ -180,7 +180,7 @@ class StashInterface(GQLWrapper):
             if p.get("aliases"):
                 if not isinstance(p["aliases"], str):
                     self.log.warning(f'Expecting type str for performer aliases not {type(p["aliases"])}')
-                    return
+                    return []
                 alias_delim = re.search(r"(\/|\n|,|;)", p["aliases"])
                 if alias_delim:
                     p["aliases"] = p["aliases"].split(alias_delim.group(1))
@@ -241,7 +241,7 @@ class StashInterface(GQLWrapper):
             pages = math.ceil(result["count"] / variables["filter"]["per_page"])
 
         if callback_response == CallbackReturns.STOP_ITERATION:
-            return
+            return {}
 
         if variables["filter"]["page"] < pages:
             variables["filter"]["page"] += 1
@@ -626,7 +626,7 @@ class StashInterface(GQLWrapper):
 
         if not name:
             self.log.warning(f'find_tag expects int, str, or dict not {type(tag_in)} "{tag_in}"')
-            return
+            return {}
 
         matches = set()
         for tag in self.find_tags(q=name, fragment="id name aliases"):
@@ -1703,6 +1703,14 @@ class StashInterface(GQLWrapper):
                 }
             }
         """
+        # if the scene update has an image and it's a URL, attempt updating the image first as it may fail, then apply the rest of the update
+        if update_input.get("image") and update_input["image"].startswith("http"):
+            try:
+                self.call_GQL(query, {"input":{"id": update_input["id"], "image": update_input["image"]}})
+            except:
+                self.log.warning(f"could not update scene {update_input['id']} image, likely HTTP error")
+            del update_input["image"]
+
         if update_input.get("tags"):
             self.log.debug("sceneUpdate expects 'tag_ids' not 'tags', automatically mapping...")
             update_input["tag_ids"] = self.map_tag_ids(update_input["tags"], create=create)
